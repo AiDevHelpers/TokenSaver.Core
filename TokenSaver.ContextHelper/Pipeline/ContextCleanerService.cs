@@ -42,6 +42,15 @@ public partial class ContextCleanerService(
     [LoggerMessage(Level = LogLevel.Information, Message = "Pipeline complete: {Raw}→{Final} tokens ({Pct}% saved) in {Ms}ms")]
     private static partial void LogPipelineComplete(ILogger logger, int raw, int final, double pct, long ms);
 
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Debug: saved raw/cleaned context snapshot to {Path}")]
+    private static partial void LogDebugSnapshotSaved(ILogger logger, string path);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Debug: cleaned context did not shrink — {Raw}→{Final} tokens (session={Session})")]
+    private static partial void LogDebugContextDidNotShrink(ILogger logger, int raw, int final, string session);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Debug: failed to save context snapshot")]
+    private static partial void LogDebugSnapshotFailed(ILogger logger, Exception ex);
+
     private readonly ContextHelperConfig _config = config.Value;
 
     // Per-session signal tracking (session-id → signals)
@@ -53,6 +62,9 @@ public partial class ContextCleanerService(
     private volatile PipelineSummary? _lastSummary;
 
     public PipelineSummary? LastSummary => _lastSummary;
+
+    /// <summary>Live value of <c>ContextHelperConfig.Debug</c> — gates debug-only diagnostics (e.g. <see cref="RunSelfTestAsync" />) exposed to callers outside this class.</summary>
+    public bool IsDebugEnabled => _config.Debug;
 
     /// <summary>
     ///     Run the full pipeline and return the cleaned context text plus diagnostics.
@@ -111,6 +123,9 @@ public partial class ContextCleanerService(
 
         int rawTokens = ctx.EstimateTokens();
 
+        // Captured before any stage runs, so a debug snapshot reflects true pre-pipeline input.
+        string? rawContextTextForDebug = _config.Debug ? BuildRawContextText(ctx) : null;
+
         // ── Pre-strip verbatim analysis ───────────────────────────────────────
         // (nothing to mark yet — chunks don't exist; handled per-stage)
 
@@ -137,6 +152,11 @@ public partial class ContextCleanerService(
         _lastSummary = summary;
 
         LogPipelineComplete(logger, rawTokens, finalTokens, summary.TotalSavingsPercent, totalSw.ElapsedMilliseconds);
+
+        if (_config.Debug && rawContextTextForDebug != null)
+        {
+            SaveDebugSnapshot(rawContextTextForDebug, contextText, rawTokens, finalTokens, sessionId);
+        }
 
         // ── Update session signals ────────────────────────────────────────────
         if (sessionId != null)
@@ -182,7 +202,97 @@ public partial class ContextCleanerService(
         return _sessionSignals.GetOrAdd(sessionId, _ => new SessionSignals());
     }
 
+    /// <summary>
+    ///     Runs a synthetic, deliberately redundant/verbose payload through the real pipeline (the
+    ///     same <see cref="CleanContextAsync(string, string[]?, string?, int?, StrippingAdjustment?, bool, CancellationToken)" />
+    ///     entry point <c>BuildConciseContext</c> uses) and reports whether it actually shrank.
+    ///     The payload is a block of &gt;20 duplicated log-style lines — guaranteed to be
+    ///     compressed by <c>LogStrippingStage</c> alone (Stage 2), independent of whether the
+    ///     embedding/summarization stages' optional network calls succeed — so a failure here
+    ///     reliably indicates a broken pipeline stage, not an uncompressible real prompt or an
+    ///     unreachable Ollama endpoint.
+    /// </summary>
+    public async Task<ContextSelfTestResult> RunSelfTestAsync(CancellationToken ct = default)
+    {
+        string syntheticHistoryEntry = BuildSyntheticRedundantHistoryEntry();
+
+        PipelineResult result = await CleanContextAsync(
+            prompt: "Why is this failing? Fix the error shown in the log above.",
+            history: [syntheticHistoryEntry],
+            ct: ct);
+
+        PipelineSummary summary = result.Summary!;
+        return new ContextSelfTestResult
+        {
+            Passed = summary.TotalOutputTokens < summary.TotalInputTokens,
+            RawTokens = summary.TotalInputTokens,
+            CleanedTokens = summary.TotalOutputTokens,
+            SavingsPercent = summary.TotalSavingsPercent,
+            Narrative = summary.NarrativeSummary
+        };
+    }
+
+    private static string BuildSyntheticRedundantHistoryEntry()
+    {
+        StringBuilder sb = new();
+        for (int i = 0; i < 30; i++)
+        {
+            _ = sb.AppendLine(CultureInfo.InvariantCulture, $"[INFO] self-test log line {i:D2} — nothing to see here, purely padding to trigger log stripping");
+        }
+
+        _ = sb.AppendLine("[ERROR] self-test synthetic failure: NullReferenceException at Widget.Render()");
+        _ = sb.AppendLine("[INFO] self-test log line closing out the block");
+
+        return sb.ToString();
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private static string BuildRawContextText(PipelineContext ctx)
+    {
+        StringBuilder sb = new();
+        foreach (string turn in ctx.History)
+        {
+            _ = sb.AppendLine(turn);
+        }
+
+        if (sb.Length > 0)
+        {
+            _ = sb.AppendLine();
+        }
+
+        _ = sb.Append(ctx.Query);
+
+        return sb.ToString();
+    }
+
+    private void SaveDebugSnapshot(string rawText, string cleanedText, int rawTokens, int finalTokens, string? sessionId)
+    {
+        try
+        {
+            string dir = Path.Combine(Directory.GetCurrentDirectory(), ".tokensaver", "debug");
+            _ = Directory.CreateDirectory(dir);
+
+            string stamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff", CultureInfo.InvariantCulture);
+            string sessionTag = string.IsNullOrWhiteSpace(sessionId) ? "no-session" : sessionId;
+            string safeSessionTag = new(sessionTag.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c).ToArray());
+            string baseName = $"{stamp}_{safeSessionTag}";
+
+            File.WriteAllText(Path.Combine(dir, $"{baseName}.raw.txt"), rawText);
+            File.WriteAllText(Path.Combine(dir, $"{baseName}.clean.txt"), cleanedText);
+
+            LogDebugSnapshotSaved(logger, dir);
+
+            if (finalTokens >= rawTokens)
+            {
+                LogDebugContextDidNotShrink(logger, rawTokens, finalTokens, sessionTag);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogDebugSnapshotFailed(logger, ex);
+        }
+    }
 
     private static string AssembleContext(PipelineContext ctx)
     {

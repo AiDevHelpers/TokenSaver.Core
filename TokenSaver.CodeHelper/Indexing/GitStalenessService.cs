@@ -82,7 +82,7 @@ public sealed class GitStalenessService
     }
 
     /// <summary>
-    ///     Full-tree walk honoring .gitignore/context-exclusions/AlwaysSkipDirs. Shared with the
+    ///     Full-tree walk honoring .gitignore/.ignore-additional/AlwaysSkipDirs. Shared with the
     ///     orchestrator's bootstrap indexing path (see WorkspaceIndexService.IndexWorkspaceAsync).
     /// </summary>
     public static IEnumerable<string> EnumerateAllFiles(string startDir, string workspaceRoot)

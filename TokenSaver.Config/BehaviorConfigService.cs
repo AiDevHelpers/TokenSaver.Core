@@ -88,7 +88,7 @@ public sealed partial class BehaviorConfigService : IDisposable
 
         lock (_sync)
         {
-            TokenSaverBehaviorConfig current = ReadFile(path) ?? new TokenSaverBehaviorConfig();
+            TokenSaverBehaviorConfig current = ReadFile(path) ?? TokenSaverBehaviorConfig.Defaults();
             TokenSaverBehaviorConfig updated = mutate(current);
             _ = Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(updated, WriteOptions));

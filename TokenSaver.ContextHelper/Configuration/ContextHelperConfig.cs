@@ -4,6 +4,30 @@ namespace TokenSaver.ContextHelper.Configuration;
 
 public class ContextHelperConfig
 {
+    /// <summary>
+    ///     Whether the server builds an initial concise-context cache automatically at startup
+    ///     (fire-and-forget, waits for DraftModel to come up first). Default on. False = context
+    ///     is only ever built when a client explicitly calls BuildConciseContext.
+    /// </summary>
+    public bool AutoWarmOnStartup { get; set; } = true;
+
+    /// <summary>
+    ///     Whether <c>ContextInterceptMiddleware</c> runs its context-cleaning step (dedup,
+    ///     log-strip, code-block-collapse) on every prompt-bearing MCP tool call before
+    ///     forwarding it. On by default — independent of <c>CodeHelperConfig.AutoEnabled</c>,
+    ///     which gates the middleware's separate draft-model interception step (off by default).
+    /// </summary>
+    public bool AutoIntercept { get; set; } = true;
+
+    /// <summary>
+    ///     When enabled, <see cref="Pipeline.ContextCleanerService" /> saves the raw (pre-pipeline)
+    ///     context text and the cleaned (post-pipeline) text to <c>.tokensaver/debug/</c> for every
+    ///     run, and logs a warning if the cleaned text did not shrink relative to the raw input.
+    ///     Off by default — this is a diagnostic aid for verifying the cleaning pipeline actually
+    ///     reduces token count, not something needed in normal operation.
+    /// </summary>
+    public bool Debug { get; set; }
+
     public int ContextSizeLimit { get; set; } = 120_000;
     public int VerbatimTurns { get; set; } = 5;
     public int CodeBlockCollapseThreshold { get; set; } = 60; // lines

@@ -3,22 +3,24 @@ using TokenSaver.Library.Services;
 namespace TokenSaver.Config;
 
 /// <summary>
-///     Unified "should this path be indexed/included in context?" decision, composing four sources
-///     rooted at the workspace:
+///     Unified "should this path be indexed/included in context?" decision, composing three
+///     gitignore-syntax sources rooted at the workspace:
 ///     <list type="number">
 ///         <item><c>.gitignore</c> — the baseline exclusions.</item>
 ///         <item>
 ///             <c>.tokensaver/.ignore-additional</c> — extra paths (gitignore glob syntax) to ignore
 ///             that are <b>not</b> in <c>.gitignore</c>. ANDed on: these expand what is ignored.
+///             This is also where <c>ContextDiag(action: "context-exclude")</c> writes
+///             "hide from AI context but keep in git" paths — there is a single gitignore-style
+///             mechanism for that, not a separate JSON-format one.
 ///         </item>
 ///         <item>
 ///             <c>.tokensaver/.ignore-bypass</c> — paths (gitignore glob syntax) that ARE ignored by
 ///             <c>.gitignore</c>/<c>.ignore-additional</c> but should still be indexed. This wins:
 ///             a bypass match forces the path to be included.
 ///         </item>
-///         <item><c>.tokensaver/context-exclusions.json</c> — the existing per-directory exclusion list.</item>
 ///     </list>
-///     Net rule: <c>ignored = (gitignore ∨ additional ∨ contextExclusions) ∧ ¬bypass</c>.
+///     Net rule: <c>ignored = (gitignore ∨ additional) ∧ ¬bypass</c>.
 /// </summary>
 public sealed class WorkspaceIgnoreFilter
 {
@@ -29,18 +31,15 @@ public sealed class WorkspaceIgnoreFilter
     private readonly GitignoreFilter _gitignore;
     private readonly GitignoreFilter _additional;
     private readonly GitignoreFilter _bypass;
-    private readonly IReadOnlyList<string> _contextExclusions;
 
     private WorkspaceIgnoreFilter(
         GitignoreFilter gitignore,
         GitignoreFilter additional,
-        GitignoreFilter bypass,
-        IReadOnlyList<string> contextExclusions)
+        GitignoreFilter bypass)
     {
         _gitignore = gitignore;
         _additional = additional;
         _bypass = bypass;
-        _contextExclusions = contextExclusions;
     }
 
     /// <summary>Path to <c>.tokensaver/.ignore-additional</c> for <paramref name="workspaceRoot" />.</summary>
@@ -85,15 +84,14 @@ public sealed class WorkspaceIgnoreFilter
         return added;
     }
 
-    /// <summary>Loads all four sources for <paramref name="workspaceRoot" />.</summary>
+    /// <summary>Loads all three sources for <paramref name="workspaceRoot" />.</summary>
     public static WorkspaceIgnoreFilter Load(string workspaceRoot)
     {
         string localDir = Path.Combine(workspaceRoot, LocalFolder);
         return new WorkspaceIgnoreFilter(
             GitignoreFilter.Load(workspaceRoot),
             GitignoreFilter.LoadFrom(Path.Combine(localDir, AdditionalFile)),
-            GitignoreFilter.LoadFrom(Path.Combine(localDir, BypassFile)),
-            ContextExclusions.Load(workspaceRoot));
+            GitignoreFilter.LoadFrom(Path.Combine(localDir, BypassFile)));
     }
 
     /// <summary>
@@ -109,7 +107,6 @@ public sealed class WorkspaceIgnoreFilter
         }
 
         return _gitignore.IsIgnored(relativePath, isDirectory)
-            || _additional.IsIgnored(relativePath, isDirectory)
-            || ContextExclusions.IsCovered(relativePath, _contextExclusions);
+            || _additional.IsIgnored(relativePath, isDirectory);
     }
 }

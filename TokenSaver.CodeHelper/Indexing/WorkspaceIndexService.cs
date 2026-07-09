@@ -16,7 +16,7 @@ namespace TokenSaver.CodeHelper.Indexing;
 /// <summary>
 ///     Unified replacement for the old LocalContextService (context.db: files/sections/summaries/
 ///     folder_indices JSON) and CodeIndexService (code-index.db: file_manifest/symbols/references_).
-///     Every file not excluded by .gitignore/ExcludePatterns/context-exclusions gets a File row
+///     Every file not excluded by .gitignore/ExcludePatterns/.ignore-additional gets a File row
 ///     (type + description); files matching an <see cref="ISymbolParser" /> additionally get Symbol
 ///     rows. Staleness is git-aware (see <see cref="GitStalenessChecker" />) with a per-file
 ///     last-write-time fallback for non-git folders. See plans/TokenSaver.UnifiedIndex.plan.md.
@@ -127,7 +127,7 @@ public sealed partial class WorkspaceIndexService : IFileReindexer
         }
 
         // Low-priority maintenance pass: sweep the whole Files table for rows that no longer
-        // belong (deleted from disk, or newly covered by .gitignore/context-exclusions). Rate
+        // belong (deleted from disk, or newly covered by .gitignore/.ignore-additional). Rate
         // limited (see PruneInterval) since IndexWorkspaceAsync can be called on every interactive
         // request. See plans/TokenSaver.IndexPruning.plan.md.
         (int prunedFiles, int prunedSymbols) = (0, 0);
@@ -243,7 +243,7 @@ public sealed partial class WorkspaceIndexService : IFileReindexer
     /// <summary>
     ///     Sweeps every indexed <see cref="FileEntity" /> row and removes ones that no longer belong
     ///     in the index: files deleted from disk, and files now covered by .gitignore or
-    ///     context-exclusions (e.g. a pattern added after the file was originally indexed). Symbol
+    ///     .ignore-additional (e.g. a pattern added after the file was originally indexed). Symbol
     ///     rows are removed via the FK cascade (see WorkspaceIndexContext.OnModelCreating) — the
     ///     explicit Symbols delete here exists only to report an accurate pruned-symbol count, since
     ///     ExecuteDeleteAsync on Files wouldn't tell us how many child rows cascaded.
