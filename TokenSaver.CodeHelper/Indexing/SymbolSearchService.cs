@@ -1,0 +1,107 @@
+using TokenSaver.CodeHelper.Models.Index;
+using TokenSaver.Database.Context;
+using TokenSaver.Database.Context.Entities;
+
+using Microsoft.EntityFrameworkCore;
+
+namespace TokenSaver.CodeHelper.Indexing;
+
+/// <summary>
+///     Symbol graph queries (replaces CodeIndexService): exact-name lookup, per-file symbol
+///     counts, and free-text search over indexed Symbol rows.
+/// </summary>
+public sealed class SymbolSearchService
+{
+    private readonly WorkspaceIndexDbAccessor _accessor;
+    private readonly WorkspaceConfigManager _config;
+
+    public SymbolSearchService(WorkspaceIndexDbAccessor accessor, WorkspaceConfigManager config)
+    {
+        _accessor = accessor;
+        _config = config;
+    }
+
+    public async Task<IReadOnlyList<SymbolEntry>> FindSymbolAsync(
+        string name, SymbolKind? kind = null, string? filePath = null,
+        string workspaceRoot = "", CancellationToken ct = default)
+    {
+        string root = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
+        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
+        string nameUpper = name.ToUpperInvariant();
+
+        return await _accessor.WithDbLockAsync(async () =>
+        {
+            IQueryable<SymbolEntity> query = ctx.Symbols.Include(s => s.File).Where(s => s.Name.ToUpper() == nameUpper);
+            if (kind.HasValue)
+            {
+                query = query.Where(s => s.Kind == (int)kind.Value);
+            }
+
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                query = query.Where(s => s.File!.RelativePath.Contains(filePath));
+            }
+
+            List<SymbolEntity> rows = await query.Take(50).ToListAsync(ct);
+            return (IReadOnlyList<SymbolEntry>)rows.Select(ToSymbolEntry).ToList();
+        }, ct);
+    }
+
+    /// <summary>
+    ///     Returns the number of indexed symbols (functions/types) in a single file, used as the
+    ///     real complexity signal for <see cref="AutoWorkflow.CapabilityAssessor" /> instead of a
+    ///     step-count proxy. Returns 0 if the file has not been indexed yet.
+    /// </summary>
+    public async Task<int> CountSymbolsInFileAsync(
+        string relativeFilePath, string workspaceRoot = "", CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(relativeFilePath))
+        {
+            return 0;
+        }
+
+        string root = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
+        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
+        string normalized = relativeFilePath.Replace('\\', '/');
+
+        return await _accessor.WithDbLockAsync(
+            () => ctx.Symbols
+                .Include(s => s.File)
+                .CountAsync(s => s.File != null && s.File.RelativePath == normalized, ct),
+            ct);
+    }
+
+    public async Task<IReadOnlyList<SymbolEntry>> SearchAsync(
+        string query, int limit = 20, string workspaceRoot = "", CancellationToken ct = default)
+    {
+        string root = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
+        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
+        string qUpper = query.ToUpperInvariant();
+
+        return await _accessor.WithDbLockAsync(async () =>
+        {
+            List<SymbolEntity> rows = await ctx.Symbols.Include(s => s.File)
+                .Where(s => s.Name.ToUpper().Contains(qUpper) || (s.FullName != null && s.FullName.ToUpper().Contains(qUpper)))
+                .Take(limit)
+                .ToListAsync(ct);
+            return (IReadOnlyList<SymbolEntry>)rows.Select(ToSymbolEntry).ToList();
+        }, ct);
+    }
+
+    private static SymbolEntry ToSymbolEntry(SymbolEntity s)
+    {
+        return new SymbolEntry
+        {
+            Id = s.Id,
+            Name = s.Name,
+            FullName = s.FullName ?? s.Name,
+            Kind = (SymbolKind)s.Kind,
+            FilePath = s.File?.RelativePath ?? "",
+            Line = s.Line,
+            Column = s.Col,
+            ContainingType = s.ContainingType,
+            Summary = s.Description,
+            IndexedAt = s.UpdatedAt
+        };
+    }
+}
