@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http.Json;
 
 namespace TokenSaver.Library.Services;
@@ -103,10 +104,14 @@ public partial class OllamaService
 
     /// <summary>
     ///     Generates an embedding vector for <paramref name="input" /> via Ollama's
-    ///     <c>POST /api/embeddings</c> endpoint (not to be confused with <c>/api/generate</c> used
+    ///     <c>POST /api/embed</c> endpoint (not to be confused with <c>/api/generate</c> used
     ///     by <see cref="CallModelAsync(string,string,CancellationToken)" />). Requires an
     ///     embedding-capable model to be pulled locally (e.g. <c>nomic-embed-text</c>) — a chat
     ///     model like the configured <see cref="EffectiveModel" /> will not work here.
+    ///     Deliberately the current <c>/api/embed</c> API, not the legacy singular
+    ///     <c>/api/embeddings</c> — DraftModel.Loader's router only proxies the former (see
+    ///     RouterHttpServer's <c>/API/EMBED</c> case); calling the legacy endpoint through the
+    ///     router 404s.
     /// </summary>
     /// <param name="model">Embedding model name, e.g. <c>"nomic-embed-text"</c>.</param>
     /// <param name="input">Text to embed. Not run through <see cref="IPromptAdapter" /> — embeddings
@@ -115,9 +120,9 @@ public partial class OllamaService
     ///     <see cref="CallModelOnEndpointAsync" />.</param>
     public async Task<float[]> EmbedAsync(string model, string input, string? endpointName = null, CancellationToken ct = default)
     {
-        using HttpRequestMessage request = new(HttpMethod.Post, "/api/embeddings")
+        using HttpRequestMessage request = new(HttpMethod.Post, "/api/embed")
         {
-            Content = JsonContent.Create(new { model, prompt = input })
+            Content = JsonContent.Create(new { model, input })
         };
         if (!string.IsNullOrWhiteSpace(endpointName))
         {
@@ -129,13 +134,13 @@ public partial class OllamaService
         {
             string body = await response.Content.ReadAsStringAsync(ct);
             throw new HttpRequestException(
-                $"POST /api/embeddings returned {(int)response.StatusCode} {response.ReasonPhrase}: {body}",
+                $"POST /api/embed returned {(int)response.StatusCode} {response.ReasonPhrase}: {body}",
                 null,
                 response.StatusCode);
         }
 
         OllamaEmbeddingResponse? result = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(ct);
-        return result?.Embedding ?? [];
+        return result?.Embeddings?.FirstOrDefault() ?? [];
     }
 
     private async Task<string> PostGenerateAsync(

@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\TokenSaver.Library\TokenSaver.Library.csproj" />
+    <ProjectReference Include="..\TokenSaver.ContextHelper\TokenSaver.ContextHelper.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />

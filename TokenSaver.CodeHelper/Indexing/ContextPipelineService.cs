@@ -1,9 +1,13 @@
+using TokenSaver.ContextHelper.Calibration;
 using TokenSaver.ContextHelper.Models;
+using TokenSaver.ContextHelper.Models.Calibration;
 using TokenSaver.ContextHelper.Pipeline;
 using TokenSaver.Library.Configuration;
+using TokenSaver.Library.Contracts;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
 using TokenSaver.Library.Models.Context;
+using TokenSaver.Library.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -23,12 +27,18 @@ namespace TokenSaver.CodeHelper.Indexing;
 /// </summary>
 public sealed class ContextPipelineService
 {
+    /// <summary>Below this, GetFileContentAsync returns a requested file's content raw — not worth the pipeline's cost for a trivially small file.</summary>
+    private const int MinTokensForFileCleaning = 50;
+
     private readonly WorkspaceIndexDbAccessor _accessor;
     private readonly ContextCleanerService _cleaner;
     private readonly TokenSaverConfig _config;
     private readonly ConcurrentDictionary<string, ConversationIndex> _conversationIndexes = new();
     private readonly GitStalenessService _gitStaleness;
     private readonly WorkspaceIndexService _orchestrator;
+    private readonly ISavingsTracker _savings;
+    private readonly SemanticIndexBackgroundTrigger _semanticIndexTrigger;
+    private readonly RetrievalCalibrationService _retrievalCalibration;
     private readonly WorkspaceConfigManager _workspaceConfig;
 
     public ContextPipelineService(
@@ -37,6 +47,9 @@ public sealed class ContextPipelineService
         GitStalenessService gitStaleness,
         WorkspaceConfigManager workspaceConfig,
         WorkspaceIndexService orchestrator,
+        SemanticIndexBackgroundTrigger semanticIndexTrigger,
+        ISavingsTracker savings,
+        RetrievalCalibrationService retrievalCalibration,
         IOptions<TokenSaverConfig> config)
     {
         _accessor = accessor;
@@ -44,6 +57,9 @@ public sealed class ContextPipelineService
         _gitStaleness = gitStaleness;
         _workspaceConfig = workspaceConfig;
         _orchestrator = orchestrator;
+        _semanticIndexTrigger = semanticIndexTrigger;
+        _savings = savings;
+        _retrievalCalibration = retrievalCalibration;
         _config = config.Value;
     }
 
@@ -59,12 +75,18 @@ public sealed class ContextPipelineService
         CancellationToken ct = default)
     {
         string root = workspaceRoot ?? _workspaceConfig.GetWorkspaceRoot();
+        string[] normalizedRequested = NormalizeRequestedFiles(requestedFiles);
+
+        // Must run before CleanContextAsync: that call's SemanticRelevanceFilterStage overwrites
+        // this session's "last pass" state with THIS turn's results, so the comparison against
+        // the PREVIOUS turn's relevance bar has to happen first.
+        RetrievalCalibrationCheckResult? calibrationCheck = await _retrievalCalibration.CheckLateRequestAsync(
+            sessionId, root, prompt, normalizedRequested, ct);
 
         PipelineResult pipelineResult = await _cleaner.CleanContextAsync(
             prompt, history, sessionId, maxTokens ?? _config.ContextSizeLimit,
-            avoidChainOfThought: avoidChainOfThought, ct: ct);
+            avoidChainOfThought: avoidChainOfThought, workspaceRoot: root, ct: ct);
 
-        string[] normalizedRequested = NormalizeRequestedFiles(requestedFiles);
         if (sessionId != null)
         {
             ConversationIndex previous = _conversationIndexes.GetOrAdd(sessionId, _ => new ConversationIndex());
@@ -73,8 +95,28 @@ public sealed class ContextPipelineService
             previous.Updated = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
+        // These three don't depend on each other's results, so run them concurrently instead of
+        // three sequential round-trips.
+        int conversationTurns = history?.Length ?? 0;
+        int conversationTokens = history?.Sum(PipelineContext.EstimateTokens) ?? 0;
+        Task savingsTask = _savings.RecordAsync(
+            root, "buildConciseContext", RoleKey(pipelineResult.Summary.TaskType), avoidChainOfThought,
+            pipelineResult.Summary.TotalInputTokens, pipelineResult.TokenCount,
+            (int)pipelineResult.Summary.TotalElapsed.TotalMilliseconds,
+            conversationTurns, conversationTokens, ct);
+
         // Keep the whole workspace index fresh — cheap when nothing changed (see IndexWorkspaceAsync).
-        _ = await _orchestrator.IndexWorkspaceAsync(root, ct);
+        Task indexWorkspaceTask = _orchestrator.IndexWorkspaceAsync(root, ct);
+
+        // First-run only: kick off the chunk/embedding index (Chunks table) in the background if
+        // it's never been built for this workspace — SemanticGrep is otherwise silently empty
+        // forever unless IndexRepo is called manually. Cheap no-op on every later call once the
+        // table has rows. See SemanticIndexBackgroundTrigger's doc comment for why this must not
+        // be awaited or share `ct`.
+        Task<SemanticIndexTriggerStatus> semanticIndexTask = _semanticIndexTrigger.EnsureStartedAsync(root, ct);
+
+        await Task.WhenAll(savingsTask, indexWorkspaceTask, semanticIndexTask);
+        SemanticIndexTriggerStatus semanticIndexStatus = semanticIndexTask.Result;
 
         List<string> generatedFiles = [];
         foreach (string? absFile in ExpandRequestedPaths(root, normalizedRequested).Where(File.Exists))
@@ -105,7 +147,9 @@ public sealed class ContextPipelineService
             HygieneReport = hygieneReport,
             ConversationIndex = sessionId != null ? _conversationIndexes.GetValueOrDefault(sessionId) : null,
             PipelineSummary = pipelineResult.Summary,
-            StaleFiles = staleFiles
+            StaleFiles = staleFiles,
+            SemanticIndexStatus = semanticIndexStatus,
+            CalibrationCheck = calibrationCheck
         };
     }
 
@@ -166,10 +210,30 @@ public sealed class ContextPipelineService
 
         string content = await File.ReadAllTextAsync(abs, ct);
         int tokens = PipelineContext.EstimateTokens(content);
-        string compressed = tokens > 500 ? await _cleaner.CleanContextTextAsync(content, ct: ct) : content;
+        // Lowered from 500: even small requested files benefit from dedup/log-strip, and tagging
+        // this as ContentKind.File (see RequestedFileSource) means it's cheap CPU-only cleaning
+        // unless SemanticRelevanceFilterStage's embedding call is reachable.
+        string compressed = tokens > MinTokensForFileCleaning
+            ? await _cleaner.CleanContextTextAsync(content, workspaceRoot: root, requestedFileSource: relPath, ct: ct)
+            : content;
 
         return
             $"<!-- tokensaver:summary-of:{relPath} -->\n<!-- tokensaver:description:{row.Description} -->\n{compressed}";
+    }
+
+    private static string RoleKey(TaskType taskType)
+    {
+        return taskType switch
+        {
+            TaskType.Code => "code",
+            TaskType.Debug => "debug",
+            TaskType.Planning => "planning",
+            TaskType.Review => "review",
+            TaskType.Explain => "explain",
+            TaskType.Refactor => "refactor",
+            TaskType.Test => "test",
+            _ => "general"
+        };
     }
 
     private static string[] NormalizeRequestedFiles(string[]? requestedFiles)

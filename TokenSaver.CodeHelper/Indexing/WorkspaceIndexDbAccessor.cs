@@ -3,18 +3,30 @@ using TokenSaver.Library.Services;
 
 using Microsoft.Extensions.Logging;
 
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
-///     Shared DB-access seam for the split WorkspaceIndexService: owns the single cached
-///     <see cref="WorkspaceIndexContext" /> plus the lock that serializes all access to it
-///     (EF Core's DbContext isn't thread-safe). Every other extracted indexing service depends
-///     on this and calls <see cref="GetDbAsync" />; DB reads/writes go through
-///     <see cref="WithDbLockAsync{T}(Func{Task{T}},CancellationToken)" /> (or the void overload)
-///     instead of touching a raw semaphore field directly.
+///     Shared DB-access seam for the split WorkspaceIndexService: owns one cached
+///     <see cref="WorkspaceIndexContext" /> per workspace root (a process can legitimately be
+///     asked about more than one root — e.g. an internal warm-up call against the default root
+///     racing an explicit caller-supplied <c>workspaceRoot</c> for a different one) plus the lock
+///     that serializes all access to it (EF Core's DbContext isn't thread-safe). Every other
+///     extracted indexing service depends on this and calls <see cref="GetDbAsync" />; DB
+///     reads/writes go through <see cref="WithDbLockAsync{T}(Func{Task{T}},CancellationToken)" />
+///     (or the void overload) instead of touching a raw semaphore field directly.
+///     Previously this cached a single context/root pair and disposed+replaced it whenever a
+///     different root came in — safe only as long as nothing else held a reference to the old
+///     context. Once two roots were in flight close together, the swap disposed a context a
+///     concurrent caller was still using mid-walk, throwing ObjectDisposedException (observed
+///     directly: FolderTreeManager.RefreshTouchedFolderDescriptionsAsync failing this way while
+///     WorkspaceIndexService.IndexWorkspaceAsync was still iterating touched files for the root
+///     that got swapped out). Each root now keeps its own entry for the accessor's lifetime
+///     instead — see TokenSaver.Database.Context.TokenEconomyDbAccessor for the identical fix
+///     applied to its sibling.
 /// </summary>
 public sealed partial class WorkspaceIndexDbAccessor : IDisposable
 {
@@ -33,9 +45,8 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
     private readonly SemaphoreSlim _dbLock = new(1, 1);
     private readonly SemaphoreSlim _ctxOpenLock = new(1, 1);
     private readonly ILogger<WorkspaceIndexDbAccessor> _logger;
-    private WorkspaceIndexContext? _ctx;
-    private string? _ctxWorkspaceRoot;
-    private bool _gitignoreWarned;
+    private readonly ConcurrentDictionary<string, WorkspaceIndexContext> _contexts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _gitignoreWarnedRoots = new(StringComparer.OrdinalIgnoreCase);
 
     public WorkspaceIndexDbAccessor(ILogger<WorkspaceIndexDbAccessor> logger)
     {
@@ -44,36 +55,34 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
 
     public void Dispose()
     {
-        _ctx?.Dispose();
+        foreach (WorkspaceIndexContext ctx in _contexts.Values)
+        {
+            ctx.Dispose();
+        }
+
         _ctxOpenLock.Dispose();
         _dbLock.Dispose();
     }
 
     public async Task<WorkspaceIndexContext> GetDbAsync(string workspaceRoot, CancellationToken ct)
     {
-        if (_ctx != null && _ctxWorkspaceRoot == workspaceRoot)
+        if (_contexts.TryGetValue(workspaceRoot, out WorkspaceIndexContext? existing))
         {
-            return _ctx;
+            return existing;
         }
 
         await _ctxOpenLock.WaitAsync(ct);
         try
         {
-            if (_ctx != null && _ctxWorkspaceRoot == workspaceRoot)
+            if (_contexts.TryGetValue(workspaceRoot, out WorkspaceIndexContext? existingAfterLock))
             {
-                return _ctx;
+                return existingAfterLock;
             }
 
-            if (_ctx is not null)
-            {
-                await _ctx.DisposeAsync();
-                _ctx = null;
-                _ctxWorkspaceRoot = null;
-            }
-
+            WorkspaceIndexContext ctx;
             try
             {
-                _ctx = await WorkspaceIndexContextFactory.CreateAsync(workspaceRoot, ct);
+                ctx = await WorkspaceIndexContextFactory.CreateAsync(workspaceRoot, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -89,9 +98,9 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
                     "try deleting the .tokensaver/index.db* files to force a rebuild.", ex);
             }
 
-            _ctxWorkspaceRoot = workspaceRoot;
+            _contexts[workspaceRoot] = ctx;
             WarnIfGitignoreMissing(workspaceRoot);
-            return _ctx;
+            return ctx;
         }
         finally
         {
@@ -138,12 +147,10 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
 
     private void WarnIfGitignoreMissing(string workspaceRoot)
     {
-        if (_gitignoreWarned)
+        if (!_gitignoreWarnedRoots.TryAdd(workspaceRoot, 0))
         {
             return;
         }
-
-        _gitignoreWarned = true;
 
         try
         {

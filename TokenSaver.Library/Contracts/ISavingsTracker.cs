@@ -13,6 +13,9 @@ public interface ISavingsTracker
     /// <summary>
     ///     Records one distill() call's outcome. No-op when
     ///     <see cref="Configuration.TokenEconomyConfig.EnableSavingsTracking" /> is false.
+    ///     <paramref name="conversationTurns" />/<paramref name="conversationTokens" /> capture the
+    ///     whole conversation's size at the time of this call (0 for non-conversational tools like
+    ///     RunTests/ContainerLogs that have no history/turns concept).
     /// </summary>
     Task RecordAsync(
         string workspaceRoot,
@@ -22,6 +25,8 @@ public interface ISavingsTracker
         int rawTokens,
         int distilledTokens,
         int durationMs,
+        int conversationTurns = 0,
+        int conversationTokens = 0,
         CancellationToken ct = default);
 
     /// <summary>

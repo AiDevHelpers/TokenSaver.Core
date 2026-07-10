@@ -76,6 +76,8 @@ public partial class ContextCleanerService(
         int? tokenBudget = null,
         StrippingAdjustment? adj = null,
         bool avoidChainOfThought = false,
+        string? workspaceRoot = null,
+        string? requestedFileSource = null,
         CancellationToken ct = default)
     {
         Stopwatch totalSw = Stopwatch.StartNew();
@@ -118,7 +120,9 @@ public partial class ContextCleanerService(
             TokenBudget = ApplyAdjustment(budget, effectiveAdj),
             SessionId = sessionId,
             Assessment = assessment,
-            AvoidChainOfThought = avoidChainOfThought
+            AvoidChainOfThought = avoidChainOfThought,
+            WorkspaceRoot = workspaceRoot,
+            RequestedFileSource = requestedFileSource
         };
 
         int rawTokens = ctx.EstimateTokens();
@@ -189,11 +193,14 @@ public partial class ContextCleanerService(
         string? sessionId = null,
         int? tokenBudget = null,
         bool avoidChainOfThought = false,
+        string? workspaceRoot = null,
+        string? requestedFileSource = null,
         CancellationToken ct = default)
     {
         PipelineResult result = await CleanContextAsync(
             prompt, history, sessionId, tokenBudget,
-            avoidChainOfThought: avoidChainOfThought, ct: ct);
+            avoidChainOfThought: avoidChainOfThought, workspaceRoot: workspaceRoot,
+            requestedFileSource: requestedFileSource, ct: ct);
         return result.ContextText;
     }
 
@@ -204,7 +211,7 @@ public partial class ContextCleanerService(
 
     /// <summary>
     ///     Runs a synthetic, deliberately redundant/verbose payload through the real pipeline (the
-    ///     same <see cref="CleanContextAsync(string, string[]?, string?, int?, StrippingAdjustment?, bool, CancellationToken)" />
+    ///     same <see cref="CleanContextAsync(string, string[]?, string?, int?, StrippingAdjustment?, bool, string?, string?, CancellationToken)" />
     ///     entry point <c>BuildConciseContext</c> uses) and reports whether it actually shrank.
     ///     The payload is a block of &gt;20 duplicated log-style lines — guaranteed to be
     ///     compressed by <c>LogStrippingStage</c> alone (Stage 2), independent of whether the

@@ -16,6 +16,20 @@ public class PipelineContext
     public int TokenBudget { get; set; }
     public string? SessionId { get; set; }
 
+    /// <summary>Set by <see cref="ContextCleanerService" /> when the caller supplies one — lets stages (e.g. semantic relevance filtering) read/persist per-workspace calibration state.</summary>
+    public string? WorkspaceRoot { get; set; }
+
+    /// <summary>
+    ///     Set when <see cref="Query" /> is actually the content of an explicitly-requested file
+    ///     (<c>TokenSaver.CodeHelper.Indexing.ContextPipelineService.GetFileContentAsync</c> runs a
+    ///     file's content through the pipeline this way rather than as a real query). Holds the
+    ///     file's workspace-relative path. <see cref="Stages.ChunkingStage" /> tags the resulting
+    ///     chunk <see cref="ContentKind.File" /> + <see cref="ContextChunk.PreserveVerbatim" /> instead
+    ///     of the normal "conversation:query" treatment, so it gets real per-kind relevance scoring —
+    ///     an explicit file request is still always kept, but no longer masquerades as the live query.
+    /// </summary>
+    public string? RequestedFileSource { get; set; }
+
     /// <summary>
     ///     When true, the consuming model performs internal chain-of-thought reasoning
     ///     (e.g. DeepSeek R1).  Stage 04 will use a direct summarisation prompt that

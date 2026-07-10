@@ -16,12 +16,31 @@ public sealed class GitignoreFilter
     }
 
     /// <summary>
-    ///     Loads the .gitignore at <paramref name="workspaceRoot" />.
-    ///     Returns an empty (pass-all) filter if the file doesn't exist.
+    ///     Loads the .gitignore at <paramref name="workspaceRoot" />, plus — for every git submodule
+    ///     declared in a <c>.gitmodules</c> at that root — that submodule's own root .gitignore too,
+    ///     scoped under the submodule's path prefix. Returns an empty (pass-all) filter if no
+    ///     .gitignore exists anywhere.
+    ///     Real `git` already behaves this way: gitignore application is purely directory-tree-based,
+    ///     not repo-boundary-based, so a submodule's own .gitignore is honored even from the parent
+    ///     repo. A plain single-file read of <paramref name="workspaceRoot" />'s own .gitignore
+    ///     doesn't — a submodule is a separate git repo with its own root .gitignore that a
+    ///     parent-rooted scan never reads otherwise (observed directly: scanning from the parent
+    ///     `mcp` orchestration repo walked 33,000+ files under a submodule's gitignored
+    ///     `docs/retrieval-benchmark/.venv`, because that exclusion rule lives in the submodule's
+    ///     own .gitignore, not the parent's).
     /// </summary>
     public static GitignoreFilter Load(string workspaceRoot)
     {
-        return LoadFrom(Path.Combine(workspaceRoot, ".gitignore"));
+        GitignoreFilter filter = LoadFrom(Path.Combine(workspaceRoot, ".gitignore"));
+
+        foreach (string submodulePath in ParseSubmodulePaths(workspaceRoot))
+        {
+            GitignoreFilter subFilter = LoadFrom(
+                Path.Combine(workspaceRoot, submodulePath, ".gitignore"), submodulePath.Replace('\\', '/'));
+            filter._rules.AddRange(subFilter._rules);
+        }
+
+        return filter;
     }
 
     /// <summary>
@@ -31,6 +50,17 @@ public sealed class GitignoreFilter
     /// </summary>
     public static GitignoreFilter LoadFrom(string filePath)
     {
+        return LoadFrom(filePath, pathPrefix: "");
+    }
+
+    /// <summary>
+    ///     Loads gitignore-syntax rules from <paramref name="filePath" />, scoping every rule under
+    ///     <paramref name="pathPrefix" /> (a workspace-relative directory, e.g. a submodule's path)
+    ///     so it only matches within that subtree — mirrors how a nested .gitignore's rules are
+    ///     relative to its own directory, not the outer workspace root.
+    /// </summary>
+    private static GitignoreFilter LoadFrom(string filePath, string pathPrefix)
+    {
         GitignoreFilter filter = new();
         if (!File.Exists(filePath))
         {
@@ -39,10 +69,42 @@ public sealed class GitignoreFilter
 
         foreach (string raw in File.ReadAllLines(filePath))
         {
-            filter.AddRule(raw);
+            filter.AddRule(raw, pathPrefix);
         }
 
         return filter;
+    }
+
+    /// <summary>
+    ///     Parses <c>.gitmodules</c> at <paramref name="workspaceRoot" /> for declared submodule
+    ///     "path = ..." entries. Returns an empty list if there's no .gitmodules (the common case).
+    /// </summary>
+    private static List<string> ParseSubmodulePaths(string workspaceRoot)
+    {
+        string gitmodulesPath = Path.Combine(workspaceRoot, ".gitmodules");
+        if (!File.Exists(gitmodulesPath))
+        {
+            return [];
+        }
+
+        List<string> paths = [];
+        foreach (string raw in File.ReadAllLines(gitmodulesPath))
+        {
+            string line = raw.Trim();
+            int eq = line.IndexOf('=', StringComparison.Ordinal);
+            if (eq < 0 || !line[..eq].TrimEnd().Equals("path", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string value = line[(eq + 1)..].Trim();
+            if (!string.IsNullOrEmpty(value))
+            {
+                paths.Add(value);
+            }
+        }
+
+        return paths;
     }
 
     /// <summary>True if any parsed rule matches — i.e. whether this filter carries any rules at all.</summary>
@@ -76,7 +138,7 @@ public sealed class GitignoreFilter
 
     // ── Rule parsing ───────────────────────────────────────────────────────────
 
-    private void AddRule(string line)
+    private void AddRule(string line, string pathPrefix = "")
     {
         // Strip inline comments (trailing unescaped #) and trailing spaces
         line = line.TrimEnd();
@@ -108,9 +170,14 @@ public sealed class GitignoreFilter
         bool anchored = line.StartsWith('/') || stripped.Contains('/', StringComparison.Ordinal);
 
         string regexBody = GlobToRegex(stripped);
+
+        // pathPrefix scopes the rule to a subtree (e.g. a submodule's own path) — required so a
+        // nested .gitignore's rules can't accidentally match same-named paths elsewhere in the
+        // outer workspace. Functionally equivalent to the unprefixed form when pathPrefix is "".
+        string prefixPattern = string.IsNullOrEmpty(pathPrefix) ? "" : $"{Regex.Escape(pathPrefix.TrimEnd('/'))}/";
         string fullPattern = anchored
-            ? $"^{regexBody}$"
-            : $"(?:^|/){regexBody}$";
+            ? $"^{prefixPattern}{regexBody}$"
+            : $"^{prefixPattern}(?:.*/)?{regexBody}$";
 
         try
         {

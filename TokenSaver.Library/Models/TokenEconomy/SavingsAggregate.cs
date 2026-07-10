@@ -11,7 +11,9 @@ public sealed record SavingsAggregate(
     long DistilledTokens,
     long SavedTokens,
     double? PctSaved,
-    double? AvgDurationMs)
+    double? AvgDurationMs,
+    double? AvgConversationTurns = null,
+    double? AvgConversationTokens = null)
 {
     public static readonly SavingsAggregate Empty = new("", 0, 0, 0, 0, null, null);
 }

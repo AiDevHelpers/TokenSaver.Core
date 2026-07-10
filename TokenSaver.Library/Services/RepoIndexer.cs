@@ -26,7 +26,7 @@ public sealed class RepoIndexer(
     private static readonly string[] DefaultExtensions = [".cs", ".js", ".ts", ".py", ".md"];
 
     private static readonly string[] IgnoredSegments =
-        ["node_modules", ".git", "dist", "build", "venv", "__pycache__", "bin", "obj", ".tokensaver", ".vs"];
+        ["node_modules", ".git", "dist", "build", "venv", ".venv", "__pycache__", "bin", "obj", ".tokensaver", ".vs"];
 
     private readonly TokenEconomyConfig _config = config.Value.TokenEconomy;
 

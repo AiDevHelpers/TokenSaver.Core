@@ -140,6 +140,31 @@ public class SavingsTrackerTests : IDisposable
     }
 
     [Fact]
+    public async Task RecordAsync_ThenGetReportAsync_AveragesConversationTurnsAndTokens()
+    {
+        SavingsTracker tracker = CreateTracker();
+
+        await tracker.RecordAsync(
+            _tempWorkspace, "buildConciseContext", "code", false, 1000, 200, 500,
+            conversationTurns: 4, conversationTokens: 800);
+        await tracker.RecordAsync(
+            _tempWorkspace, "buildConciseContext", "code", false, 2000, 400, 700,
+            conversationTurns: 6, conversationTokens: 1200);
+        // Non-conversational tool — no history, so turns/tokens stay at their 0 default.
+        await tracker.RecordAsync(_tempWorkspace, "runTests", "test_failure", false, 500, 100, 300);
+
+        IReadOnlyList<SavingsAggregate> report = await tracker.GetReportAsync(_tempWorkspace, sinceDays: 7, groupByRole: false);
+
+        SavingsAggregate buildConciseContext = Assert.Single(report, r => r.Name == "buildConciseContext");
+        Assert.Equal(5, buildConciseContext.AvgConversationTurns);
+        Assert.Equal(1000, buildConciseContext.AvgConversationTokens);
+
+        SavingsAggregate runTests = Assert.Single(report, r => r.Name == "runTests");
+        Assert.Equal(0, runTests.AvgConversationTurns);
+        Assert.Equal(0, runTests.AvgConversationTokens);
+    }
+
+    [Fact]
     public async Task GetOneAsync_NoMatchingRows_ReturnsEmptyWithZeroCalls()
     {
         SavingsTracker tracker = CreateTracker();

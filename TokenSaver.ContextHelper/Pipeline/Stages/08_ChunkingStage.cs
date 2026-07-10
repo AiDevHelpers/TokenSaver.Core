@@ -60,16 +60,28 @@ public partial class ChunkingStage : IPipelineStage
                 return ValueTask.CompletedTask;
             });
 
-        // Add query as its own chunk
-        chunks.Add(new ContextChunk
-        {
-            Source = "conversation:query",
-            SectionName = "current query",
-            Kind = ContentKind.Conversation,
-            Content = ctx.Query,
-            TokenCount = PipelineContext.EstimateTokens(ctx.Query),
-            Relevance = 1.0
-        });
+        // Add query as its own chunk — unless this run is actually scoring an explicitly-requested
+        // file's content (see PipelineContext.RequestedFileSource), in which case tag it as a real
+        // File-kind chunk instead of pretending to be the live query.
+        chunks.Add(ctx.RequestedFileSource != null
+            ? new ContextChunk
+            {
+                Source = ctx.RequestedFileSource,
+                SectionName = "requested file",
+                Kind = ContentKind.File,
+                Content = ctx.Query,
+                TokenCount = PipelineContext.EstimateTokens(ctx.Query),
+                PreserveVerbatim = true
+            }
+            : new ContextChunk
+            {
+                Source = "conversation:query",
+                SectionName = "current query",
+                Kind = ContentKind.Conversation,
+                Content = ctx.Query,
+                TokenCount = PipelineContext.EstimateTokens(ctx.Query),
+                Relevance = 1.0
+            });
 
         // Sort: conversation chunks in turn order, then by source
         ctx.Chunks = chunks

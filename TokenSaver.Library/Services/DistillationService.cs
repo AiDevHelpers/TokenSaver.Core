@@ -59,7 +59,7 @@ public sealed class DistillationService(
         if (!_config.EnableDistill)
         {
             int cappedTokens = EstimateTokens(capped);
-            await savingsTracker.RecordAsync(workspaceRoot, tool, RoleKey(role), useTerse, rawTokens, cappedTokens, 0, ct);
+            await savingsTracker.RecordAsync(workspaceRoot, tool, RoleKey(role), useTerse, rawTokens, cappedTokens, 0, ct: ct);
             return new DistillResult(capped, rawTokens, cappedTokens, useTerse, false);
         }
 
@@ -73,7 +73,7 @@ public sealed class DistillationService(
 
         int distilledTokens = EstimateTokens(summary);
         await savingsTracker.RecordAsync(
-            workspaceRoot, tool, RoleKey(role), useTerse, rawTokens, distilledTokens, (int)sw.ElapsedMilliseconds, ct);
+            workspaceRoot, tool, RoleKey(role), useTerse, rawTokens, distilledTokens, (int)sw.ElapsedMilliseconds, ct: ct);
 
         return new DistillResult(summary, rawTokens, distilledTokens, useTerse, true);
     }

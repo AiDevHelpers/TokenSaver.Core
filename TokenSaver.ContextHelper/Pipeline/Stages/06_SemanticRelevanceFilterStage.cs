@@ -1,4 +1,6 @@
+using TokenSaver.ContextHelper.Calibration;
 using TokenSaver.ContextHelper.Configuration;
+using TokenSaver.ContextHelper.Embedding;
 using TokenSaver.ContextHelper.Models;
 using TokenSaver.ContextHelper.Models.Diagnostics;
 
@@ -37,16 +39,18 @@ public partial class SemanticRelevanceFilterStage : IPipelineStage
 
     private readonly HttpClient _http;
     private readonly ILogger<SemanticRelevanceFilterStage> _logger;
+    private readonly RetrievalCalibrationService _calibration;
 
     // null = not yet probed; true = available; false = permanently unavailable this session
     private bool? _embeddingAvailable;
 
     public SemanticRelevanceFilterStage(HttpClient http, IOptions<ContextHelperConfig> config,
-        ILogger<SemanticRelevanceFilterStage> logger)
+        ILogger<SemanticRelevanceFilterStage> logger, RetrievalCalibrationService calibration)
     {
         _http = http;
         _config = config.Value;
         _logger = logger;
+        _calibration = calibration;
     }
 
     public string Name => "SemanticRelevanceFilter";
@@ -92,8 +96,9 @@ public partial class SemanticRelevanceFilterStage : IPipelineStage
             return ctx;
         }
 
-        // Compute per-kind thresholds from weight profile
-        double baseThreshold = _config.SemanticThreshold;
+        // Compute per-kind thresholds from weight profile, adjusted by any live self-tuning
+        // this workspace has accumulated (see RetrievalCalibrationService).
+        double baseThreshold = _calibration.GetEffectiveThreshold(ctx.WorkspaceRoot, _config.SemanticThreshold);
         HashSet<string> keyFilePaths = new(ctx.Assessment.KeyFiles, StringComparer.OrdinalIgnoreCase);
 
         // Embed all chunks in parallel, throttled by semaphore
@@ -118,16 +123,11 @@ public partial class SemanticRelevanceFilterStage : IPipelineStage
         // Filter chunks
         int dropped = 0;
         List<ContextChunk> kept = [];
+        HashSet<string> keptFiles = new(StringComparer.OrdinalIgnoreCase);
+        double minKeptRelevance = 1.0;
 
         foreach (ContextChunk chunk in ctx.Chunks)
         {
-            // Always keep the query itself
-            if (chunk.Source == "conversation:query")
-            {
-                kept.Add(chunk);
-                continue;
-            }
-
             // Determine effective threshold for this chunk's kind
             double weight = GetWeight(ctx.Assessment.WeightProfile, chunk.Kind);
             double threshold = baseThreshold * (2.0 - weight); // high weight → lower threshold
@@ -140,24 +140,24 @@ public partial class SemanticRelevanceFilterStage : IPipelineStage
                 threshold = Math.Min(threshold, 0.5);
             }
 
-            // Pre-strip verbatim override
-            if (chunk.PreserveVerbatim)
-            {
-                kept.Add(chunk);
-                continue;
-            }
-
             double similarity = 1.0;
             if (chunk.Embedding != null)
             {
-                similarity = CosineSimilarity(queryEmbedding, chunk.Embedding);
+                similarity = EmbeddingUtil.CosineSimilarity(queryEmbedding, chunk.Embedding);
             }
 
             chunk.Relevance = similarity;
 
-            if (similarity >= threshold)
+            // The live query and explicitly pre-strip-preserved/requested-file chunks are always
+            // kept — an explicit ask should always be honored — but similarity is still computed
+            // and recorded above for diagnostics/calibration signal rather than skipped outright.
+            bool alwaysKeep = chunk.Source == "conversation:query" || chunk.PreserveVerbatim;
+
+            if (alwaysKeep || similarity >= threshold)
             {
                 kept.Add(chunk);
+                keptFiles.Add(chunk.Source);
+                minKeptRelevance = Math.Min(minKeptRelevance, similarity);
             }
             else
             {
@@ -178,6 +178,11 @@ public partial class SemanticRelevanceFilterStage : IPipelineStage
 
         ctx.Chunks = kept;
 
+        if (keptFiles.Count > 0)
+        {
+            _calibration.RecordPass(ctx.SessionId, ctx.Query, keptFiles, minKeptRelevance);
+        }
+
         diag.OutputTokens = ctx.EstimateTokens();
         diag.ItemsDropped = dropped;
         diag.Elapsed = sw.Elapsed;
@@ -192,14 +197,8 @@ public partial class SemanticRelevanceFilterStage : IPipelineStage
         return ctx;
     }
 
-    private async Task<float[]> EmbedAsync(string text, CancellationToken ct)
-    {
-        var payload = new { model = _config.EmbeddingModel, input = text };
-        HttpResponseMessage response = await _http.PostAsJsonAsync("/api/embed", payload, ct);
-        _ = response.EnsureSuccessStatusCode();
-        EmbedResponse? result = await response.Content.ReadFromJsonAsync<EmbedResponse>(ct);
-        return result?.Embeddings?.FirstOrDefault() ?? [];
-    }
+    private Task<float[]> EmbedAsync(string text, CancellationToken ct) =>
+        EmbeddingUtil.EmbedAsync(_http, _config.EmbeddingModel, text, ct);
 
     private static double GetWeight(WeightProfile profile, ContentKind kind)
     {
@@ -214,24 +213,4 @@ public partial class SemanticRelevanceFilterStage : IPipelineStage
         };
     }
 
-    private static double CosineSimilarity(float[] a, IReadOnlyList<float> b)
-    {
-        if (a.Length != b.Count || a.Length == 0)
-        {
-            return 0.0;
-        }
-
-        double dot = 0, magA = 0, magB = 0;
-        for (int i = 0; i < a.Length; i++)
-        {
-            dot += a[i] * b[i];
-            magA += a[i] * a[i];
-            magB += b[i] * b[i];
-        }
-
-        double denom = Math.Sqrt(magA) * Math.Sqrt(magB);
-        return denom == 0 ? 0 : dot / denom;
-    }
-
-    private sealed record EmbedResponse(float[][]? Embeddings);
 }

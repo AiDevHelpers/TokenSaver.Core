@@ -25,6 +25,8 @@ public sealed class SavingsTracker(TokenEconomyDbAccessor db, IOptions<TokenSave
         int rawTokens,
         int distilledTokens,
         int durationMs,
+        int conversationTurns = 0,
+        int conversationTokens = 0,
         CancellationToken ct = default)
     {
         if (!_config.EnableSavingsTracking)
@@ -44,7 +46,9 @@ public sealed class SavingsTracker(TokenEconomyDbAccessor db, IOptions<TokenSave
                 DistilledTokens = distilledTokens,
                 SavedTokens = rawTokens - distilledTokens,
                 DurationMs = durationMs,
-                CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                ConversationTurns = conversationTurns,
+                ConversationTokens = conversationTokens
             });
             _ = await ctx.SaveChangesAsync(ct);
         }, ct);
@@ -127,6 +131,8 @@ public sealed class SavingsTracker(TokenEconomyDbAccessor db, IOptions<TokenSave
             distilledTokens,
             savedTokens,
             rawTokens > 0 ? Math.Round(100.0 * savedTokens / rawTokens, 1) : null,
-            list.Count > 0 ? Math.Round(list.Average(r => (double)r.DurationMs), 0) : null);
+            list.Count > 0 ? Math.Round(list.Average(r => (double)r.DurationMs), 0) : null,
+            list.Count > 0 ? Math.Round(list.Average(r => (double)r.ConversationTurns), 1) : null,
+            list.Count > 0 ? Math.Round(list.Average(r => (double)r.ConversationTokens), 0) : null);
     }
 }

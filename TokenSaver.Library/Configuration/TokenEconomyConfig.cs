@@ -87,4 +87,56 @@ public class TokenEconomyConfig
 
     /// <summary>Terse mode multiplies the caller's requested maxTokens by this ratio.</summary>
     public double TerseMaxTokensRatio { get; set; } = 0.5;
+
+    /// <summary>
+    ///     Cosine-similarity floor below which <c>SemanticGrep</c> returns
+    ///     <c>{"match":"none", best_candidate, confidence}</c> instead of handing back its
+    ///     top-scoring hit as if it were relevant (see <c>docs/retrieval-design.md</c> §3, the
+    ///     abstain path). Calibrated 2026-07-10 against the 332-query golden set
+    ///     (<c>docs/retrieval-benchmark/queries.jsonl</c>) by sweeping thresholds over
+    ///     <c>production-eval-results.json</c> to minimize (negative-query false positives) +
+    ///     (correct top-1 hits wrongly suppressed). At 0.66 that's 6/15 negative queries still
+    ///     slipping through (embed-only similarity can't fully separate the "muddy middle" — see
+    ///     retrieval-design.md §2/#4) against 5/246 correct hits suppressed. Closing the remaining
+    ///     gap needs the conditional-rerank pass, not further threshold tuning. Re-run
+    ///     <c>run_eval.py</c> and recalibrate if the embedding model or corpus changes materially.
+    /// </summary>
+    public double SemanticGrepAbstainThreshold { get; set; } = 0.66;
+
+    /// <summary>
+    ///     Master switch for the conditional-rerank pass (<c>docs/retrieval-design.md</c> §2).
+    ///     False = <c>SemanticGrep</c> always uses embed-only ranking, matching pre-rerank
+    ///     behavior — useful if the "rerank" model route isn't a capable-enough model to trust for
+    ///     judged scoring.
+    /// </summary>
+    public bool EnableConditionalRerank { get; set; } = true;
+
+    /// <summary>
+    ///     Embed top-1 score at or above which, combined with <see cref="SemanticSearchClearMargin" />,
+    ///     a query counts as a "clear winner" and skips reranking (retrieval-design.md §2's
+    ///     HIGH_CONF). Calibrated 2026-07-10 against the golden set together with
+    ///     <see cref="SemanticSearchClearMargin" />: at 0.79/0.05 every adversarial/conceptual
+    ///     ("hard") query in the 332-query set has a top-1 score below this floor or too small a
+    ///     margin, so 100% of them correctly fall through to reranking; 70.5% of doc_derived/
+    ///     symbol_lookup ("easy") queries clear both bars and skip it. The design doc's aspirational
+    ///     target was 95% easy-skip/90% hard-rerank — this data doesn't support hitting both at
+    ///     once (hard- and easy-query top-1 scores overlap too much on embed-only similarity alone),
+    ///     so the calibration favors never missing a hard query over minimizing rerank latency on
+    ///     easy ones. Re-run the sweep in <c>docs/retrieval-design.md</c> §2 if the embedding model
+    ///     or corpus changes.
+    /// </summary>
+    public double SemanticSearchHighConfidence { get; set; } = 0.79;
+
+    /// <summary>Minimum gap between top-1 and top-2 embed scores required alongside <see cref="SemanticSearchHighConfidence" /> to count as a clear winner (retrieval-design.md §2's CLEAR_MARGIN).</summary>
+    public double SemanticSearchClearMargin { get; set; } = 0.05;
+
+    /// <summary>
+    ///     How many embed-ranked candidates to pull before the conditional-rerank decision
+    ///     (retrieval-design.md §2's candidate pool feeding RERANK_K). The K=4/8-vs-12 latency
+    ///     sweep from the design doc was benchmarked against the candidate Qwen3-Reranker-0.6B
+    ///     cross-encoder pair specifically and doesn't transfer directly to this LLM-judged rerank
+    ///     (see <c>RerankService</c> doc comment) — its cost driver is prompt/response tokens on the
+    ///     "rerank" model route, not cross-encoder passes.
+    /// </summary>
+    public int SemanticSearchRerankCandidatePoolSize { get; set; } = 12;
 }

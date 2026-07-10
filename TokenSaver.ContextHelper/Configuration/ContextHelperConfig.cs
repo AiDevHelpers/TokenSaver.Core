@@ -58,6 +58,25 @@ public class ContextHelperConfig
     /// <summary>Maximum tokens for a context summary (used by ContextHelper internals).</summary>
     public int MaxContextSize => ContextSizeLimit;
 
+    // ── Retrieval self-tuning (RetrievalCalibrationService) ────────────────────
+
+    /// <summary>
+    ///     How far below the previous turn's minimum-kept relevance a late-requested file's score
+    ///     must fall before it counts as a narrow-filter failure. E.g. 0.15 means "the file the
+    ///     caller had to ask for by name scored at least 0.15 lower than the worst chunk we already
+    ///     kept" — a sign the threshold is cutting off content that turns out to matter.
+    /// </summary>
+    public double NarrowFailureMargin { get; set; } = 0.15;
+
+    /// <summary>Consecutive failures required before <see cref="Calibration.RetrievalCalibrationService" /> nudges the threshold down.</summary>
+    public int CalibrationMinSamplesBeforeAdjust { get; set; } = 3;
+
+    /// <summary>Step size applied to <see cref="Models.Calibration.RetrievalCalibrationState.ThresholdAdjustment" /> per adjustment.</summary>
+    public double CalibrationLearningRate { get; set; } = 0.02;
+
+    /// <summary>Bounds on <see cref="Models.Calibration.RetrievalCalibrationState.ThresholdAdjustment" /> — keeps auto-tuning from driving the effective threshold to 0 or 1.</summary>
+    public double CalibrationMaxAdjustment { get; set; } = 0.15;
+
     /// <summary>Returns the weight profile for a task type, merging config overrides over the defaults.</summary>
     public WeightProfile GetWeightProfile(TaskType taskType)
     {
