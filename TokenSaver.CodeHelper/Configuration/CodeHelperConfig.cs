@@ -23,8 +23,8 @@ public class CodeHelperConfig
 
     // ── Auto-workflow ──────────────────────────────────────────────────────────
 
-    /// <summary>Enable auto-workflow intercept for code-build prompts. Opt-in; defaults off.</summary>
-    public bool AutoEnabled { get; set; }
+    /// <summary>Enable auto-workflow intercept for code-build prompts. On by default.</summary>
+    public bool AutoEnabled { get; set; } = true;
 
     /// <summary>Seconds to wait for the calling AI to return a skeleton before timing out.</summary>
     public int SkeletonTimeoutSec { get; set; } = 60;

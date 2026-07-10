@@ -104,8 +104,8 @@ public sealed record RepoHelperBehaviorConfig
     ///     chosen for whatever tool is connecting — using that tool's most token-efficient
     ///     supported mechanism (a scoped/lazy-loaded rule file where the tool supports one, a
     ///     single flat instruction file otherwise) rather than assuming one universal format. See
-    ///     <c>TokenSaver.MCP.Services.InstructionOptimizerService</c>. Off by default — this
-    ///     writes to files in the repo, so it's opt-in.
+    ///     <c>TokenSaver.MCP.Services.InstructionOptimizerService</c>. On by default; writes are
+    ///     confined to a delimited managed block so hand-authored content is never clobbered.
     /// </summary>
     [JsonPropertyName("optimizeInstructions")]
     public bool? OptimizeInstructions { get; init; }
@@ -127,7 +127,7 @@ public sealed record RepoHelperBehaviorConfig
     /// <summary><see cref="AddTokenSaverToGitignore" /> is intentionally left unset — see the property doc.</summary>
     public static RepoHelperBehaviorConfig Defaults() => new()
     {
-        OptimizeInstructions = false,
+        OptimizeInstructions = true,
     };
 }
 
@@ -349,7 +349,7 @@ public sealed record CodeHelperBehaviorConfig
 
     public static CodeHelperBehaviorConfig Defaults() => new()
     {
-        AutoEnabled = false,
+        AutoEnabled = true,
         RequireAnchorMatch = true,
         Ownership = new OwnershipThresholds { CanDoThreshold = 0.70, DeferThreshold = 0.40 },
         Planner = new PlannerThresholds { ConfidenceThreshold = 0.65, ModelCallThreshold = 0.55 },

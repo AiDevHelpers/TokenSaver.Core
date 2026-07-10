@@ -79,7 +79,12 @@ public class TokenEconomyConfig
         ["chat"] = "llama3.2:3b",
         ["summarize"] = "qwen2.5-coder:7b",
         ["embed"] = "nomic-embed-text",
-        ["rerank"] = "qwen2.5-coder:7b"
+        // qwen2.5-coder:7b isn't pulled in this dev environment (only 3b/0.5b variants are) —
+        // pointed at 3b 2026-07-10 so the conditional-rerank pass in ConditionalRetrievalService
+        // actually fires instead of silently falling back to embed-only every call. Its judged
+        // scores ran conservative in a smoke test (~0.4 for a clearly-correct candidate) — revisit
+        // SemanticGrepAbstainThreshold if that turns out to cause false abstains post-rerank.
+        ["rerank"] = "qwen2.5-coder:3b"
     };
 
     /// <summary>Hard cap on raw input text (chars) fed to any distillation/summarization prompt, to keep local inference fast.</summary>
@@ -135,8 +140,16 @@ public class TokenEconomyConfig
     ///     (retrieval-design.md §2's candidate pool feeding RERANK_K). The K=4/8-vs-12 latency
     ///     sweep from the design doc was benchmarked against the candidate Qwen3-Reranker-0.6B
     ///     cross-encoder pair specifically and doesn't transfer directly to this LLM-judged rerank
-    ///     (see <c>RerankService</c> doc comment) — its cost driver is prompt/response tokens on the
-    ///     "rerank" model route, not cross-encoder passes.
+    ///     (see <c>RerankService</c> doc comment) — its cost driver is reliability, not latency: a
+    ///     small chat model asked to score a JSON array unreliably drops/adds entries as the array
+    ///     gets longer. Live-measured 2026-07-10 against the 332-query golden set with
+    ///     <c>qwen2.5-coder:3b</c> on the "rerank" route (<c>docs/retrieval-benchmark/rerank_eval.py</c>):
+    ///     at pool size 12 only 37% of muddy-middle queries got a parseable score array (63%
+    ///     silently fell back to embed-only); shrinking to 6 raised that to 92% and dropped
+    ///     negative-query false-positive rate from 33.3% to 20.0% with recall held flat — see
+    ///     <c>docs/retrieval-design.md</c> §2 for the full comparison. Re-run that sweep before
+    ///     changing this further, or if the rerank model changes (a more capable model may tolerate
+    ///     a larger pool).
     /// </summary>
-    public int SemanticSearchRerankCandidatePoolSize { get; set; } = 12;
+    public int SemanticSearchRerankCandidatePoolSize { get; set; } = 6;
 }

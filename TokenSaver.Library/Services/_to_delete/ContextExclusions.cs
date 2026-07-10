@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace TokenSaver.Library.Services;
+namespace TokenSaver.Library.Services._to_delete;
 
 /// <summary>
 ///     Persists workspace-relative directory paths that should be excluded from AI context

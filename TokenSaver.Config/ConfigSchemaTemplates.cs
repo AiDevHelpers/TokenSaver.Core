@@ -47,15 +47,15 @@ public static class ConfigSchemaTemplates
         "    // On every session connect, copy the machine-global Claude instructions\n" +
         "    // (%USERPROFILE%\\.claude\\CLAUDE.md) into a workspace instruction file chosen for\n" +
         "    // whatever tool is connecting, using that tool's most token-efficient supported\n" +
-        "    // mechanism. Default: false.\n" +
-        "    // \"optimizeInstructions\": false,";
+        "    // mechanism. Default: true.\n" +
+        "    // \"optimizeInstructions\": true,";
 
     private const string OptimizeInstructionsUncommented =
         "    // On every session connect, copy the machine-global Claude instructions\n" +
         "    // (%USERPROFILE%\\.claude\\CLAUDE.md) into a workspace instruction file chosen for\n" +
         "    // whatever tool is connecting, using that tool's most token-efficient supported\n" +
-        "    // mechanism. Default: false.\n" +
-        "    \"optimizeInstructions\": false,";
+        "    // mechanism. Default: true.\n" +
+        "    \"optimizeInstructions\": true,";
 
     private static readonly ConfigElementTemplate AddTokenSaverToGitignore = new(
         "addTokenSaverToGitignore", AddTokenSaverToGitignoreBlock, AddTokenSaverToGitignoreBlock, SentinelNeverActive: true);
@@ -78,12 +78,12 @@ public static class ConfigSchemaTemplates
     // ── codeHelper ──────────────────────────────────────────────────────────────
 
     private const string AutoEnabledCommented =
-        "    // Master switch for CodeHelper auto-workflow. Default: false.\n" +
-        "    // \"autoEnabled\": false,";
+        "    // Master switch for CodeHelper auto-workflow. Default: true.\n" +
+        "    // \"autoEnabled\": true,";
 
     private const string AutoEnabledUncommented =
-        "    // Master switch for CodeHelper auto-workflow. Default: false.\n" +
-        "    \"autoEnabled\": false,";
+        "    // Master switch for CodeHelper auto-workflow. Default: true.\n" +
+        "    \"autoEnabled\": true,";
 
     private const string RequireAnchorMatchCommented =
         "    // Require an exact anchor-text match before applying a patch. Default: true.\n" +
