@@ -50,13 +50,34 @@ public sealed partial class BehaviorConfigService : IDisposable
     /// <summary>Raised after either config file changes on disk and the merged view is refreshed.</summary>
     public event EventHandler? ConfigChanged;
 
-    /// <summary>The machine-global config path (<c>%ProgramData%\TokenSaver\config.json</c>).</summary>
-    public static string GlobalConfigPath =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), GlobalFolder, ConfigFileName);
+    /// <summary>Env var name that overrides the global config directory; tests use this to avoid touching the real machine-wide file.</summary>
+    private const string GlobalDirOverrideEnvVar = "TOKENSAVER_GLOBAL_CONFIG_DIR";
 
-    /// <summary>The per-workspace config path (<c>{workspaceRoot}/.tokensaver/config.json</c>).</summary>
+    /// <summary>
+    ///     Env var name that overrides the per-workspace config file path outright (bypassing
+    ///     <paramref name="workspaceRoot" />-relative resolution entirely). Set from
+    ///     <c>TokenSaverConfig.BehaviorConfigPath</c> at startup (see <c>Program.cs</c>), or directly
+    ///     by <c>scripts/run-dev-server.ps1</c> to point the dev loop at
+    ///     <c>.tokensaver/dev-config.json</c> instead of the real <c>.tokensaver/config.json</c>.
+    /// </summary>
+    private const string LocalPathOverrideEnvVar = "TOKENSAVER_LOCAL_CONFIG_PATH";
+
+    /// <summary>The machine-global config path (<c>%ProgramData%\TokenSaver\config.json</c>, or <c>TOKENSAVER_GLOBAL_CONFIG_DIR</c> when set).</summary>
+    public static string GlobalConfigPath =>
+        Path.Combine(
+            Environment.GetEnvironmentVariable(GlobalDirOverrideEnvVar) is { Length: > 0 } overrideDir
+                ? overrideDir
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), GlobalFolder),
+            ConfigFileName);
+
+    /// <summary>
+    ///     The per-workspace config path (<c>{workspaceRoot}/.tokensaver/config.json</c> by default,
+    ///     or <see cref="LocalPathOverrideEnvVar" /> verbatim when set).
+    /// </summary>
     public static string LocalConfigPath(string workspaceRoot) =>
-        Path.Combine(workspaceRoot, LocalFolder, ConfigFileName);
+        Environment.GetEnvironmentVariable(LocalPathOverrideEnvVar) is { Length: > 0 } overridePath
+            ? overridePath
+            : Path.Combine(workspaceRoot, LocalFolder, ConfigFileName);
 
     /// <summary>
     ///     Returns the merged (local-over-global) config for <paramref name="workspaceRoot" />,
@@ -147,8 +168,10 @@ public sealed partial class BehaviorConfigService : IDisposable
 
     private void AttachLocalWatcher(WatchedWorkspace w)
     {
-        string dir = Path.Combine(w.Root, LocalFolder);
-        w.Watcher = TryCreateWatcher(dir);
+        // Watch the actual resolved file (honors TOKENSAVER_LOCAL_CONFIG_PATH), not always
+        // {root}/.tokensaver/config.json.
+        string localPath = LocalConfigPath(w.Root);
+        w.Watcher = TryCreateWatcher(Path.GetDirectoryName(localPath)!, Path.GetFileName(localPath));
     }
 
     private void EnsureGlobalWatcher()
@@ -160,11 +183,11 @@ public sealed partial class BehaviorConfigService : IDisposable
                 return;
             }
 
-            _globalWatcher = TryCreateWatcher(Path.GetDirectoryName(GlobalConfigPath)!);
+            _globalWatcher = TryCreateWatcher(Path.GetDirectoryName(GlobalConfigPath)!, ConfigFileName);
         }
     }
 
-    private FileSystemWatcher? TryCreateWatcher(string dir)
+    private FileSystemWatcher? TryCreateWatcher(string dir, string fileName)
     {
         if (!Directory.Exists(dir))
         {
@@ -174,7 +197,7 @@ public sealed partial class BehaviorConfigService : IDisposable
 
         try
         {
-            FileSystemWatcher watcher = new(dir, ConfigFileName)
+            FileSystemWatcher watcher = new(dir, fileName)
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.CreationTime,
                 EnableRaisingEvents = true,

@@ -14,13 +14,13 @@ public static class GitignorePrompt
     public const string Entry = ".tokensaver";
 
     /// <summary>
-    ///     True when the user has never answered (<see cref="TokenSaverBehaviorConfig.AddTokenSaverToGitignore" />
+    ///     True when the user has never answered (<see cref="RepoHelperBehaviorConfig.AddTokenSaverToGitignore" />
     ///     is null) AND <c>.tokensaver</c> is not already covered by the workspace <c>.gitignore</c>.
     /// </summary>
     public static bool ShouldAsk(BehaviorConfigService config, string workspaceRoot)
     {
         ArgumentNullException.ThrowIfNull(config);
-        if (config.GetConfig(workspaceRoot).AddTokenSaverToGitignore is not null)
+        if (config.GetConfig(workspaceRoot).RepoHelper?.AddTokenSaverToGitignore is not null)
         {
             return false;
         }

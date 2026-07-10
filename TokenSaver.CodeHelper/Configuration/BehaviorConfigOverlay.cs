@@ -24,7 +24,7 @@ public sealed class BehaviorConfigOverlay
     private readonly CodeHelperConfig _codeHelperConfig;
     private readonly TokenEconomyConfig _tokenEconomyConfig;
     private readonly ContextHelperConfig _contextHelperConfig;
-    private readonly string _workspaceRoot;
+    private readonly IOptions<TokenSaverConfig> _tokenSaverOptions;
     private readonly CodeHelperBaseline _codeHelperBaseline;
     private readonly TokenEconomyBaseline _tokenEconomyBaseline;
     private readonly ContextHelperBaseline _contextHelperBaseline;
@@ -39,7 +39,14 @@ public sealed class BehaviorConfigOverlay
         _codeHelperConfig = codeHelperOptions.Value;
         _tokenEconomyConfig = tokenSaverOptions.Value.TokenEconomy;
         _contextHelperConfig = contextHelperOptions.Value;
-        _workspaceRoot = tokenSaverOptions.Value.WorkspaceRoot;
+        // Kept as IOptions<T> rather than copying .Value.WorkspaceRoot once here: WorkspaceRoot
+        // is commonly still empty at construction time (see WorkspaceRootSessionResolver — it's
+        // resolved lazily on a session's first tool call, not at startup) and is mutated in place
+        // on this same TokenSaverConfig instance once resolved. Reading tokenSaverOptions.Value
+        // fresh on every Apply() call picks that up; a captured string snapshot would have stayed
+        // permanently empty and made every Apply() call (both the startup one and every later
+        // ConfigChanged-triggered one) a silent no-op for the process's entire lifetime.
+        _tokenSaverOptions = tokenSaverOptions;
         _codeHelperBaseline = CodeHelperBaseline.Capture(_codeHelperConfig);
         _tokenEconomyBaseline = TokenEconomyBaseline.Capture(_tokenEconomyConfig);
         _contextHelperBaseline = ContextHelperBaseline.Capture(_contextHelperConfig);
@@ -50,12 +57,13 @@ public sealed class BehaviorConfigOverlay
     /// <summary>Applies the current merged behavior config onto the target instances. Safe to call repeatedly.</summary>
     public void Apply()
     {
-        if (string.IsNullOrWhiteSpace(_workspaceRoot))
+        string workspaceRoot = _tokenSaverOptions.Value.WorkspaceRoot;
+        if (string.IsNullOrWhiteSpace(workspaceRoot))
         {
             return;
         }
 
-        TokenSaverBehaviorConfig b = _behaviorConfig.GetConfig(_workspaceRoot);
+        TokenSaverBehaviorConfig b = _behaviorConfig.GetConfig(workspaceRoot);
         CodeHelperBehaviorConfig? ch = b.CodeHelper;
         TokenEconomyBehaviorConfig? te = b.TokenEconomy;
         ContextBehaviorConfig? ctx = b.Context;

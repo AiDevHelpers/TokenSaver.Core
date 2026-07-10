@@ -7,44 +7,73 @@ namespace TokenSaver.Config.Tests;
 public sealed class TokenSaverBehaviorConfigTests
 {
     [Fact]
-    public void Merge_LocalValueWinsOverGlobal()
+    public void Merge_RepoHelper_LocalValueWinsOverGlobal()
     {
-        TokenSaverBehaviorConfig local = new() { AddTokenSaverToGitignore = true };
-        TokenSaverBehaviorConfig global = new() { AddTokenSaverToGitignore = false };
+        TokenSaverBehaviorConfig local = new() { RepoHelper = new RepoHelperBehaviorConfig { AddTokenSaverToGitignore = true } };
+        TokenSaverBehaviorConfig global = new() { RepoHelper = new RepoHelperBehaviorConfig { AddTokenSaverToGitignore = false } };
 
         TokenSaverBehaviorConfig merged = TokenSaverBehaviorConfig.Merge(local, global);
 
-        Assert.True(merged.AddTokenSaverToGitignore);
+        Assert.True(merged.RepoHelper?.AddTokenSaverToGitignore);
     }
 
     [Fact]
-    public void Merge_FallsBackToGlobalWhenLocalUnset()
+    public void Merge_RepoHelper_FallsBackToGlobalWhenLocalUnset()
     {
         TokenSaverBehaviorConfig local = new(); // unset
-        TokenSaverBehaviorConfig global = new() { AddTokenSaverToGitignore = true };
+        TokenSaverBehaviorConfig global = new() { RepoHelper = new RepoHelperBehaviorConfig { AddTokenSaverToGitignore = true } };
 
         TokenSaverBehaviorConfig merged = TokenSaverBehaviorConfig.Merge(local, global);
 
-        Assert.True(merged.AddTokenSaverToGitignore);
+        Assert.True(merged.RepoHelper?.AddTokenSaverToGitignore);
     }
 
     [Fact]
-    public void Merge_NullBothSides_ReturnsUnset()
+    public void Merge_RepoHelper_NullBothSides_ReturnsNull()
     {
         TokenSaverBehaviorConfig merged = TokenSaverBehaviorConfig.Merge(null, null);
 
-        Assert.Null(merged.AddTokenSaverToGitignore);
+        Assert.Null(merged.RepoHelper);
     }
 
     [Fact]
-    public void Merge_LocalFalseWinsOverGlobalTrue()
+    public void Merge_RepoHelper_LocalFalseWinsOverGlobalTrue()
     {
-        TokenSaverBehaviorConfig local = new() { AddTokenSaverToGitignore = false };
-        TokenSaverBehaviorConfig global = new() { AddTokenSaverToGitignore = true };
+        TokenSaverBehaviorConfig local = new() { RepoHelper = new RepoHelperBehaviorConfig { AddTokenSaverToGitignore = false } };
+        TokenSaverBehaviorConfig global = new() { RepoHelper = new RepoHelperBehaviorConfig { AddTokenSaverToGitignore = true } };
 
         TokenSaverBehaviorConfig merged = TokenSaverBehaviorConfig.Merge(local, global);
 
-        Assert.False(merged.AddTokenSaverToGitignore);
+        Assert.False(merged.RepoHelper?.AddTokenSaverToGitignore);
+    }
+
+    [Fact]
+    public void Merge_RepoHelper_OptimizeInstructions_LocalWinsOverGlobalPerProperty()
+    {
+        TokenSaverBehaviorConfig local = new()
+        {
+            RepoHelper = new RepoHelperBehaviorConfig { OptimizeInstructions = true },
+        };
+        TokenSaverBehaviorConfig global = new()
+        {
+            RepoHelper = new RepoHelperBehaviorConfig { AddTokenSaverToGitignore = true, OptimizeInstructions = false },
+        };
+
+        TokenSaverBehaviorConfig merged = TokenSaverBehaviorConfig.Merge(local, global);
+
+        Assert.True(merged.RepoHelper?.OptimizeInstructions);
+        // AddTokenSaverToGitignore is unset on the local side — falls back to global per-property.
+        Assert.True(merged.RepoHelper?.AddTokenSaverToGitignore);
+    }
+
+    [Fact]
+    public void Defaults_RepoHelper_OptimizeInstructionsFalse_AddTokenSaverToGitignoreUnset()
+    {
+        TokenSaverBehaviorConfig defaults = TokenSaverBehaviorConfig.Defaults();
+
+        Assert.NotNull(defaults.RepoHelper);
+        Assert.False(defaults.RepoHelper!.OptimizeInstructions);
+        Assert.Null(defaults.RepoHelper.AddTokenSaverToGitignore);
     }
 
     [Fact]

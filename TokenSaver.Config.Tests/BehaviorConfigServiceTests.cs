@@ -22,15 +22,18 @@ public sealed class BehaviorConfigServiceTests : IDisposable
     public void GetConfig_NoFiles_ReturnsUnset()
     {
         TokenSaverBehaviorConfig cfg = _service.GetConfig(_root);
-        Assert.Null(cfg.AddTokenSaverToGitignore);
+        Assert.Null(cfg.RepoHelper?.AddTokenSaverToGitignore);
     }
 
     [Fact]
     public void SetLocal_ThenGet_ReflectsValue()
     {
-        _service.Set(_root, ConfigScope.Local, c => c with { AddTokenSaverToGitignore = true });
+        _service.Set(_root, ConfigScope.Local, c => c with
+        {
+            RepoHelper = (c.RepoHelper ?? new RepoHelperBehaviorConfig()) with { AddTokenSaverToGitignore = true },
+        });
 
-        Assert.True(_service.GetConfig(_root).AddTokenSaverToGitignore);
+        Assert.True(_service.GetConfig(_root).RepoHelper?.AddTokenSaverToGitignore);
         Assert.True(File.Exists(BehaviorConfigService.LocalConfigPath(_root)));
     }
 
@@ -41,9 +44,9 @@ public sealed class BehaviorConfigServiceTests : IDisposable
         // so this asserts only that a present local value is honored.
         File.WriteAllText(
             BehaviorConfigService.LocalConfigPath(_root),
-            "{ \"addTokenSaverToGitignore\": false }");
+            "{ \"repoHelper\": { \"addTokenSaverToGitignore\": false } }");
 
-        Assert.False(_service.GetConfig(_root).AddTokenSaverToGitignore);
+        Assert.False(_service.GetConfig(_root).RepoHelper?.AddTokenSaverToGitignore);
     }
 
     [Fact]
@@ -52,7 +55,7 @@ public sealed class BehaviorConfigServiceTests : IDisposable
         File.WriteAllText(BehaviorConfigService.LocalConfigPath(_root), "{ not valid json ");
 
         TokenSaverBehaviorConfig cfg = _service.GetConfig(_root);
-        Assert.Null(cfg.AddTokenSaverToGitignore);
+        Assert.Null(cfg.RepoHelper?.AddTokenSaverToGitignore);
     }
 
     public void Dispose()

@@ -54,6 +54,12 @@ public class TokenSaverConfig
     public string OllamaModel { get; set; } = "HelperModel";
     public int ServerPort { get; set; } = 11436;
     public int ContextSizeLimit { get; set; } = 120_000;
+    /// <summary>
+    ///     When true, the console log minimum level is Debug instead of Information (see
+    ///     <c>Program.cs</c>, read directly off configuration before <see cref="TokenSaverConfig" />
+    ///     is bound). Off by default; <c>scripts/run-dev-server.ps1</c> turns this on in the
+    ///     dev-appsettings.json it seeds.
+    /// </summary>
     public bool VerboseLogging { get; set; }
 
     /// <summary>
@@ -90,6 +96,16 @@ public class TokenSaverConfig
     ///     automatically. Set this when DraftModel.Loader is installed as a Windows service.
     /// </summary>
     public bool DraftModelServiceInstalled { get; set; }
+
+    /// <summary>
+    ///     Optional override for the per-workspace behavior config file (defaults to
+    ///     <c>{workspaceRoot}/.tokensaver/config.json</c> — see
+    ///     <c>TokenSaver.Config.BehaviorConfigService.LocalConfigPath</c>). When set, exported as
+    ///     <c>TOKENSAVER_LOCAL_CONFIG_PATH</c> so <c>BehaviorConfigService</c> reads/writes that file
+    ///     instead. Used by <c>scripts/run-dev-server.ps1</c> to point the dev loop at
+    ///     <c>.tokensaver/dev-config.json</c> without touching the real one.
+    /// </summary>
+    public string BehaviorConfigPath { get; set; } = "";
 
     /// <summary>Context hygiene pipeline configuration.</summary>
     public ContextHelperConfig ContextHelper { get; set; } = new();

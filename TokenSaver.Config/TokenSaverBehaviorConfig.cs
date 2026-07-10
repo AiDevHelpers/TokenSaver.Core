@@ -15,13 +15,9 @@ namespace TokenSaver.Config;
 /// </summary>
 public sealed record TokenSaverBehaviorConfig
 {
-    /// <summary>
-    ///     Whether <c>.tokensaver/</c> should be added to the workspace <c>.gitignore</c>.
-    ///     <c>null</c> means the user has never been asked — tools surface a pending prompt in
-    ///     that case. <c>true</c>/<c>false</c> records their answer and suppresses the prompt.
-    /// </summary>
-    [JsonPropertyName("addTokenSaverToGitignore")]
-    public bool? AddTokenSaverToGitignore { get; init; }
+    /// <summary>Repo-helper overrides — see <see cref="RepoHelperBehaviorConfig" />.</summary>
+    [JsonPropertyName("repoHelper")]
+    public RepoHelperBehaviorConfig? RepoHelper { get; init; }
 
     /// <summary>CodeHelper auto-workflow overrides — see <see cref="CodeHelperBehaviorConfig" />.</summary>
     [JsonPropertyName("codeHelper")]
@@ -59,7 +55,7 @@ public sealed record TokenSaverBehaviorConfig
     {
         return new TokenSaverBehaviorConfig
         {
-            AddTokenSaverToGitignore = local?.AddTokenSaverToGitignore ?? global?.AddTokenSaverToGitignore,
+            RepoHelper = RepoHelperBehaviorConfig.Merge(local?.RepoHelper, global?.RepoHelper),
             CodeHelper = CodeHelperBehaviorConfig.Merge(local?.CodeHelper, global?.CodeHelper),
             TokenEconomy = TokenEconomyBehaviorConfig.Merge(local?.TokenEconomy, global?.TokenEconomy),
             Context = ContextBehaviorConfig.Merge(local?.Context, global?.Context),
@@ -73,16 +69,65 @@ public sealed record TokenSaverBehaviorConfig
     ///     real appsettings-bound default (mirrors <c>CodeHelperConfig</c>/<c>TokenEconomyConfig</c>/
     ///     <c>ContextHelperConfig</c>'s own <c>= ...</c> defaults), so a freshly-created config
     ///     file on disk is self-documenting instead of an empty <c>{}</c>.
-    ///     <see cref="AddTokenSaverToGitignore" /> is left <see langword="null" /> — it's a
-    ///     stateful sentinel ("never asked"), not a tunable default.
+    ///     <see cref="RepoHelperBehaviorConfig.AddTokenSaverToGitignore" /> is left
+    ///     <see langword="null" /> — it's a stateful sentinel ("never asked"), not a tunable
+    ///     default.
     /// </summary>
     public static TokenSaverBehaviorConfig Defaults() => new()
     {
+        RepoHelper = RepoHelperBehaviorConfig.Defaults(),
         CodeHelper = CodeHelperBehaviorConfig.Defaults(),
         TokenEconomy = TokenEconomyBehaviorConfig.Defaults(),
         Context = ContextBehaviorConfig.Defaults(),
         AgentConfig = AgentBehaviorConfig.Defaults(),
         LazyContext = LazyContextBehaviorConfig.Defaults(),
+    };
+}
+
+/// <summary>
+///     Repo-helper settings: workspace-hygiene behaviors that act on the repo itself rather than
+///     tuning a model-facing pipeline.
+/// </summary>
+public sealed record RepoHelperBehaviorConfig
+{
+    /// <summary>
+    ///     Whether <c>.tokensaver/</c> should be added to the workspace <c>.gitignore</c>.
+    ///     <c>null</c> means the user has never been asked — tools surface a pending prompt in
+    ///     that case. <c>true</c>/<c>false</c> records their answer and suppresses the prompt.
+    /// </summary>
+    [JsonPropertyName("addTokenSaverToGitignore")]
+    public bool? AddTokenSaverToGitignore { get; init; }
+
+    /// <summary>
+    ///     When true, on every MCP session connect TokenSaver copies the machine-global Claude
+    ///     instructions (<c>%USERPROFILE%\.claude\CLAUDE.md</c>) into a workspace instruction file
+    ///     chosen for whatever tool is connecting — using that tool's most token-efficient
+    ///     supported mechanism (a scoped/lazy-loaded rule file where the tool supports one, a
+    ///     single flat instruction file otherwise) rather than assuming one universal format. See
+    ///     <c>TokenSaver.MCP.Services.InstructionOptimizerService</c>. Off by default — this
+    ///     writes to files in the repo, so it's opt-in.
+    /// </summary>
+    [JsonPropertyName("optimizeInstructions")]
+    public bool? OptimizeInstructions { get; init; }
+
+    public static RepoHelperBehaviorConfig? Merge(RepoHelperBehaviorConfig? local, RepoHelperBehaviorConfig? global)
+    {
+        if (local is null && global is null)
+        {
+            return null;
+        }
+
+        return new RepoHelperBehaviorConfig
+        {
+            AddTokenSaverToGitignore = local?.AddTokenSaverToGitignore ?? global?.AddTokenSaverToGitignore,
+            OptimizeInstructions = local?.OptimizeInstructions ?? global?.OptimizeInstructions,
+        };
+    }
+
+    /// <summary><see cref="AddTokenSaverToGitignore" /> is intentionally left unset — see the property doc.</summary>
+    public static RepoHelperBehaviorConfig Defaults() => new()
+    {
+        OptimizeInstructions = false,
     };
 }
 
