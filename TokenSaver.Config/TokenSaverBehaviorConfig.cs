@@ -110,6 +110,20 @@ public sealed record RepoHelperBehaviorConfig
     [JsonPropertyName("optimizeInstructions")]
     public bool? OptimizeInstructions { get; init; }
 
+    /// <summary>
+    ///     When true, a discovered <c>CLAUDE.md</c> (any doc in the chain — see
+    ///     <c>InstructionCacheService.DiscoverClaudeMdChain</c>) larger than a size threshold has
+    ///     its oversized <c>##</c> sections automatically split out into synthetic sub-docs, purely
+    ///     in the cached/synced representation TokenSaver builds for a connecting AI client — see
+    ///     <c>TokenSaver.MCP.Services.InstructionAutoSplitter</c>. The real source
+    ///     <c>CLAUDE.md</c> on disk (and the project's own <c>.claude/rules/</c> directory) are
+    ///     never read back into or written from this step; only
+    ///     <c>.tokensaver/context/instructions/</c> (already a derived cache) and per-client sync
+    ///     targets reflect the split. On by default, same as <see cref="OptimizeInstructions" />.
+    /// </summary>
+    [JsonPropertyName("autoSplitOversizedInstructions")]
+    public bool? AutoSplitOversizedInstructions { get; init; }
+
     public static RepoHelperBehaviorConfig? Merge(RepoHelperBehaviorConfig? local, RepoHelperBehaviorConfig? global)
     {
         if (local is null && global is null)
@@ -121,6 +135,7 @@ public sealed record RepoHelperBehaviorConfig
         {
             AddTokenSaverToGitignore = local?.AddTokenSaverToGitignore ?? global?.AddTokenSaverToGitignore,
             OptimizeInstructions = local?.OptimizeInstructions ?? global?.OptimizeInstructions,
+            AutoSplitOversizedInstructions = local?.AutoSplitOversizedInstructions ?? global?.AutoSplitOversizedInstructions,
         };
     }
 
@@ -128,6 +143,7 @@ public sealed record RepoHelperBehaviorConfig
     public static RepoHelperBehaviorConfig Defaults() => new()
     {
         OptimizeInstructions = true,
+        AutoSplitOversizedInstructions = true,
     };
 }
 

@@ -57,23 +57,38 @@ public static class ConfigSchemaTemplates
         "    // mechanism. Default: true.\n" +
         "    \"optimizeInstructions\": true,";
 
+    private const string AutoSplitOversizedInstructionsCommented =
+        "    // When a discovered CLAUDE.md is oversized, automatically split large sections out into\n" +
+        "    // synthetic sub-docs — purely in the cached/synced representation sent to AI clients,\n" +
+        "    // never rewriting your real CLAUDE.md or .claude/rules/ files. Default: true.\n" +
+        "    // \"autoSplitOversizedInstructions\": true,";
+
+    private const string AutoSplitOversizedInstructionsUncommented =
+        "    // When a discovered CLAUDE.md is oversized, automatically split large sections out into\n" +
+        "    // synthetic sub-docs — purely in the cached/synced representation sent to AI clients,\n" +
+        "    // never rewriting your real CLAUDE.md or .claude/rules/ files. Default: true.\n" +
+        "    \"autoSplitOversizedInstructions\": true,";
+
     private static readonly ConfigElementTemplate AddTokenSaverToGitignore = new(
         "addTokenSaverToGitignore", AddTokenSaverToGitignoreBlock, AddTokenSaverToGitignoreBlock, SentinelNeverActive: true);
 
     private static readonly ConfigElementTemplate OptimizeInstructions = new(
         "optimizeInstructions", OptimizeInstructionsCommented, OptimizeInstructionsUncommented);
 
+    private static readonly ConfigElementTemplate AutoSplitOversizedInstructions = new(
+        "autoSplitOversizedInstructions", AutoSplitOversizedInstructionsCommented, AutoSplitOversizedInstructionsUncommented);
+
     private static readonly ConfigElementTemplate RepoHelper = new(
         "repoHelper",
         "  // Repo-helper: workspace-hygiene behaviors that act on the repo itself.\n" +
         "  \"repoHelper\": {\n" +
-        AddTokenSaverToGitignoreBlock + "\n\n" + OptimizeInstructionsCommented + "\n" +
+        AddTokenSaverToGitignoreBlock + "\n\n" + OptimizeInstructionsCommented + "\n\n" + AutoSplitOversizedInstructionsCommented + "\n" +
         "  },",
         "  // Repo-helper: workspace-hygiene behaviors that act on the repo itself.\n" +
         "  \"repoHelper\": {\n" +
-        AddTokenSaverToGitignoreBlock + "\n\n" + OptimizeInstructionsUncommented + "\n" +
+        AddTokenSaverToGitignoreBlock + "\n\n" + OptimizeInstructionsUncommented + "\n\n" + AutoSplitOversizedInstructionsUncommented + "\n" +
         "  },",
-        [AddTokenSaverToGitignore, OptimizeInstructions]);
+        [AddTokenSaverToGitignore, OptimizeInstructions, AutoSplitOversizedInstructions]);
 
     // ── codeHelper ──────────────────────────────────────────────────────────────
 

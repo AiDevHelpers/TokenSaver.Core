@@ -73,6 +73,7 @@ public sealed class TokenSaverBehaviorConfigTests
 
         Assert.NotNull(defaults.RepoHelper);
         Assert.True(defaults.RepoHelper!.OptimizeInstructions);
+        Assert.True(defaults.RepoHelper.AutoSplitOversizedInstructions);
         Assert.Null(defaults.RepoHelper.AddTokenSaverToGitignore);
     }
 
