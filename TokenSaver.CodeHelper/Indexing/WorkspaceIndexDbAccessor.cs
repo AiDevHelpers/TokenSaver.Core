@@ -39,6 +39,9 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to open workspace index DB for '{Root}': {Msg}")]
     private static partial void LogDbOpenFailed(ILogger logger, string root, string msg, Exception ex);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Detected corrupt/mismatched workspace index at '{Root}' — deleting and rebuilding")]
+    private static partial void LogIndexRebuild(ILogger logger, string root);
+
     // Guards all WorkspaceIndexContext access — EF Core's DbContext isn't thread-safe.
     // File I/O, parsing, and AI-summary calls happen OUTSIDE this lock (in parallel);
     // only the actual DB read/write is serialized. Never acquire this lock re-entrantly.
@@ -86,16 +89,23 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // Surfaced all the way up through every indexing tool (CodeIndex, SemanticGrep,
-                // ManagePlan/CodeWork's PlanBuilder, ContextDiag) as an opaque "An error occurred
-                // invoking '<tool>'" with zero diagnostic info otherwise — a stale/mismatched
-                // schema or a locked index.db (WAL files left by another process) both throw here
-                // unguarded. Log the real exception and rethrow a message callers can act on.
-                LogDbOpenFailed(_logger, workspaceRoot, ex.Message, ex);
-                throw new InvalidOperationException(
-                    $"Failed to open workspace index DB at '{WorkspaceIndexContextFactory.GetDbPath(workspaceRoot)}': {ex.Message}. " +
-                    "The index.db may be locked by another process or have a mismatched schema — " +
-                    "try deleting the .tokensaver/index.db* files to force a rebuild.", ex);
+                // Attempt one auto-recovery: delete the corrupt index and rebuild.
+                // This handles stale schema, corruption, and WAL locks left by crashed processes.
+                LogIndexRebuild(_logger, workspaceRoot);
+                try
+                {
+                    DeleteIndexFiles(workspaceRoot);
+                    ctx = await WorkspaceIndexContextFactory.CreateAsync(workspaceRoot, ct);
+                }
+                catch (Exception retryEx) when (retryEx is not OperationCanceledException)
+                {
+                    // Recovery failed — log both the original and retry exceptions and give up.
+                    LogDbOpenFailed(_logger, workspaceRoot, ex.Message, ex);
+                    LogDbOpenFailed(_logger, workspaceRoot, retryEx.Message, retryEx);
+                    throw new InvalidOperationException(
+                        $"Failed to open workspace index DB at '{WorkspaceIndexContextFactory.GetDbPath(workspaceRoot)}': {ex.Message}. " +
+                        "Auto-recovery (delete and rebuild) also failed: " + retryEx.Message, retryEx);
+                }
             }
 
             _contexts[workspaceRoot] = ctx;
@@ -143,6 +153,31 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
     public static string ComputeHash(string value)
     {
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+    }
+
+    private static void DeleteIndexFiles(string workspaceRoot)
+    {
+        string dbPath = WorkspaceIndexContextFactory.GetDbPath(workspaceRoot);
+        string dir = Path.GetDirectoryName(dbPath) ?? ".tokensaver";
+        string baseName = Path.GetFileName(dbPath);
+
+        // Delete index.db and its WAL/SHM sidecar files that SQLite creates in WAL mode.
+        foreach (string pattern in new[] { baseName, $"{baseName}-wal", $"{baseName}-shm" })
+        {
+            string fullPath = Path.Combine(dir, pattern);
+            try
+            {
+                if (File.Exists(fullPath))
+                {
+                    File.Delete(fullPath);
+                }
+            }
+            catch
+            {
+                // Silently ignore deletion failures — the next CreateAsync will report
+                // if the file still can't be opened.
+            }
+        }
     }
 
     private void WarnIfGitignoreMissing(string workspaceRoot)
