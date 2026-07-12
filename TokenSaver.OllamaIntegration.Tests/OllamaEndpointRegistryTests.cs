@@ -1,4 +1,4 @@
-using TokenSaver.OllamaIntegration.Configuration;
+using TokenSaver.Common.Core.Configuration;
 using TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
