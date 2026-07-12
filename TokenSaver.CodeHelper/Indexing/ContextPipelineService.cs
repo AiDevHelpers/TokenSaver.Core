@@ -1,10 +1,11 @@
 using TokenSaver.CodeHelper.Configuration;
+using TokenSaver.Common.Core.Contracts;
+using TokenSaver.Common.Core.Configuration;
 using TokenSaver.ContextHelper.Calibration;
 using TokenSaver.ContextHelper.Models;
 using TokenSaver.ContextHelper.Models.Calibration;
 using TokenSaver.ContextHelper.Pipeline;
 using TokenSaver.Config;
-using TokenSaver.Common.Core.Configuration;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
 using TokenSaver.Library.Services;
@@ -28,7 +29,7 @@ namespace TokenSaver.CodeHelper.Indexing;
 ///     IndexFileAsync, EnsureFileIndexedAsync, IndexOneFileAsync) never call back into this
 ///     service, so there's no DI constructor cycle.
 /// </summary>
-public sealed class ContextPipelineService
+public sealed class ContextPipelineService : IContextPipelineService
 {
     /// <summary>Below this, GetFileContentAsync returns a requested file's content raw — not worth the pipeline's cost for a trivially small file.</summary>
     private const int MinTokensForFileCleaning = 50;

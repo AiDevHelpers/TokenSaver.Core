@@ -1,4 +1,5 @@
 using TokenSaver.Common.Core.Configuration;
+using TokenSaver.Common.Core.Contracts;
 using TokenSaver.Database.Context;
 using TokenSaver.Library.Models;
 
@@ -14,7 +15,7 @@ namespace TokenSaver.CodeHelper.Indexing;
 ///     Workspace root/path resolution and the plain-JSON preferences file
 ///     (.tokensaver/preferences.json) — unrelated to the indexing schema.
 /// </summary>
-public sealed partial class WorkspaceConfigManager
+public sealed partial class WorkspaceConfigManager : IWorkspaceConfigManager
 {
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to load preferences.json; using defaults")]
     private static partial void LogPreferencesLoadFailed(ILogger logger, Exception ex);

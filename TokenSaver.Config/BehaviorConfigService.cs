@@ -3,6 +3,8 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
+using TokenSaver.Common.Core.Contracts;
+
 namespace TokenSaver.Config;
 
 /// <summary>
@@ -17,7 +19,7 @@ namespace TokenSaver.Config;
 ///     over the global one (see <see cref="TokenSaverBehaviorConfig.Merge" />). Registered as a
 ///     singleton; results are cached per workspace root.
 /// </summary>
-public sealed partial class BehaviorConfigService : IDisposable
+public sealed partial class BehaviorConfigService : IBehaviorConfigService, IDisposable
 {
     public const string ConfigFileName = "config.json";
     private const string LocalFolder = ".tokensaver";

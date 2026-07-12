@@ -1,5 +1,6 @@
 using TokenSaver.CodeHelper.Configuration;
 using TokenSaver.CodeHelper.Models.Index;
+using TokenSaver.Common.Core.Contracts;
 using TokenSaver.Config;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
@@ -26,7 +27,7 @@ namespace TokenSaver.CodeHelper.Indexing;
 ///     resolution, folder tree maintenance, symbol queries, AI summarization, context building,
 ///     dependency queries, and workspace config/preferences — to the extracted services below.
 /// </summary>
-public sealed partial class WorkspaceIndexService : IFileReindexer
+public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFileReindexer
 {
     [LoggerMessage(Level = LogLevel.Debug, Message = "Skipped {File}: {Msg}")]
     private static partial void LogFileSkipped(ILogger logger, string file, string msg);
