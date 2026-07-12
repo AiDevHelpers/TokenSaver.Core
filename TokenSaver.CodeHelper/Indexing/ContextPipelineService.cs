@@ -301,6 +301,16 @@ public sealed class ContextPipelineService
             return null;
         }
 
+        // Check if file is a build artifact and if blocking is enabled
+        TokenSaverBehaviorConfig config = _behaviorConfig.GetConfig(root);
+        if (config?.Context?.BlockArtifactFileReads == true && _artifactDetector.DetectArtifacts([relPath]).Count > 0)
+        {
+            return $"(artifact file — blocked by detectBuildArtifacts: {relPath})\n\n" +
+                   "This path appears to be a build/cache artifact (bin/, obj/, node_modules/, etc.) " +
+                   "and has been blocked to prevent wasting tokens. If this is legitimate source code, " +
+                   "update .tokensaver/.ignore-bypass to force-include it, or set blockArtifactFileReads=false in config.json to allow fallback retry.";
+        }
+
         string abs = Path.Combine(root, relPath);
         if (!File.Exists(abs))
         {

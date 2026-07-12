@@ -313,6 +313,15 @@ public sealed record ContextBehaviorConfig
     [JsonPropertyName("detectBuildArtifacts")]
     public bool? DetectBuildArtifacts { get; init; }
 
+    /// <summary>
+    ///     When true, also intercept direct file read requests (GetFileContentAsync) and reject
+    ///     access to detected build/cache artifacts with an informative message, preventing Claude
+    ///     from accidentally fetching unwanted files even if explicitly requested. On by default.
+    ///     When false, file reads proceed normally (allows fallback/retry).
+    /// </summary>
+    [JsonPropertyName("blockArtifactFileReads")]
+    public bool? BlockArtifactFileReads { get; init; }
+
     public static ContextBehaviorConfig? Merge(ContextBehaviorConfig? local, ContextBehaviorConfig? global)
     {
         if (local is null && global is null)
@@ -329,6 +338,7 @@ public sealed record ContextBehaviorConfig
             SemanticThreshold = local?.SemanticThreshold ?? global?.SemanticThreshold,
             Debug = local?.Debug ?? global?.Debug,
             DetectBuildArtifacts = local?.DetectBuildArtifacts ?? global?.DetectBuildArtifacts,
+            BlockArtifactFileReads = local?.BlockArtifactFileReads ?? global?.BlockArtifactFileReads,
         };
     }
 
@@ -341,6 +351,7 @@ public sealed record ContextBehaviorConfig
         SemanticThreshold = 0.35,
         Debug = false,
         DetectBuildArtifacts = true,
+        BlockArtifactFileReads = true,
     };
 }
 

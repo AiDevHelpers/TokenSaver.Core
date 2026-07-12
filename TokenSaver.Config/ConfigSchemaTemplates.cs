@@ -301,19 +301,24 @@ public static class ConfigSchemaTemplates
         "    // Automatically detect and exclude build/cache artifacts (bin/, obj/, node_modules/, etc.) from context. Default: true.\n    // \"detectBuildArtifacts\": true,",
         "    // Automatically detect and exclude build/cache artifacts (bin/, obj/, node_modules/, etc.) from context. Default: true.\n    \"detectBuildArtifacts\": true,");
 
+    private static readonly ConfigElementTemplate BlockArtifactFileReads = new(
+        "blockArtifactFileReads",
+        "    // Also intercept direct file reads and reject access to build/cache artifacts with informative messages. Default: true.\n    // \"blockArtifactFileReads\": true,",
+        "    // Also intercept direct file reads and reject access to build/cache artifacts with informative messages. Default: true.\n    \"blockArtifactFileReads\": true,");
+
     private static readonly ConfigElementTemplate Context = new(
         "context",
         "  // Context-pipeline overrides for the concise-context cache and auto-cleaning middleware.\n" +
         "  \"context\": {\n" +
         string.Join("\n\n", AutoWarmOnStartup.CommentedBlock, AutoIntercept.CommentedBlock, ContextSizeLimit.CommentedBlock,
-            TokenBudgetMargin.CommentedBlock, SemanticThreshold.CommentedBlock, Debug.CommentedBlock, DetectBuildArtifacts.CommentedBlock) +
+            TokenBudgetMargin.CommentedBlock, SemanticThreshold.CommentedBlock, Debug.CommentedBlock, DetectBuildArtifacts.CommentedBlock, BlockArtifactFileReads.CommentedBlock) +
         "\n  },",
         "  // Context-pipeline overrides for the concise-context cache and auto-cleaning middleware.\n" +
         "  \"context\": {\n" +
         string.Join("\n\n", AutoWarmOnStartup.UncommentedBlock, AutoIntercept.UncommentedBlock, ContextSizeLimit.UncommentedBlock,
-            TokenBudgetMargin.UncommentedBlock, SemanticThreshold.UncommentedBlock, Debug.UncommentedBlock, DetectBuildArtifacts.UncommentedBlock) +
+            TokenBudgetMargin.UncommentedBlock, SemanticThreshold.UncommentedBlock, Debug.UncommentedBlock, DetectBuildArtifacts.UncommentedBlock, BlockArtifactFileReads.UncommentedBlock) +
         "\n  },",
-        [AutoWarmOnStartup, AutoIntercept, ContextSizeLimit, TokenBudgetMargin, SemanticThreshold, Debug, DetectBuildArtifacts]);
+        [AutoWarmOnStartup, AutoIntercept, ContextSizeLimit, TokenBudgetMargin, SemanticThreshold, Debug, DetectBuildArtifacts, BlockArtifactFileReads]);
 
     // ── agentConfig ─────────────────────────────────────────────────────────────
 
