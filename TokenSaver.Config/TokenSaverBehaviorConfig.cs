@@ -859,13 +859,3 @@ public sealed record OpenSourceAgentConfig
         NumCtx = 8192,
     };
 }
-
-/// <summary>Scope a behavior value is written to.</summary>
-public enum ConfigScope
-{
-    /// <summary><c>.tokensaver/config.json</c> under the workspace root.</summary>
-    Local,
-
-    /// <summary><c>%ProgramData%\TokenSaver\config.json</c> — machine-global, shared across workspaces.</summary>
-    Global,
-}
