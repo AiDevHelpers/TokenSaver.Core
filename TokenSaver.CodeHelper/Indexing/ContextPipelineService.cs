@@ -4,12 +4,13 @@ using TokenSaver.ContextHelper.Models;
 using TokenSaver.ContextHelper.Models.Calibration;
 using TokenSaver.ContextHelper.Pipeline;
 using TokenSaver.Config;
-using TokenSaver.Library.Configuration;
-using TokenSaver.Library.Contracts;
+using TokenSaver.Common.Core.Configuration;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
-using TokenSaver.Library.Models.Context;
 using TokenSaver.Library.Services;
+using TokenSaver.TokenEconomy.Contracts;
+using TokenSaver.TokenEconomy.Models.Context;
+using TokenSaver.TokenEconomy.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;

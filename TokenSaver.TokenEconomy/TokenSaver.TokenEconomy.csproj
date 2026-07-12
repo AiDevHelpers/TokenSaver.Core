@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TokenSaver.Common.Core\TokenSaver.Common.Core.csproj" />
     <ProjectReference Include="..\TokenSaver.OllamaIntegration\TokenSaver.OllamaIntegration.csproj" />
+    <ProjectReference Include="..\TokenSaver.Utilities\TokenSaver.Utilities.csproj" />
     <ProjectReference Include="..\..\Database\TokenSaver.Database.Context\TokenSaver.Database.Context.csproj" />
   </ItemGroup>
   <ItemGroup>

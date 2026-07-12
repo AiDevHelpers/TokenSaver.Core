@@ -1,4 +1,4 @@
-using TokenSaver.TokenEconomy.Configuration;
+using TokenSaver.Common.Core.Configuration;
 using TokenSaver.TokenEconomy.Contracts;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;

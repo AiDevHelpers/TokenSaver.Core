@@ -20,6 +20,7 @@
     <ProjectReference Include="..\TokenSaver.OllamaIntegration\TokenSaver.OllamaIntegration.csproj" />
     <ProjectReference Include="..\TokenSaver.TokenEconomy\TokenSaver.TokenEconomy.csproj" />
     <ProjectReference Include="..\TokenSaver.Utilities\TokenSaver.Utilities.csproj" />
+    <ProjectReference Include="..\..\Common\TokenSaver.Common.Models\TokenSaver.Common.Models.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\baseline-calibration.json" />

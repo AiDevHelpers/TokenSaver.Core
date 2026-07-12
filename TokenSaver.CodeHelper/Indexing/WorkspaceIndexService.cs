@@ -4,6 +4,7 @@ using TokenSaver.Config;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
 using TokenSaver.Library.Services;
+using TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

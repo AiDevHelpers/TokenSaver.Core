@@ -1,5 +1,5 @@
 using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.Library.Models.Context;
+using TokenSaver.TokenEconomy.Models.Context;
 
 using ModelContextProtocol.Server;
 

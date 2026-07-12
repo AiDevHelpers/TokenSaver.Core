@@ -1,6 +1,7 @@
 using TokenSaver.CodeHelper.Models.Patch;
 using TokenSaver.CodeHelper.Patching;
 using TokenSaver.Library.Services;
+using TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.Extensions.Logging;
 

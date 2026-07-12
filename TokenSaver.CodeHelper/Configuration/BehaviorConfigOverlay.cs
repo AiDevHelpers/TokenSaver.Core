@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Options;
 
 using TokenSaver.Config;
+using TokenSaver.Common.Core.Configuration;
 using TokenSaver.ContextHelper.Configuration;
-using TokenSaver.Library.Configuration;
 
 namespace TokenSaver.CodeHelper.Configuration;
 
