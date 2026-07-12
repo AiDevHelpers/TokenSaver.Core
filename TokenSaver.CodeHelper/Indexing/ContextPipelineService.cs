@@ -1,5 +1,5 @@
 using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.Common.Core.Contracts;
+using TokenSaver.CodeHelper.Contracts;
 using TokenSaver.Common.Core.Configuration;
 using TokenSaver.ContextHelper.Calibration;
 using TokenSaver.ContextHelper.Models;

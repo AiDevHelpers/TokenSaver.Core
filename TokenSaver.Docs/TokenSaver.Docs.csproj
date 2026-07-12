@@ -10,7 +10,7 @@
     <EmbeddedResource Include="Resources\*.md" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TokenSaver.Library\TokenSaver.Library.csproj" />
@@ -20,6 +20,6 @@
     <ProjectReference Include="..\TokenSaver.Utilities\TokenSaver.Utilities.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.85" />
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.91" />
   </ItemGroup>
 </Project>

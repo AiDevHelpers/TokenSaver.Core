@@ -11,7 +11,7 @@ namespace TokenSaver.OllamaIntegration.Tests;
 ///     real Chunks table) without a running model. This is the "fake HTTP transport" pattern, not a
 ///     live-Ollama test — no network call ever leaves the process.
 /// </summary>
-internal sealed class FakeOllamaHandler : HttpMessageHandler
+public sealed class FakeOllamaHandler : HttpMessageHandler
 {
     public List<string> GeneratePrompts { get; } = [];
     public List<string> EmbedInputs { get; } = [];

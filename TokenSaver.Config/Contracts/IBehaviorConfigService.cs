@@ -1,6 +1,4 @@
-using TokenSaver.Config;
-
-namespace TokenSaver.Common.Core.Contracts;
+namespace TokenSaver.Config.Contracts;
 
 /// <summary>
 /// Service for managing behavior configuration that merges local and global settings.

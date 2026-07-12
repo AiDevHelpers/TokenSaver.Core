@@ -3,7 +3,7 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
-using TokenSaver.Common.Core.Contracts;
+using TokenSaver.Config.Contracts;
 
 namespace TokenSaver.Config;
 
@@ -104,10 +104,10 @@ public sealed partial class BehaviorConfigService : IBehaviorConfigService, IDis
     ///     and writes it back (creating the folder/file as needed). Refreshes the cached merged
     ///     view and raises <see cref="ConfigChanged" />.
     /// </summary>
-    public void Set(string workspaceRoot, ConfigScope scope, Func<TokenSaverBehaviorConfig, TokenSaverBehaviorConfig> mutate)
+    public void Set(string workspaceRoot, Contracts.ConfigScope scope, Func<TokenSaverBehaviorConfig, TokenSaverBehaviorConfig> mutate)
     {
         ArgumentNullException.ThrowIfNull(mutate);
-        string path = scope == ConfigScope.Local ? LocalConfigPath(workspaceRoot) : GlobalConfigPath;
+        string path = scope == Contracts.ConfigScope.Local ? LocalConfigPath(workspaceRoot) : GlobalConfigPath;
 
         lock (_sync)
         {
@@ -118,7 +118,7 @@ public sealed partial class BehaviorConfigService : IBehaviorConfigService, IDis
         }
 
         // A global write may have created the folder for the first time — (re)attach its watcher.
-        if (scope == ConfigScope.Global)
+        if (scope == Contracts.ConfigScope.Global)
         {
             EnsureGlobalWatcher();
         }

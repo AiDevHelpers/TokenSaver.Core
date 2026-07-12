@@ -1,6 +1,6 @@
 using TokenSaver.CodeHelper.Configuration;
 using TokenSaver.CodeHelper.Models.Index;
-using TokenSaver.Common.Core.Contracts;
+using TokenSaver.CodeHelper.Contracts;
 using TokenSaver.Config;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;

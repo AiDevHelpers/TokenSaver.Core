@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using TokenSaver.Config;
+using TokenSaver.Config.Contracts;
 
 namespace TokenSaver.Client.Helpers.Configuration;
 

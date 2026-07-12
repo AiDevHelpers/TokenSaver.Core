@@ -1,5 +1,5 @@
 using TokenSaver.Common.Core.Configuration;
-using TokenSaver.Common.Core.Contracts;
+using TokenSaver.CodeHelper.Contracts;
 using TokenSaver.Database.Context;
 using TokenSaver.Library.Models;
 

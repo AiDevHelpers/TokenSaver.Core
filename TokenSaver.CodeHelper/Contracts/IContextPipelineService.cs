@@ -1,4 +1,6 @@
-namespace TokenSaver.Common.Core.Contracts;
+using TokenSaver.TokenEconomy.Models.Context;
+
+namespace TokenSaver.CodeHelper.Contracts;
 
 /// <summary>
 /// Service for building concise context through a pipeline of processing stages.
@@ -20,16 +22,4 @@ public interface IContextPipelineService
         bool avoidChainOfThought = false,
         int perFileTokenLimit = 0,
         CancellationToken ct = default);
-}
-
-/// <summary>
-/// Result from building concise context.
-/// </summary>
-public sealed record BuildContextResult
-{
-    /// <summary>The assembled context text ready for sending to an AI model.</summary>
-    public required string ContextText { get; set; }
-
-    /// <summary>Metadata about the context assembly process.</summary>
-    public Dictionary<string, object>? Metadata { get; set; }
 }

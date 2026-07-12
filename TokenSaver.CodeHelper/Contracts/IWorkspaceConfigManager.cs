@@ -1,4 +1,4 @@
-namespace TokenSaver.Common.Core.Contracts;
+namespace TokenSaver.CodeHelper.Contracts;
 
 /// <summary>
 /// Service for managing workspace-specific configuration and root path resolution.
@@ -10,10 +10,5 @@ public interface IWorkspaceConfigManager
     /// Gets the workspace root directory.
     /// Resolves from nearest .git or solution file, or from configuration.
     /// </summary>
-    string? GetWorkspaceRoot();
-
-    /// <summary>
-    /// Sets the workspace root directory.
-    /// </summary>
-    void SetWorkspaceRoot(string path);
+    string GetWorkspaceRoot();
 }
