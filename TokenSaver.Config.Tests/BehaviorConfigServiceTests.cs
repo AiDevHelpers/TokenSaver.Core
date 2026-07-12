@@ -1,4 +1,5 @@
 using TokenSaver.Config;
+using TokenSaver.Config.Contracts;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
