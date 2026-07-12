@@ -1,7 +1,9 @@
+using TokenSaver.CodeHelper.Configuration;
 using TokenSaver.ContextHelper.Calibration;
 using TokenSaver.ContextHelper.Models;
 using TokenSaver.ContextHelper.Models.Calibration;
 using TokenSaver.ContextHelper.Pipeline;
+using TokenSaver.Config;
 using TokenSaver.Library.Configuration;
 using TokenSaver.Library.Contracts;
 using TokenSaver.Database.Context;
@@ -40,6 +42,8 @@ public sealed class ContextPipelineService
     private readonly SemanticIndexBackgroundTrigger _semanticIndexTrigger;
     private readonly RetrievalCalibrationService _retrievalCalibration;
     private readonly WorkspaceConfigManager _workspaceConfig;
+    private readonly BuildArtifactDetector _artifactDetector;
+    private readonly BehaviorConfigService _behaviorConfig;
 
     public ContextPipelineService(
         WorkspaceIndexDbAccessor accessor,
@@ -50,6 +54,8 @@ public sealed class ContextPipelineService
         SemanticIndexBackgroundTrigger semanticIndexTrigger,
         ISavingsTracker savings,
         RetrievalCalibrationService retrievalCalibration,
+        BuildArtifactDetector artifactDetector,
+        BehaviorConfigService behaviorConfig,
         IOptions<TokenSaverConfig> config)
     {
         _accessor = accessor;
@@ -60,7 +66,91 @@ public sealed class ContextPipelineService
         _semanticIndexTrigger = semanticIndexTrigger;
         _savings = savings;
         _retrievalCalibration = retrievalCalibration;
+        _artifactDetector = artifactDetector;
+        _behaviorConfig = behaviorConfig;
         _config = config.Value;
+    }
+
+    /// <summary>
+    /// Filters build/cache artifacts from the context text if enabled in config.
+    /// Extracts file references from tokensaver comments, identifies artifacts, and removes them.
+    /// Returns the filtered result or the original if artifact detection is disabled.
+    /// </summary>
+    private (string FilteredContext, int RemovedCount) FilterBuildArtifactsFromContext(
+        PipelineResult pipelineResult, string workspaceRoot)
+    {
+        TokenSaverBehaviorConfig merged = _behaviorConfig.GetConfig(workspaceRoot);
+        if (merged?.Context?.DetectBuildArtifacts != true)
+        {
+            return (pipelineResult.ContextText, 0);
+        }
+
+        var lines = pipelineResult.ContextText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
+        var artifacts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Extract file paths from tokensaver comments: <!-- tokensaver:summary-of:path/to/file -->
+        foreach (var line in lines)
+        {
+            if (line.Contains("tokensaver:summary-of:", StringComparison.OrdinalIgnoreCase))
+            {
+                // Parse: <!-- tokensaver:summary-of:path/to/file -->
+                int start = line.IndexOf("tokensaver:summary-of:", StringComparison.OrdinalIgnoreCase);
+                if (start >= 0)
+                {
+                    start += "tokensaver:summary-of:".Length;
+                    int end = line.IndexOf(" -->", start, StringComparison.OrdinalIgnoreCase);
+                    if (end > start)
+                    {
+                        string filePath = line.Substring(start, end - start).Trim();
+                        if (!string.IsNullOrEmpty(filePath))
+                        {
+                            artifacts.Add(filePath);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Detect which are build artifacts
+        var detectedArtifacts = _artifactDetector.DetectArtifacts(artifacts);
+        if (detectedArtifacts.Count == 0)
+        {
+            return (pipelineResult.ContextText, 0);
+        }
+
+        // Remove file blocks that are artifacts. A "block" is from one <!-- tokensaver:summary-of -->
+        // comment to the next, or to the end of the file.
+        var artifactSet = new HashSet<string>(detectedArtifacts, StringComparer.OrdinalIgnoreCase);
+        var filteredLines = new List<string>();
+        string? currentArtifactPath = null;
+
+        foreach (var line in lines)
+        {
+            // Check if this is a tokensaver comment line
+            if (line.Contains("tokensaver:summary-of:", StringComparison.OrdinalIgnoreCase))
+            {
+                // Extract the file path
+                int start = line.IndexOf("tokensaver:summary-of:", StringComparison.OrdinalIgnoreCase);
+                start += "tokensaver:summary-of:".Length;
+                int end = line.IndexOf(" -->", start, StringComparison.OrdinalIgnoreCase);
+                if (end > start)
+                {
+                    string filePath = line.Substring(start, end - start).Trim();
+                    currentArtifactPath = artifactSet.Contains(filePath) ? filePath : null;
+                }
+            }
+
+            // Only add the line if we're not inside an artifact block
+            if (currentArtifactPath == null)
+            {
+                filteredLines.Add(line);
+            }
+        }
+
+        string filtered = string.Join(Environment.NewLine, filteredLines);
+        int removedCount = detectedArtifacts.Count;
+
+        return (filtered, removedCount);
     }
 
     public async Task<BuildContextResult> BuildConciseContextAsync(
@@ -86,6 +176,15 @@ public sealed class ContextPipelineService
         PipelineResult pipelineResult = await _cleaner.CleanContextAsync(
             prompt, history, sessionId, maxTokens ?? _config.ContextSizeLimit,
             avoidChainOfThought: avoidChainOfThought, workspaceRoot: root, ct: ct);
+
+        // Apply build artifact detection/filtering after main context assembly
+        var (filteredContextText, removedArtifactCount) = FilterBuildArtifactsFromContext(pipelineResult, root);
+        if (removedArtifactCount > 0)
+        {
+            pipelineResult.ContextText = filteredContextText;
+            pipelineResult.TokenCount = PipelineContext.EstimateTokens(filteredContextText);
+            pipelineResult.AlertMessage = $"Excluded {removedArtifactCount} build/cache artifact(s) from context.";
+        }
 
         if (sessionId != null)
         {

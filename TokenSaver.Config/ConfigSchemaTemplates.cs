@@ -69,6 +69,18 @@ public static class ConfigSchemaTemplates
         "    // never rewriting your real CLAUDE.md or .claude/rules/ files. Default: true.\n" +
         "    \"autoSplitOversizedInstructions\": true,";
 
+    // Stays commented in BOTH forms, same rationale as AddTokenSaverToGitignoreBlock — this
+    // rewrites the user's real CLAUDE.md and a settings file, so it has no "on by default" form
+    // to activate in the global template; enabling it is always an explicit, hand-made choice.
+    private const string CombineClaudeMdForClaudeCodeBlock =
+        "    // Folds the whole discovered CLAUDE.md chain (global + every ancestor repo + this\n" +
+        "    // workspace's own) into one combined, deduped, auto-split file that becomes this\n" +
+        "    // workspace's real CLAUDE.md — your hand-authored original is preserved as\n" +
+        "    // CLAUDE.human.md — and configures Claude Code's claudeMdExcludes setting so it stops\n" +
+        "    // loading the global/ancestor files a second time natively. Unlike optimizeInstructions\n" +
+        "    // and autoSplitOversizedInstructions above, this rewrites real files. Default: false.\n" +
+        "    // \"combineClaudeMdForClaudeCode\": true,";
+
     private static readonly ConfigElementTemplate AddTokenSaverToGitignore = new(
         "addTokenSaverToGitignore", AddTokenSaverToGitignoreBlock, AddTokenSaverToGitignoreBlock, SentinelNeverActive: true);
 
@@ -78,17 +90,20 @@ public static class ConfigSchemaTemplates
     private static readonly ConfigElementTemplate AutoSplitOversizedInstructions = new(
         "autoSplitOversizedInstructions", AutoSplitOversizedInstructionsCommented, AutoSplitOversizedInstructionsUncommented);
 
+    private static readonly ConfigElementTemplate CombineClaudeMdForClaudeCode = new(
+        "combineClaudeMdForClaudeCode", CombineClaudeMdForClaudeCodeBlock, CombineClaudeMdForClaudeCodeBlock, SentinelNeverActive: true);
+
     private static readonly ConfigElementTemplate RepoHelper = new(
         "repoHelper",
         "  // Repo-helper: workspace-hygiene behaviors that act on the repo itself.\n" +
         "  \"repoHelper\": {\n" +
-        AddTokenSaverToGitignoreBlock + "\n\n" + OptimizeInstructionsCommented + "\n\n" + AutoSplitOversizedInstructionsCommented + "\n" +
+        AddTokenSaverToGitignoreBlock + "\n\n" + OptimizeInstructionsCommented + "\n\n" + AutoSplitOversizedInstructionsCommented + "\n\n" + CombineClaudeMdForClaudeCodeBlock + "\n" +
         "  },",
         "  // Repo-helper: workspace-hygiene behaviors that act on the repo itself.\n" +
         "  \"repoHelper\": {\n" +
-        AddTokenSaverToGitignoreBlock + "\n\n" + OptimizeInstructionsUncommented + "\n\n" + AutoSplitOversizedInstructionsUncommented + "\n" +
+        AddTokenSaverToGitignoreBlock + "\n\n" + OptimizeInstructionsUncommented + "\n\n" + AutoSplitOversizedInstructionsUncommented + "\n\n" + CombineClaudeMdForClaudeCodeBlock + "\n" +
         "  },",
-        [AddTokenSaverToGitignore, OptimizeInstructions, AutoSplitOversizedInstructions]);
+        [AddTokenSaverToGitignore, OptimizeInstructions, AutoSplitOversizedInstructions, CombineClaudeMdForClaudeCode]);
 
     // ── codeHelper ──────────────────────────────────────────────────────────────
 
@@ -281,19 +296,24 @@ public static class ConfigSchemaTemplates
         "    // Save raw/cleaned context text to .tokensaver/debug/ for every run and warn if it didn't shrink. Default: false.\n    // \"debug\": false,",
         "    // Save raw/cleaned context text to .tokensaver/debug/ for every run and warn if it didn't shrink. Default: false.\n    \"debug\": false,");
 
+    private static readonly ConfigElementTemplate DetectBuildArtifacts = new(
+        "detectBuildArtifacts",
+        "    // Automatically detect and exclude build/cache artifacts (bin/, obj/, node_modules/, etc.) from context. Default: true.\n    // \"detectBuildArtifacts\": true,",
+        "    // Automatically detect and exclude build/cache artifacts (bin/, obj/, node_modules/, etc.) from context. Default: true.\n    \"detectBuildArtifacts\": true,");
+
     private static readonly ConfigElementTemplate Context = new(
         "context",
         "  // Context-pipeline overrides for the concise-context cache and auto-cleaning middleware.\n" +
         "  \"context\": {\n" +
         string.Join("\n\n", AutoWarmOnStartup.CommentedBlock, AutoIntercept.CommentedBlock, ContextSizeLimit.CommentedBlock,
-            TokenBudgetMargin.CommentedBlock, SemanticThreshold.CommentedBlock, Debug.CommentedBlock) +
+            TokenBudgetMargin.CommentedBlock, SemanticThreshold.CommentedBlock, Debug.CommentedBlock, DetectBuildArtifacts.CommentedBlock) +
         "\n  },",
         "  // Context-pipeline overrides for the concise-context cache and auto-cleaning middleware.\n" +
         "  \"context\": {\n" +
         string.Join("\n\n", AutoWarmOnStartup.UncommentedBlock, AutoIntercept.UncommentedBlock, ContextSizeLimit.UncommentedBlock,
-            TokenBudgetMargin.UncommentedBlock, SemanticThreshold.UncommentedBlock, Debug.UncommentedBlock) +
+            TokenBudgetMargin.UncommentedBlock, SemanticThreshold.UncommentedBlock, Debug.UncommentedBlock, DetectBuildArtifacts.UncommentedBlock) +
         "\n  },",
-        [AutoWarmOnStartup, AutoIntercept, ContextSizeLimit, TokenBudgetMargin, SemanticThreshold, Debug]);
+        [AutoWarmOnStartup, AutoIntercept, ContextSizeLimit, TokenBudgetMargin, SemanticThreshold, Debug, DetectBuildArtifacts]);
 
     // ── agentConfig ─────────────────────────────────────────────────────────────
 

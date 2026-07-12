@@ -124,6 +124,22 @@ public sealed record RepoHelperBehaviorConfig
     [JsonPropertyName("autoSplitOversizedInstructions")]
     public bool? AutoSplitOversizedInstructions { get; init; }
 
+    /// <summary>
+    ///     When explicitly true, folds the whole discovered <c>CLAUDE.md</c> chain (global +
+    ///     every ancestor repo + the workspace's own) into one combined, deduped, auto-split file
+    ///     that becomes the workspace's real <c>CLAUDE.md</c> — the hand-authored original is
+    ///     preserved as <c>CLAUDE.human.md</c> — and configures Claude Code's own
+    ///     <c>claudeMdExcludes</c> setting (<c>.claude/settings.local.json</c>) so it stops loading
+    ///     the global/ancestor files a second time natively. See
+    ///     <c>TokenSaver.MCP.Services.InstructionOptimizerService.SyncClaudeCodeCombinedFile</c>.
+    ///     Unlike <see cref="OptimizeInstructions" />/<see cref="AutoSplitOversizedInstructions" />
+    ///     (which only ever touch derived cache/sync-target files), this rewrites the user's real
+    ///     <c>CLAUDE.md</c> and a settings file — so unset/false means off, not on; there is no
+    ///     "unset means on" fallback for this one.
+    /// </summary>
+    [JsonPropertyName("combineClaudeMdForClaudeCode")]
+    public bool? CombineClaudeMdForClaudeCode { get; init; }
+
     public static RepoHelperBehaviorConfig? Merge(RepoHelperBehaviorConfig? local, RepoHelperBehaviorConfig? global)
     {
         if (local is null && global is null)
@@ -136,6 +152,7 @@ public sealed record RepoHelperBehaviorConfig
             AddTokenSaverToGitignore = local?.AddTokenSaverToGitignore ?? global?.AddTokenSaverToGitignore,
             OptimizeInstructions = local?.OptimizeInstructions ?? global?.OptimizeInstructions,
             AutoSplitOversizedInstructions = local?.AutoSplitOversizedInstructions ?? global?.AutoSplitOversizedInstructions,
+            CombineClaudeMdForClaudeCode = local?.CombineClaudeMdForClaudeCode ?? global?.CombineClaudeMdForClaudeCode,
         };
     }
 
@@ -287,6 +304,15 @@ public sealed record ContextBehaviorConfig
     [JsonPropertyName("debug")]
     public bool? Debug { get; init; }
 
+    /// <summary>
+    ///     When true, automatically detect and exclude build/cache artifacts (bin/, obj/,
+    ///     node_modules/, .git/, __pycache__/, etc.) from context before returning, even if
+    ///     they weren't caught by .gitignore filtering. Acts as a last-resort defense to prevent
+    ///     wasting tokens. Logs which files are excluded. On by default.
+    /// </summary>
+    [JsonPropertyName("detectBuildArtifacts")]
+    public bool? DetectBuildArtifacts { get; init; }
+
     public static ContextBehaviorConfig? Merge(ContextBehaviorConfig? local, ContextBehaviorConfig? global)
     {
         if (local is null && global is null)
@@ -302,6 +328,7 @@ public sealed record ContextBehaviorConfig
             TokenBudgetMargin = local?.TokenBudgetMargin ?? global?.TokenBudgetMargin,
             SemanticThreshold = local?.SemanticThreshold ?? global?.SemanticThreshold,
             Debug = local?.Debug ?? global?.Debug,
+            DetectBuildArtifacts = local?.DetectBuildArtifacts ?? global?.DetectBuildArtifacts,
         };
     }
 
@@ -313,6 +340,7 @@ public sealed record ContextBehaviorConfig
         TokenBudgetMargin = 0.85,
         SemanticThreshold = 0.35,
         Debug = false,
+        DetectBuildArtifacts = true,
     };
 }
 
