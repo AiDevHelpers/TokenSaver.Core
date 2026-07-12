@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using TokenSaver.OllamaIntegration.Tests;
 using TokenSaver.OllamaIntegration.Services;
+using TokenSaver.Utilities.Services;
 
 using System.Text.Json;
 
