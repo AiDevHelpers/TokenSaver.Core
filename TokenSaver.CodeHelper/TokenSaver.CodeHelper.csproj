@@ -17,6 +17,9 @@
     <!-- Needed by WorkspaceIndexService for ContextCleanerService (prompt-cleaning pipeline
          reused for on-demand file-content compression). -->
     <ProjectReference Include="..\TokenSaver.ContextHelper\TokenSaver.ContextHelper.csproj" />
+    <ProjectReference Include="..\TokenSaver.OllamaIntegration\TokenSaver.OllamaIntegration.csproj" />
+    <ProjectReference Include="..\TokenSaver.TokenEconomy\TokenSaver.TokenEconomy.csproj" />
+    <ProjectReference Include="..\TokenSaver.Utilities\TokenSaver.Utilities.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\baseline-calibration.json" />

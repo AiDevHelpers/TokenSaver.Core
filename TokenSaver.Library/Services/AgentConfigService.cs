@@ -1,4 +1,4 @@
-using TokenSaver.Library.Configuration;
+using TokenSaver.Common.Core.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
