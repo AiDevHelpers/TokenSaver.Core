@@ -4,7 +4,6 @@ using TokenSaver.CodeHelper.Models.Index;
 using TokenSaver.CodeHelper.Models.Patch;
 using TokenSaver.CodeHelper.Models.Planning;
 using TokenSaver.CodeHelper.Research;
-using TokenSaver.Library.Services;
 using TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.Extensions.Logging;

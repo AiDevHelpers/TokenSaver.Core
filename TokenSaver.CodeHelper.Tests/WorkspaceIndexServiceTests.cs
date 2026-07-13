@@ -5,7 +5,6 @@ using TokenSaver.Config;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
 using TokenSaver.Common.Core.Configuration;
-using TokenSaver.Library.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;

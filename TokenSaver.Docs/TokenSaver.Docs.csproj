@@ -13,7 +13,6 @@
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TokenSaver.Library\TokenSaver.Library.csproj" />
     <ProjectReference Include="..\TokenSaver.CodeHelper\TokenSaver.CodeHelper.csproj" />
     <ProjectReference Include="..\TokenSaver.OllamaIntegration\TokenSaver.OllamaIntegration.csproj" />
     <ProjectReference Include="..\TokenSaver.TokenEconomy\TokenSaver.TokenEconomy.csproj" />

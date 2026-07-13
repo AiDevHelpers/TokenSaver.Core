@@ -13,7 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TokenSaver.Config\TokenSaver.Config.csproj" />
-    <ProjectReference Include="..\TokenSaver.Library\TokenSaver.Library.csproj" />
     <!-- Needed by WorkspaceIndexService for ContextCleanerService (prompt-cleaning pipeline
          reused for on-demand file-content compression). -->
     <ProjectReference Include="..\TokenSaver.ContextHelper\TokenSaver.ContextHelper.csproj" />
@@ -21,6 +20,7 @@
     <ProjectReference Include="..\TokenSaver.TokenEconomy\TokenSaver.TokenEconomy.csproj" />
     <ProjectReference Include="..\TokenSaver.Utilities\TokenSaver.Utilities.csproj" />
     <ProjectReference Include="..\..\Common\TokenSaver.Common.Models\TokenSaver.Common.Models.csproj" />
+    <ProjectReference Include="..\..\Common\TokenSaver.Common.Contracts\TokenSaver.Common.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\baseline-calibration.json" />

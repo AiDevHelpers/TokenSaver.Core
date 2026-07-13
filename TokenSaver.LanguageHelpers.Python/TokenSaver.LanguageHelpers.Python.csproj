@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TokenSaver.LanguageHelpers.Core\TokenSaver.LanguageHelpers.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Drives the ruff CLI out of process (lint + import sorting + formatting); nothing to
+         reference — the machine supplies ruff (and optionally black) on PATH. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.91" />
+  </ItemGroup>
+</Project>

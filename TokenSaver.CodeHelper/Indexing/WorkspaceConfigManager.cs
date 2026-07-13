@@ -1,7 +1,7 @@
 using TokenSaver.Common.Core.Configuration;
+using TokenSaver.Common.Models;
 using TokenSaver.CodeHelper.Contracts;
 using TokenSaver.Database.Context;
-using TokenSaver.Library.Models;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

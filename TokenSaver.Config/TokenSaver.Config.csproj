@@ -6,8 +6,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Reuses GitignoreFilter (glob engine) and ContextExclusions from the Library. -->
-    <ProjectReference Include="..\TokenSaver.Library\TokenSaver.Library.csproj" />
+    <!-- Reuses GitignoreFilter (glob engine) from Utilities. -->
     <ProjectReference Include="..\TokenSaver.Utilities\TokenSaver.Utilities.csproj" />
     <ProjectReference Include="..\TokenSaver.Common.Core\TokenSaver.Common.Core.csproj" />
   </ItemGroup>

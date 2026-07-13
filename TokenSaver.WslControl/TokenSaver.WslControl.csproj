@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- net*-windows because Community.Wsl.Sdk only ships net6.0/net8.0-windows7.0 assemblies,
+         and WSL itself is a Windows-only feature. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TokenSaver.Common.Core\TokenSaver.Common.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Community.Wsl.Sdk" Version="3.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.91" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="TokenSaver.WslControl.Tests" />
+  </ItemGroup>
+</Project>
