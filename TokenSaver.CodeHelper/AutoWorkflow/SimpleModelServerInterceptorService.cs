@@ -24,11 +24,11 @@ namespace TokenSaver.CodeHelper.AutoWorkflow;
 ///     This service is called from <c>ContextInterceptMiddleware</c> alongside the
 ///     context cleaning pipeline.
 /// </summary>
-public sealed partial class DraftModelInterceptorService(
+public sealed partial class SimpleModelServerInterceptorService(
     OllamaService ollama,
     PatchEngine patch,
     CodeWorkflowService workflow,
-    ILogger<DraftModelInterceptorService> logger)
+    ILogger<SimpleModelServerInterceptorService> logger)
 {
     [LoggerMessage(Level = LogLevel.Debug, Message = "Not a code-build intent — passing through")]
     private static partial void LogNotCodeBuildIntent(ILogger logger);
@@ -56,7 +56,7 @@ public sealed partial class DraftModelInterceptorService(
 
     private const string DraftModelName = "HelperModel";
     private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private readonly ILogger<DraftModelInterceptorService> _log = logger;
+    private readonly ILogger<SimpleModelServerInterceptorService> _log = logger;
     private readonly OllamaService _ollama = ollama;
     private readonly PatchEngine _patch = patch;
     private readonly CodeWorkflowService _workflow = workflow;
@@ -65,11 +65,11 @@ public sealed partial class DraftModelInterceptorService(
 
     /// <summary>
     ///     Attempts to intercept a code-writing prompt.
-    ///     Returns <see cref="DraftModelInterceptionResult" /> indicating whether the
+    ///     Returns <see cref="SimpleModelServerInterceptionResult" /> indicating whether the
     ///     draft model handled it, deferred it back to the calling AI, or should be
     ///     passed through as a normal tool call.
     /// </summary>
-    public async Task<DraftModelInterceptionResult> TryInterceptAsync(
+    public async Task<SimpleModelServerInterceptionResult> TryInterceptAsync(
         string userPrompt,
         string workspaceRoot,
         CancellationToken ct = default)
@@ -78,7 +78,7 @@ public sealed partial class DraftModelInterceptorService(
         if (!_workflow.DetectCodeBuildIntent(userPrompt))
         {
             LogNotCodeBuildIntent(_log);
-            return DraftModelInterceptionResult.PassThrough;
+            return SimpleModelServerInterceptionResult.PassThrough;
         }
 
         LogClassifiedAsCodeBuildIntent(_log);
@@ -90,19 +90,19 @@ public sealed partial class DraftModelInterceptorService(
 
         return classification switch
         {
-            DraftClassification.ArchitectureOrDesign => DraftModelInterceptionResult.Deferred(
+            DraftClassification.ArchitectureOrDesign => SimpleModelServerInterceptionResult.Deferred(
                                 "This task appears to require architecture or design decisions. " +
                                 "The draft model cannot make these without guidance.\n\n" +
                                 "Please describe the high-level design, types, and interfaces needed. " +
                                 "Once you provide the skeleton, I can implement the details.",
                                 true),
-            DraftClassification.Uncertain => DraftModelInterceptionResult.Deferred(
+            DraftClassification.Uncertain => SimpleModelServerInterceptionResult.Deferred(
                                 "The local draft model is not confident about this request. " +
                                 "Please provide more detail or implement this directly.\n\n" +
                                 "If you describe the approach or skeleton design, I can help with the implementation.",
                                 false),
             DraftClassification.CodeTask => await TryImplementAsync(userPrompt, workspaceRoot, ct),
-            _ => DraftModelInterceptionResult.PassThrough,
+            _ => SimpleModelServerInterceptionResult.PassThrough,
         };
     }
 
@@ -110,7 +110,7 @@ public sealed partial class DraftModelInterceptorService(
     ///     After the calling AI provides architecture guidance, use the draft model
     ///     to implement the code.
     /// </summary>
-    public async Task<DraftModelInterceptionResult> ImplementWithGuidanceAsync(
+    public async Task<SimpleModelServerInterceptionResult> ImplementWithGuidanceAsync(
         string originalPrompt,
         string aiGuidance,
         string workspaceRoot,
@@ -188,7 +188,7 @@ public sealed partial class DraftModelInterceptorService(
 
     // ── Implementation ────────────────────────────────────────────────────────
 
-    private async Task<DraftModelInterceptionResult> TryImplementAsync(
+    private async Task<SimpleModelServerInterceptionResult> TryImplementAsync(
         string prompt, string workspaceRoot, CancellationToken ct)
     {
         LogAttemptingCodeImplementation(_log);
@@ -223,7 +223,7 @@ public sealed partial class DraftModelInterceptorService(
         catch (Exception ex)
         {
             LogCodeGenerationFailed(_log, ex);
-            return DraftModelInterceptionResult.Deferred(
+            return SimpleModelServerInterceptionResult.Deferred(
                 "The local model encountered an error generating code. " +
                 "Please implement this directly or provide the exact changes needed.",
                 false);
@@ -235,7 +235,7 @@ public sealed partial class DraftModelInterceptorService(
         if (ops.Count == 0)
         {
             LogEmptyOperationsDeferring(_log);
-            return DraftModelInterceptionResult.Deferred(
+            return SimpleModelServerInterceptionResult.Deferred(
                 "The local draft model could not generate confident code changes for this task. " +
                 "Please implement this directly or provide the exact changes.",
                 false);
@@ -265,14 +265,14 @@ public sealed partial class DraftModelInterceptorService(
         int successes = applied.Count(r => r.Success);
         if (successes == 0)
         {
-            return DraftModelInterceptionResult.Deferred(
+            return SimpleModelServerInterceptionResult.Deferred(
                 $"The draft model generated code but none could be applied:\n{string.Join("\n", errors)}\n\n" +
                 "Please implement this directly.",
                 false);
         }
 
         string summary = BuildSummary(applied, errors);
-        return DraftModelInterceptionResult.Implemented(summary, applied);
+        return SimpleModelServerInterceptionResult.Implemented(summary, applied);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -403,14 +403,14 @@ public sealed partial class DraftModelInterceptorService(
 /// <summary>
 ///     Indicates how the draft model interceptor handled a code-writing request.
 /// </summary>
-public sealed class DraftModelInterceptionResult
+public sealed class SimpleModelServerInterceptionResult
 {
     // ── Singleton instances for non-parameterized results ──────────────────────
 
     /// <summary>Singleton: task should pass through as a normal tool call.</summary>
-    public static readonly DraftModelInterceptionResult PassThrough = new() { IsPassThrough = true };
+    public static readonly SimpleModelServerInterceptionResult PassThrough = new() { IsPassThrough = true };
 
-    private DraftModelInterceptionResult()
+    private SimpleModelServerInterceptionResult()
     {
     }
 
@@ -437,9 +437,9 @@ public sealed class DraftModelInterceptionResult
     // ── Factory methods ────────────────────────────────────────────────────────
 
     /// <summary>Creates a deferred result with a summary message.</summary>
-    public static DraftModelInterceptionResult Deferred(string summary, bool needsArchitectureHelp)
+    public static SimpleModelServerInterceptionResult Deferred(string summary, bool needsArchitectureHelp)
     {
-        return new DraftModelInterceptionResult
+        return new SimpleModelServerInterceptionResult
         {
             IsDeferred = true,
             Summary = summary,
@@ -448,9 +448,9 @@ public sealed class DraftModelInterceptionResult
     }
 
     /// <summary>Creates a result indicating the draft model handled the task.</summary>
-    public static DraftModelInterceptionResult Implemented(string summary, IReadOnlyList<PatchResult> patches)
+    public static SimpleModelServerInterceptionResult Implemented(string summary, IReadOnlyList<PatchResult> patches)
     {
-        return new DraftModelInterceptionResult
+        return new SimpleModelServerInterceptionResult
         {
             HandledByDraftModel = true,
             Summary = summary,

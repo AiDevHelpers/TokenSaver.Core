@@ -95,7 +95,7 @@ public class TokenSaverConfig
     ///     to discover the router host and port, and uses those to build <see cref="OllamaUrl" />
     ///     automatically. Set this when DraftModel.Loader is installed as a Windows service.
     /// </summary>
-    public bool DraftModelServiceInstalled { get; set; }
+    public bool SimpleModelServerServiceInstalled { get; set; }
 
     /// <summary>
     ///     Optional override for the per-workspace behavior config file (defaults to

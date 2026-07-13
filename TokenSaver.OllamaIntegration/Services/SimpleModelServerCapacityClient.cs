@@ -23,7 +23,7 @@ public sealed record DraftModelCapacity
 ///     guessing from CPU count. Falls back to a conservative default (1) if the endpoint is
 ///     unreachable — e.g. DraftModel isn't running, or an older build without this endpoint.
 /// </summary>
-public sealed class DraftModelCapacityClient(HttpClient http, ILogger<DraftModelCapacityClient> logger)
+public sealed class SimpleModelServerCapacityClient(HttpClient http, ILogger<SimpleModelServerCapacityClient> logger)
 {
     private DraftModelCapacity? _cached;
 

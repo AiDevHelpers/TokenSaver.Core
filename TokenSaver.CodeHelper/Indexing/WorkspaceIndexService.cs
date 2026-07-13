@@ -44,7 +44,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
 
     private readonly WorkspaceIndexDbAccessor _accessor;
     private readonly AiSummarizationService _aiSummarization;
-    private readonly DraftModelCapacityClient _capacityClient;
+    private readonly SimpleModelServerCapacityClient _capacityClient;
     private readonly CodeHelperConfig _codeConfig;
     private readonly FolderTreeManager _folderTree;
     private readonly GitStalenessService _gitStaleness;
@@ -65,7 +65,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         GitStalenessService gitStaleness,
         FolderTreeManager folderTree,
         AiSummarizationService aiSummarization,
-        DraftModelCapacityClient capacityClient,
+        SimpleModelServerCapacityClient capacityClient,
         ILogger<WorkspaceIndexService> logger)
     {
         _codeConfig = codeConfig.Value;

@@ -40,10 +40,10 @@ public sealed class WorkspaceIndexServiceTests : IDisposable
 
         AiSummarizationService aiSummarization = new(NullLogger<AiSummarizationService>.Instance);
 
-        // Unreachable base address — DraftModelCapacityClient falls back to a conservative
+        // Unreachable base address — SimpleModelServerCapacityClient falls back to a conservative
         // default (1 concurrent summary request) when /api/capacity can't be reached.
         _http = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:1") };
-        DraftModelCapacityClient capacityClient = new(_http, NullLogger<DraftModelCapacityClient>.Instance);
+        SimpleModelServerCapacityClient capacityClient = new(_http, NullLogger<SimpleModelServerCapacityClient>.Instance);
 
         _service = new WorkspaceIndexService(
             Options.Create(new CodeHelperConfig()),
