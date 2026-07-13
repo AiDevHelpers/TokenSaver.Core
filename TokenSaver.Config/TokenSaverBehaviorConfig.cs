@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 
+using TokenSaver.Config.Contracts;
+
 namespace TokenSaver.Config;
 
 /// <summary>
@@ -46,6 +48,13 @@ public sealed record TokenSaverBehaviorConfig
     public LazyContextBehaviorConfig? LazyContext { get; init; }
 
     /// <summary>
+    ///     Client-extension settings (VS Code extension, Visual Studio extension) — see
+    ///     <see cref="ExtensionBehaviorConfig" />.
+    /// </summary>
+    [JsonPropertyName("extension")]
+    public ExtensionBehaviorConfig? Extension { get; init; }
+
+    /// <summary>
     ///     Produces a merged config where each leaf property is taken from
     ///     <paramref name="local" /> when set (non-null), otherwise from
     ///     <paramref name="global" />. Either side, or either nested section, may be null (treated
@@ -61,6 +70,7 @@ public sealed record TokenSaverBehaviorConfig
             Context = ContextBehaviorConfig.Merge(local?.Context, global?.Context),
             AgentConfig = AgentBehaviorConfig.Merge(local?.AgentConfig, global?.AgentConfig),
             LazyContext = LazyContextBehaviorConfig.Merge(local?.LazyContext, global?.LazyContext),
+            Extension = ExtensionBehaviorConfig.Merge(local?.Extension, global?.Extension),
         };
     }
 
@@ -81,6 +91,7 @@ public sealed record TokenSaverBehaviorConfig
         Context = ContextBehaviorConfig.Defaults(),
         AgentConfig = AgentBehaviorConfig.Defaults(),
         LazyContext = LazyContextBehaviorConfig.Defaults(),
+        Extension = ExtensionBehaviorConfig.Defaults(),
     };
 }
 
@@ -857,5 +868,215 @@ public sealed record OpenSourceAgentConfig
         UseFlashAttention = true,
         KvCacheQuantization = "q8_0",
         NumCtx = 8192,
+    };
+}
+
+/// <summary>
+///     Client-extension settings — the union of the VS Code extension's <c>tokenSaver.*</c>
+///     <c>package.json</c> settings and the Visual Studio extension's equivalents. See
+///     <see cref="IExtensionSettings" /> for what each property controls. Both extensions read
+///     this through their own host mechanism rather than this type directly (VS Code's native
+///     settings store is authoritative there; the VS extension mirrors this shape locally rather
+///     than taking a project reference — see <c>TokenSaver.Vs.Extension.Configuration.BehaviorConfig</c>).
+/// </summary>
+public sealed record ExtensionBehaviorConfig : IExtensionSettings
+{
+    [JsonPropertyName("autostart")]
+    public bool? Autostart { get; init; }
+
+    [JsonPropertyName("verboseLogging")]
+    public bool? VerboseLogging { get; init; }
+
+    [JsonPropertyName("autoCodeHelperEnabled")]
+    public bool? AutoCodeHelperEnabled { get; init; }
+
+    [JsonPropertyName("autoInstallPrompt")]
+    public bool? AutoInstallPrompt { get; init; }
+
+    [JsonPropertyName("mcpExePath")]
+    public string? McpExePath { get; init; }
+
+    [JsonPropertyName("server")]
+    public ExtensionServerConfig? Server { get; init; }
+
+    IExtensionServerSettings? IExtensionSettings.Server => Server;
+
+    [JsonPropertyName("dotnet")]
+    public ExtensionDotnetConfig? Dotnet { get; init; }
+
+    IExtensionDotnetSettings? IExtensionSettings.Dotnet => Dotnet;
+
+    [JsonPropertyName("notifications")]
+    public ExtensionNotificationsConfig? Notifications { get; init; }
+
+    IExtensionNotificationsSettings? IExtensionSettings.Notifications => Notifications;
+
+    [JsonPropertyName("draftModel")]
+    public ExtensionDraftModelConfig? DraftModel { get; init; }
+
+    IExtensionDraftModelSettings? IExtensionSettings.DraftModel => DraftModel;
+
+    public static ExtensionBehaviorConfig? Merge(ExtensionBehaviorConfig? local, ExtensionBehaviorConfig? global)
+    {
+        if (local is null && global is null)
+        {
+            return null;
+        }
+
+        return new ExtensionBehaviorConfig
+        {
+            Autostart = local?.Autostart ?? global?.Autostart,
+            VerboseLogging = local?.VerboseLogging ?? global?.VerboseLogging,
+            AutoCodeHelperEnabled = local?.AutoCodeHelperEnabled ?? global?.AutoCodeHelperEnabled,
+            AutoInstallPrompt = local?.AutoInstallPrompt ?? global?.AutoInstallPrompt,
+            McpExePath = local?.McpExePath ?? global?.McpExePath,
+            Server = ExtensionServerConfig.Merge(local?.Server, global?.Server),
+            Dotnet = ExtensionDotnetConfig.Merge(local?.Dotnet, global?.Dotnet),
+            Notifications = ExtensionNotificationsConfig.Merge(local?.Notifications, global?.Notifications),
+            DraftModel = ExtensionDraftModelConfig.Merge(local?.DraftModel, global?.DraftModel),
+        };
+    }
+
+    public static ExtensionBehaviorConfig Defaults() => new()
+    {
+        Autostart = true,
+        VerboseLogging = false,
+        AutoCodeHelperEnabled = false,
+        AutoInstallPrompt = true,
+        McpExePath = "",
+        Server = ExtensionServerConfig.Defaults(),
+        Dotnet = ExtensionDotnetConfig.Defaults(),
+        Notifications = ExtensionNotificationsConfig.Defaults(),
+        DraftModel = ExtensionDraftModelConfig.Defaults(),
+    };
+}
+
+/// <summary>TokenSaver.MCP server lifecycle settings. Overrides <see cref="ExtensionBehaviorConfig.Server" />.</summary>
+public sealed record ExtensionServerConfig : IExtensionServerSettings
+{
+    [JsonPropertyName("port")]
+    public int? Port { get; init; }
+
+    [JsonPropertyName("startTimeout")]
+    public int? StartTimeout { get; init; }
+
+    [JsonPropertyName("idleTimeout")]
+    public int? IdleTimeout { get; init; }
+
+    public static ExtensionServerConfig? Merge(ExtensionServerConfig? local, ExtensionServerConfig? global)
+    {
+        if (local is null && global is null)
+        {
+            return null;
+        }
+
+        return new ExtensionServerConfig
+        {
+            Port = local?.Port ?? global?.Port,
+            StartTimeout = local?.StartTimeout ?? global?.StartTimeout,
+            IdleTimeout = local?.IdleTimeout ?? global?.IdleTimeout,
+        };
+    }
+
+    public static ExtensionServerConfig Defaults() => new()
+    {
+        Port = 11436,
+        StartTimeout = 30,
+        IdleTimeout = 0,
+    };
+}
+
+/// <summary>How the extension launches TokenSaver.MCP directly from source. Overrides <see cref="ExtensionBehaviorConfig.Dotnet" />.</summary>
+public sealed record ExtensionDotnetConfig : IExtensionDotnetSettings
+{
+    [JsonPropertyName("command")]
+    public string? Command { get; init; }
+
+    [JsonPropertyName("projectPath")]
+    public string? ProjectPath { get; init; }
+
+    public static ExtensionDotnetConfig? Merge(ExtensionDotnetConfig? local, ExtensionDotnetConfig? global)
+    {
+        if (local is null && global is null)
+        {
+            return null;
+        }
+
+        return new ExtensionDotnetConfig
+        {
+            Command = local?.Command ?? global?.Command,
+            ProjectPath = local?.ProjectPath ?? global?.ProjectPath,
+        };
+    }
+
+    public static ExtensionDotnetConfig Defaults() => new()
+    {
+        Command = "dotnet",
+        ProjectPath = "",
+    };
+}
+
+/// <summary>Extension notification display settings. Overrides <see cref="ExtensionBehaviorConfig.Notifications" />.</summary>
+public sealed record ExtensionNotificationsConfig : IExtensionNotificationsSettings
+{
+    [JsonPropertyName("enabled")]
+    public bool? Enabled { get; init; }
+
+    [JsonPropertyName("level")]
+    public string? Level { get; init; }
+
+    public static ExtensionNotificationsConfig? Merge(ExtensionNotificationsConfig? local, ExtensionNotificationsConfig? global)
+    {
+        if (local is null && global is null)
+        {
+            return null;
+        }
+
+        return new ExtensionNotificationsConfig
+        {
+            Enabled = local?.Enabled ?? global?.Enabled,
+            Level = local?.Level ?? global?.Level,
+        };
+    }
+
+    public static ExtensionNotificationsConfig Defaults() => new()
+    {
+        Enabled = true,
+        Level = "all",
+    };
+}
+
+/// <summary>DraftModel.Loader router settings. Overrides <see cref="ExtensionBehaviorConfig.DraftModel" />.</summary>
+public sealed record ExtensionDraftModelConfig : IExtensionDraftModelSettings
+{
+    [JsonPropertyName("exePath")]
+    public string? ExePath { get; init; }
+
+    [JsonPropertyName("healthUrl")]
+    public string? HealthUrl { get; init; }
+
+    [JsonPropertyName("startTimeout")]
+    public int? StartTimeout { get; init; }
+
+    public static ExtensionDraftModelConfig? Merge(ExtensionDraftModelConfig? local, ExtensionDraftModelConfig? global)
+    {
+        if (local is null && global is null)
+        {
+            return null;
+        }
+
+        return new ExtensionDraftModelConfig
+        {
+            ExePath = local?.ExePath ?? global?.ExePath,
+            HealthUrl = local?.HealthUrl ?? global?.HealthUrl,
+            StartTimeout = local?.StartTimeout ?? global?.StartTimeout,
+        };
+    }
+
+    public static ExtensionDraftModelConfig Defaults() => new()
+    {
+        ExePath = "",
+        HealthUrl = "http://localhost:11435/health",
+        StartTimeout = 600,
     };
 }
