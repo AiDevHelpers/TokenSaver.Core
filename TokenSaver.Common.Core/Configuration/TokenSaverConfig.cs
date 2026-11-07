@@ -14,7 +14,7 @@ public class OllamaEndpointConfig
     public string Name { get; set; } = "";
 
     // CA1056 suppressed: Url is bound directly from JSON config (appsettings.json /
-    // DraftModel.config.json) via IOptions<T>, and every call site treats it as a plain string
+    // SimpleModelServer.config.json) via IOptions<T>, and every call site treats it as a plain string
     // for concatenation (e.g. $"{Url}/api/tags"). Changing to System.Uri would need config
     // binder validation for every deployment's config file plus touching call sites across
     // EndpointHealthMonitor/EndpointRoutingHandler/OllamaEndpointRegistry — not worth the risk
@@ -78,7 +78,7 @@ public class TokenSaverConfig
     public TimeSpan HealthCheckInterval { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    ///     Workspace root path. When set, this is exported as DRAFTMODEL_WORKSPACE so that
+    ///     Workspace root path. When set, this is exported as SIMPLEMODELSERVER_WORKSPACE so that
     ///     DraftModel.Loader writes its config and .tokensaver/ folder under this path.
     /// </summary>
     public string WorkspaceRoot { get; set; } = "";

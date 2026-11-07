@@ -9,20 +9,20 @@ using System.Text.Json.Nodes;
 namespace TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
-///     Reads and writes agent configurations in the DraftModel.config.json file
+///     Reads and writes agent configurations in the SimpleModelServer.config.json file
 ///     that lives alongside DraftModel.Loader.exe in .tokensaver/ under the workspace.
 ///     This lets the calling AI update system prompts and temperature settings based
 ///     on accuracy test results, then save them back to the workspace for persistence.
 /// </summary>
 public sealed partial class AgentConfigService
 {
-    [LoggerMessage(Level = LogLevel.Warning, Message = "DraftModel config not found at {Path}")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "SimpleModelServer config not found at {Path}")]
     private static partial void LogConfigNotFound(ILogger logger, string path);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "DRAFTMODEL_WORKSPACE is not set; cannot locate {Config}")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "SIMPLEMODELSERVER_WORKSPACE is not set; cannot locate {Config}")]
     private static partial void LogWorkspaceNotSet(ILogger logger, string config);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to parse DraftModel config")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to parse SimpleModelServer config")]
     private static partial void LogParseFailed(ILogger logger, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Updated agent '{Type}' config in {Path}")]
@@ -34,7 +34,7 @@ public sealed partial class AgentConfigService
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to save proposed prompts")]
     private static partial void LogSavePromptsFailed(ILogger logger, Exception ex);
 
-    private const string ConfigFileName = "DraftModel.config.json";
+    private const string ConfigFileName = "SimpleModelServer.config.json";
     private const string TokenSaverDir = ".tokensaver";
 
     private static readonly JsonSerializerOptions PrettyJson = new() { WriteIndented = true };
@@ -51,12 +51,12 @@ public sealed partial class AgentConfigService
     // ── Config path resolution ─────────────────────────────────────────────────
 
     /// <summary>
-    ///     Resolves the DraftModel.config.json path.
-    ///     Priority: DRAFTMODEL_WORKSPACE env var → TokenSaverConfig.WorkspaceRoot → null.
+    ///     Resolves the SimpleModelServer.config.json path.
+    ///     Priority: SIMPLEMODELSERVER_WORKSPACE env var → TokenSaverConfig.WorkspaceRoot → null.
     /// </summary>
     public string? GetConfigPath()
     {
-        string? workspace = Environment.GetEnvironmentVariable("DRAFTMODEL_WORKSPACE")
+        string? workspace = Environment.GetEnvironmentVariable("SIMPLEMODELSERVER_WORKSPACE")
                         ?? (string.IsNullOrWhiteSpace(_config.WorkspaceRoot) ? null : _config.WorkspaceRoot);
 
         if (string.IsNullOrWhiteSpace(workspace))
@@ -71,7 +71,7 @@ public sealed partial class AgentConfigService
     // ── Read ───────────────────────────────────────────────────────────────────
 
     /// <summary>
-    ///     Returns the raw JSON content of DraftModel.config.json, or null if not found.
+    ///     Returns the raw JSON content of SimpleModelServer.config.json, or null if not found.
     /// </summary>
     public async Task<string?> GetRawConfigAsync(CancellationToken ct = default)
     {
@@ -124,7 +124,7 @@ public sealed partial class AgentConfigService
     // ── Write ──────────────────────────────────────────────────────────────────
 
     /// <summary>
-    ///     Updates one agent's config in DraftModel.config.json.
+    ///     Updates one agent's config in SimpleModelServer.config.json.
     ///     Only non-null parameters are changed; existing values are preserved.
     /// </summary>
     /// <returns>
@@ -140,7 +140,7 @@ public sealed partial class AgentConfigService
         string? path = GetConfigPath();
         if (path is null)
         {
-            return (false, "DRAFTMODEL_WORKSPACE is not set. Cannot locate DraftModel.config.json.");
+            return (false, "SIMPLEMODELSERVER_WORKSPACE is not set. Cannot locate SimpleModelServer.config.json.");
         }
 
         if (!File.Exists(path))
@@ -207,13 +207,13 @@ public sealed partial class AgentConfigService
     ///     Saves a complete agent config block to the workspace as a side-file
     ///     (<c>.tokensaver/agent-prompts.json</c>), separate from the main config,
     ///     so the AI's proposed prompt changes can be reviewed and diffed before
-    ///     being applied to DraftModel.config.json.
+    ///     being applied to SimpleModelServer.config.json.
     /// </summary>
     public async Task<(bool Success, string Path)> SaveProposedPromptsAsync(
         Dictionary<string, AgentConfigSnapshot> proposals,
         CancellationToken ct = default)
     {
-        string workspace = Environment.GetEnvironmentVariable("DRAFTMODEL_WORKSPACE")
+        string workspace = Environment.GetEnvironmentVariable("SIMPLEMODELSERVER_WORKSPACE")
                         ?? _config.WorkspaceRoot;
         if (string.IsNullOrWhiteSpace(workspace))
         {
