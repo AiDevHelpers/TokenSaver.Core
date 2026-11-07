@@ -123,7 +123,7 @@ public static class HealthCheckClient
     /// <summary>
     /// Polls a health endpoint and checks if it returns 200 "ok" or 503 "degraded".
     /// </summary>
-    public static async Task<bool> IsDraftModelHealthyAsync(string healthUrl, TimeSpan timeout = default)
+    public static async Task<bool> IsSimpleModelServerHealthyAsync(string healthUrl, TimeSpan timeout = default)
     {
         if (string.IsNullOrWhiteSpace(healthUrl))
             throw new ArgumentException("Health URL cannot be null or empty", nameof(healthUrl));
@@ -228,7 +228,7 @@ public static class HealthCheckClient
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
-            if (await IsDraftModelHealthyAsync(healthUrl, TimeSpan.FromSeconds(2)))
+            if (await IsSimpleModelServerHealthyAsync(healthUrl, TimeSpan.FromSeconds(2)))
                 return true;
             await Task.Delay(2000);
         }

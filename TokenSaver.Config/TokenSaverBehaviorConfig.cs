@@ -911,10 +911,10 @@ public sealed record ExtensionBehaviorConfig : IExtensionSettings
 
     IExtensionNotificationsSettings? IExtensionSettings.Notifications => Notifications;
 
-    [JsonPropertyName("draftModel")]
-    public ExtensionDraftModelConfig? DraftModel { get; init; }
+    [JsonPropertyName("simpleModelServer")]
+    public ExtensionSimpleModelServerConfig? SimpleModelServer { get; init; }
 
-    IExtensionDraftModelSettings? IExtensionSettings.DraftModel => DraftModel;
+    IExtensionSimpleModelServerSettings? IExtensionSettings.SimpleModelServer => SimpleModelServer;
 
     public static ExtensionBehaviorConfig? Merge(ExtensionBehaviorConfig? local, ExtensionBehaviorConfig? global)
     {
@@ -933,7 +933,7 @@ public sealed record ExtensionBehaviorConfig : IExtensionSettings
             Server = ExtensionServerConfig.Merge(local?.Server, global?.Server),
             Dotnet = ExtensionDotnetConfig.Merge(local?.Dotnet, global?.Dotnet),
             Notifications = ExtensionNotificationsConfig.Merge(local?.Notifications, global?.Notifications),
-            DraftModel = ExtensionDraftModelConfig.Merge(local?.DraftModel, global?.DraftModel),
+            SimpleModelServer = ExtensionSimpleModelServerConfig.Merge(local?.SimpleModelServer, global?.SimpleModelServer),
         };
     }
 
@@ -947,7 +947,7 @@ public sealed record ExtensionBehaviorConfig : IExtensionSettings
         Server = ExtensionServerConfig.Defaults(),
         Dotnet = ExtensionDotnetConfig.Defaults(),
         Notifications = ExtensionNotificationsConfig.Defaults(),
-        DraftModel = ExtensionDraftModelConfig.Defaults(),
+        SimpleModelServer = ExtensionSimpleModelServerConfig.Defaults(),
     };
 }
 
@@ -1046,8 +1046,8 @@ public sealed record ExtensionNotificationsConfig : IExtensionNotificationsSetti
     };
 }
 
-/// <summary>DraftModel.Loader router settings. Overrides <see cref="ExtensionBehaviorConfig.DraftModel" />.</summary>
-public sealed record ExtensionDraftModelConfig : IExtensionDraftModelSettings
+/// <summary>DraftModel.Loader router settings. Overrides <see cref="ExtensionBehaviorConfig.SimpleModelServer" />.</summary>
+public sealed record ExtensionSimpleModelServerConfig : IExtensionSimpleModelServerSettings
 {
     [JsonPropertyName("exePath")]
     public string? ExePath { get; init; }
@@ -1058,14 +1058,14 @@ public sealed record ExtensionDraftModelConfig : IExtensionDraftModelSettings
     [JsonPropertyName("startTimeout")]
     public int? StartTimeout { get; init; }
 
-    public static ExtensionDraftModelConfig? Merge(ExtensionDraftModelConfig? local, ExtensionDraftModelConfig? global)
+    public static ExtensionSimpleModelServerConfig? Merge(ExtensionSimpleModelServerConfig? local, ExtensionSimpleModelServerConfig? global)
     {
         if (local is null && global is null)
         {
             return null;
         }
 
-        return new ExtensionDraftModelConfig
+        return new ExtensionSimpleModelServerConfig
         {
             ExePath = local?.ExePath ?? global?.ExePath,
             HealthUrl = local?.HealthUrl ?? global?.HealthUrl,
@@ -1073,7 +1073,7 @@ public sealed record ExtensionDraftModelConfig : IExtensionDraftModelSettings
         };
     }
 
-    public static ExtensionDraftModelConfig Defaults() => new()
+    public static ExtensionSimpleModelServerConfig Defaults() => new()
     {
         ExePath = "",
         HealthUrl = "http://localhost:11435/health",

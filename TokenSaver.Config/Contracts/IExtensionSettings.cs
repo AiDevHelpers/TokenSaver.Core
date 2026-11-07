@@ -37,8 +37,8 @@ public interface IExtensionSettings
     /// <summary>Notification display settings — see <see cref="IExtensionNotificationsSettings" />.</summary>
     IExtensionNotificationsSettings? Notifications { get; }
 
-    /// <summary>DraftModel.Loader router settings — see <see cref="IExtensionDraftModelSettings" />.</summary>
-    IExtensionDraftModelSettings? DraftModel { get; }
+    /// <summary>DraftModel.Loader router settings — see <see cref="IExtensionSimpleModelServerSettings" />.</summary>
+    IExtensionSimpleModelServerSettings? SimpleModelServer { get; }
 }
 
 /// <summary>TokenSaver.MCP server lifecycle settings.</summary>
@@ -75,7 +75,7 @@ public interface IExtensionNotificationsSettings
 }
 
 /// <summary>DraftModel.Loader router settings.</summary>
-public interface IExtensionDraftModelSettings
+public interface IExtensionSimpleModelServerSettings
 {
     /// <summary>Absolute path to DraftModel.Loader.exe. Empty/null defaults to the bundled MSI install location.</summary>
     string? ExePath { get; }
