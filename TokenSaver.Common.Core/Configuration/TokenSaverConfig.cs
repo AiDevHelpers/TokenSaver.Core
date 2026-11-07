@@ -91,13 +91,6 @@ public class TokenSaverConfig
     public bool AutoRegisterProviders { get; set; } = true;
 
     /// <summary>
-    ///     When true, TokenSaver reads %ProgramData%\DraftModel\DraftModel.config.json at startup
-    ///     to discover the router host and port, and uses those to build <see cref="OllamaUrl" />
-    ///     automatically. Set this when DraftModel.Loader is installed as a Windows service.
-    /// </summary>
-    public bool SimpleModelServerServiceInstalled { get; set; }
-
-    /// <summary>
     ///     Optional override for the per-workspace behavior config file (defaults to
     ///     <c>{workspaceRoot}/.tokensaver/config.json</c> — see
     ///     <c>TokenSaver.Config.BehaviorConfigService.LocalConfigPath</c>). When set, exported as
