@@ -125,6 +125,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         if (files.Count > 0)
         {
             await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, files, ct);
+            await RebuildReferencesAsync(ctx, root, ct);
         }
 
         // Low-priority maintenance pass: sweep the whole Files table for rows that no longer
@@ -191,6 +192,56 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             FilesPruned = prunedFiles,
             SymbolsPruned = prunedSymbols
         };
+    }
+
+    /// <summary>
+    ///     Rebuilds every SymbolReferences edge from scratch (C# only; see <see cref="CSharpReferenceGraph" />).
+    ///     Full rebuild keeps edges correct across deletes and renames; cost is one read of each
+    ///     indexed .cs file per call that changed something.
+    /// </summary>
+    private async Task RebuildReferencesAsync(WorkspaceIndexContext ctx, string root, CancellationToken ct)
+    {
+        var typeRows = await _accessor.WithDbLockAsync(() => ctx.Symbols
+            .Include(s => s.File)
+            .Where(s => s.ContainingType == null && s.File != null && s.File.RelativePath.EndsWith(".cs")
+                && (s.Kind == (int)SymbolKind.Class || s.Kind == (int)SymbolKind.Interface
+                    || s.Kind == (int)SymbolKind.Struct || s.Kind == (int)SymbolKind.Enum
+                    || s.Kind == (int)SymbolKind.Delegate))
+            .Select(s => new { s.Id, Path = s.File!.RelativePath, s.Name })
+            .ToListAsync(ct), ct);
+
+        List<CSharpReferenceGraph.TypeNode> types = typeRows
+            .Select(r => new CSharpReferenceGraph.TypeNode(r.Id, r.Path, r.Name))
+            .ToList();
+
+        Dictionary<string, string> contents = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string path in types.Select(t => t.FilePath).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                contents[path] = await File.ReadAllTextAsync(Path.Combine(root, path), ct);
+            }
+            catch (IOException)
+            {
+                // Deleted or locked since indexing — its edges are simply not rebuilt.
+            }
+        }
+
+        List<SymbolReferenceEntity> edges = CSharpReferenceGraph.Build(types, contents);
+
+        await _accessor.WithDbLockAsync(async () =>
+        {
+            try
+            {
+                _ = await ctx.SymbolReferences.ExecuteDeleteAsync(ct);
+                ctx.SymbolReferences.AddRange(edges);
+                _ = await ctx.SaveChangesAsync(ct);
+            }
+            finally
+            {
+                ctx.ChangeTracker.Clear();
+            }
+        }, ct);
     }
 
     private async Task<(int Indexed, int Skipped, int SymbolCount)> IndexFilesAsync(
