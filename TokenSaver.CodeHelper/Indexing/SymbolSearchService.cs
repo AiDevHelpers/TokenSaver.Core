@@ -25,8 +25,9 @@ public sealed class SymbolSearchService
         string name, SymbolKind? kind = null, string? filePath = null,
         string workspaceRoot = "", CancellationToken ct = default)
     {
-        string root = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
-        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
+        string requested = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
+        (string indexRoot, string prefix) = IndexRootResolver.Resolve(requested);
+        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(indexRoot, ct);
         string nameUpper = name.ToUpperInvariant();
 
         return await _accessor.WithDbLockAsync(async () =>
@@ -37,15 +38,18 @@ public sealed class SymbolSearchService
                 query = query.Where(s => s.Kind == (int)kind.Value);
             }
 
-            if (!string.IsNullOrEmpty(filePath))
-            {
-                query = query.Where(s => s.File!.RelativePath.Contains(filePath));
-            }
+            // Name + kind narrow in SQL; scope and file matching run in memory so they can
+            // accept either index-relative or workspace-relative paths.
+            List<SymbolEntity> rows = await query.ToListAsync(ct);
+            IEnumerable<SymbolEntity> scoped = rows.Where(s =>
+                s.File != null
+                && s.File.RelativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                && (string.IsNullOrEmpty(filePath) || IndexRootResolver.MatchesFilePath(s.File.RelativePath, filePath)));
 
-            List<SymbolEntity> rows = await query.Take(50).ToListAsync(ct);
-            return (IReadOnlyList<SymbolEntry>)rows.Select(ToSymbolEntry).ToList();
+            return (IReadOnlyList<SymbolEntry>)scoped.Take(50).Select(ToSymbolEntry).ToList();
         }, ct);
     }
+
 
     /// <summary>
     ///     Returns the number of indexed symbols (functions/types) in a single file, used as the
@@ -69,6 +73,16 @@ public sealed class SymbolSearchService
                 .Include(s => s.File)
                 .CountAsync(s => s.File != null && s.File.RelativePath == normalized, ct),
             ct);
+    }
+
+    /// <summary>Returns the total number of indexed symbols for the workspace (0 when never scanned).</summary>
+    public async Task<int> CountAllSymbolsAsync(string workspaceRoot = "", CancellationToken ct = default)
+    {
+        string requested = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
+        (string indexRoot, _) = IndexRootResolver.Resolve(requested);
+        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(indexRoot, ct);
+
+        return await _accessor.WithDbLockAsync(() => ctx.Symbols.CountAsync(ct), ct);
     }
 
     public async Task<IReadOnlyList<SymbolEntry>> SearchAsync(
