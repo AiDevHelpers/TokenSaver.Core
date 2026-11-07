@@ -79,13 +79,13 @@ public class TokenSaverConfig
 
     /// <summary>
     ///     Workspace root path. When set, this is exported as SIMPLEMODELSERVER_WORKSPACE so that
-    ///     DraftModel.Loader writes its config and .tokensaver/ folder under this path.
+    ///     SimpleModelServer writes its config and .tokensaver/ folder under this path.
     /// </summary>
     public string WorkspaceRoot { get; set; } = "";
 
     /// <summary>
     ///     When true (default), the MCP server automatically registers itself with all detected
-    ///     AI provider configs (Continue, Claude, Cursor, etc.) once DraftModel is fully warm
+    ///     AI provider configs (Continue, Claude, Cursor, etc.) once SimpleModelServer is fully warm
     ///     (models loaded in VRAM). Set to false to disable auto-registration entirely.
     /// </summary>
     public bool AutoRegisterProviders { get; set; } = true;

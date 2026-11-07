@@ -37,7 +37,7 @@ public sealed partial class SimpleModelServerInterceptorService(
     private static partial void LogClassifiedAsCodeBuildIntent(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Draft model classification: {Classification}")]
-    private static partial void LogDraftModelClassification(ILogger logger, DraftClassification classification);
+    private static partial void LogSimpleModelServerClassification(ILogger logger, DraftClassification classification);
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Draft model returned unexpected classification: '{Raw}' — defaulting to UNCERTAIN")]
     private static partial void LogUnexpectedClassification(ILogger logger, string raw);
@@ -54,7 +54,7 @@ public sealed partial class SimpleModelServerInterceptorService(
     [LoggerMessage(Level = LogLevel.Information, Message = "Draft model returned empty operations — deferring to calling AI")]
     private static partial void LogEmptyOperationsDeferring(ILogger logger);
 
-    private const string DraftModelName = "HelperModel";
+    private const string SimpleModelServerName = "HelperModel";
     private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ILogger<SimpleModelServerInterceptorService> _log = logger;
     private readonly OllamaService _ollama = ollama;
@@ -84,9 +84,9 @@ public sealed partial class SimpleModelServerInterceptorService(
         LogClassifiedAsCodeBuildIntent(_log);
 
         // Phase 2: ask the draft model to classify the request
-        DraftClassification classification = await ClassifyWithDraftModelAsync(userPrompt, ct);
+        DraftClassification classification = await ClassifyWithSimpleModelServerAsync(userPrompt, ct);
 
-        LogDraftModelClassification(_log, classification);
+        LogSimpleModelServerClassification(_log, classification);
 
         return classification switch
         {
@@ -132,7 +132,7 @@ public sealed partial class SimpleModelServerInterceptorService(
 
     // ── Classification ────────────────────────────────────────────────────────
 
-    private async Task<DraftClassification> ClassifyWithDraftModelAsync(
+    private async Task<DraftClassification> ClassifyWithSimpleModelServerAsync(
         string prompt, CancellationToken ct)
     {
         string classifyPrompt = $"""
@@ -158,7 +158,7 @@ public sealed partial class SimpleModelServerInterceptorService(
 
         try
         {
-            string response = await _ollama.CallModelAsync(DraftModelName, classifyPrompt, ct);
+            string response = await _ollama.CallModelAsync(SimpleModelServerName, classifyPrompt, ct);
             string trimmed = response.Trim().ToUpperInvariant();
 
             if (trimmed.StartsWith("CODE", StringComparison.Ordinal))
@@ -218,7 +218,7 @@ public sealed partial class SimpleModelServerInterceptorService(
         string codeJson;
         try
         {
-            codeJson = await _ollama.CallModelAsync(DraftModelName, implementPrompt, ct);
+            codeJson = await _ollama.CallModelAsync(SimpleModelServerName, implementPrompt, ct);
         }
         catch (Exception ex)
         {
@@ -417,7 +417,7 @@ public sealed class SimpleModelServerInterceptionResult
     // ── Properties ────────────────────────────────────────────────────────────
 
     /// <summary>True when the draft model successfully implemented the task.</summary>
-    public bool HandledByDraftModel { get; private init; }
+    public bool HandledBySimpleModelServer { get; private init; }
 
     /// <summary>True when the task should be deferred back to the calling AI.</summary>
     public bool IsDeferred { get; private init; }
@@ -452,7 +452,7 @@ public sealed class SimpleModelServerInterceptionResult
     {
         return new SimpleModelServerInterceptionResult
         {
-            HandledByDraftModel = true,
+            HandledBySimpleModelServer = true,
             Summary = summary,
             AppliedPatches = patches
         };

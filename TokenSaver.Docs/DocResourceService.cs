@@ -64,7 +64,7 @@ public sealed class DocResourceService
 
     [McpServerResource(UriTemplate = "docs://tokensaver/accuracy-test", Name = "TokenSaver Accuracy Test",
         MimeType = "text/markdown")]
-    [Description("Accuracy test for the DraftModel chain on a real Python helper task.")]
+    [Description("Accuracy test for the SimpleModelServer chain on a real Python helper task.")]
     public static string GetAccuracyTest()
     {
         return Load("accuracy_test.md");

@@ -4,7 +4,7 @@ This is a TokenSaver Test. It verifies that the TokenSaver MCP performs correctl
 
 ## Goal
 
-Validate the DraftModel draft→main implementation chain on a narrowly scoped Python helper task and ensure the chain is reliable enough for real work.
+Validate the SimpleModelServer draft→main implementation chain on a narrowly scoped Python helper task and ensure the chain is reliable enough for real work.
 
 ## Steps
 

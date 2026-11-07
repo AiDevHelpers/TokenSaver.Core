@@ -11,7 +11,7 @@ using TokenSaver.WslControl.Core;
 /// <summary>
 ///     DI wiring for the WSL provider. The one collaborator this library deliberately does not
 ///     register is <see cref="IWslCommandModel" /> — the host binds that to its local model
-///     (DraftModel/Ollama) so this library carries no dependency on the model transport.
+///     (SimpleModelServer/Ollama) so this library carries no dependency on the model transport.
 /// </summary>
 public static class WslControlServiceCollectionExtensions
 {

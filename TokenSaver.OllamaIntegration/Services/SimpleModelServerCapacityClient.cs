@@ -6,10 +6,10 @@ namespace TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
 ///     Resolved capacity for background inference calls. Deliberately a plain record parsed from
-///     JSON here rather than a shared type from DraftModel.Library — the two stacks are independent
+///     JSON here rather than a shared type from SimpleModelServer.Library — the two stacks are independent
 ///     (see CLAUDE.md), so TokenSaver talks to the router's HTTP API only, never its assemblies.
 /// </summary>
-public sealed record DraftModelCapacity
+public sealed record SimpleModelServerCapacity
 {
     public int? CpuThreads { get; init; }
     public int? GpuLayers { get; init; }
@@ -18,16 +18,16 @@ public sealed record DraftModelCapacity
 }
 
 /// <summary>
-///     Queries DraftModel.Loader's <c>GET /api/capacity</c> endpoint so background indexing (AI
+///     Queries SimpleModelServer's <c>GET /api/capacity</c> endpoint so background indexing (AI
 ///     file/folder summaries) can size its concurrency off this machine's real capacity instead of
 ///     guessing from CPU count. Falls back to a conservative default (1) if the endpoint is
-///     unreachable — e.g. DraftModel isn't running, or an older build without this endpoint.
+///     unreachable — e.g. SimpleModelServer isn't running, or an older build without this endpoint.
 /// </summary>
 public sealed class SimpleModelServerCapacityClient(HttpClient http, ILogger<SimpleModelServerCapacityClient> logger)
 {
-    private DraftModelCapacity? _cached;
+    private SimpleModelServerCapacity? _cached;
 
-    public async Task<DraftModelCapacity> GetCapacityAsync(CancellationToken ct = default)
+    public async Task<SimpleModelServerCapacity> GetCapacityAsync(CancellationToken ct = default)
     {
         if (_cached != null)
         {
@@ -40,7 +40,7 @@ public sealed class SimpleModelServerCapacityClient(HttpClient http, ILogger<Sim
                 await http.GetAsync(new Uri("/api/capacity", UriKind.Relative), ct);
             if (!response.IsSuccessStatusCode)
             {
-                return _cached = new DraftModelCapacity();
+                return _cached = new SimpleModelServerCapacity();
             }
 
             await using Stream stream = await response.Content.ReadAsStreamAsync(ct);
@@ -49,7 +49,7 @@ public sealed class SimpleModelServerCapacityClient(HttpClient http, ILogger<Sim
 
             JsonElement gpu = root.TryGetProperty("gpu", out JsonElement gpuNode) ? gpuNode : default;
 
-            _cached = new DraftModelCapacity
+            _cached = new SimpleModelServerCapacity
             {
                 CpuThreads = root.TryGetProperty("cpuThreads", out JsonElement ct2) && ct2.ValueKind == JsonValueKind.Number
                     ? ct2.GetInt32()
@@ -68,8 +68,8 @@ public sealed class SimpleModelServerCapacityClient(HttpClient http, ILogger<Sim
         }
         catch (Exception ex)
         {
-            logger.LogDebug(ex, "DraftModel /api/capacity unreachable — defaulting to 1 concurrent summary request.");
-            return _cached = new DraftModelCapacity();
+            logger.LogDebug(ex, "SimpleModelServer /api/capacity unreachable — defaulting to 1 concurrent summary request.");
+            return _cached = new SimpleModelServerCapacity();
         }
     }
 }

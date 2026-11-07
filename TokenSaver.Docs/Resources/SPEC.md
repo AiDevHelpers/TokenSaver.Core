@@ -1,6 +1,6 @@
 # TokenSaver MCP
 
-MCP server that exposes the DraftModel to Claude as callable tools.
+MCP server that exposes the SimpleModelServer to Claude as callable tools.
 Enables step-by-step plan execution with context-aware sizing, sub-step chunking, and intelligent clarification.
 
 ## Files
@@ -38,7 +38,7 @@ Enables step-by-step plan execution with context-aware sizing, sub-step chunking
 - `load_plan` pre-calculates how context grows and returns `recommended_num_ctx`.
 - `ensure_models(min_ctx=N)` accepts that recommendation and uses it without requiring a rebuild if the models already exist.
 - Each step is split into sub-steps of around 400 tokens at paragraph boundaries.
-- `run_step` sends a compressed system prompt to the DraftModel, removing example blocks and the `## Context` section.
+- `run_step` sends a compressed system prompt to the SimpleModelServer, removing example blocks and the `## Context` section.
 - If the model reports `context_overflow`, recover by unloading, increasing `num_ctx`, reloading, and retrying.
 
 ## Question handling
@@ -48,7 +48,7 @@ Enables step-by-step plan execution with context-aware sizing, sub-step chunking
 
 ## Model roles
 
-Roles are defined in `config.json`. The DraftModel manages which underlying model handles each role:
+Roles are defined in `config.json`. The SimpleModelServer manages which underlying model handles each role:
 
 - `draft` — fast, lightweight model for initial generation
 - `main` — larger model for refinement and review

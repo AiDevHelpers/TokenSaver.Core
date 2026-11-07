@@ -200,7 +200,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         int indexed = 0;
         int skipped = 0;
         int symbolCount = 0;
-        DraftModelCapacity capacity = await _capacityClient.GetCapacityAsync(ct);
+        SimpleModelServerCapacity capacity = await _capacityClient.GetCapacityAsync(ct);
         using SemaphoreSlim aiThrottle = new(capacity.MaxConcurrentSummaryRequests);
 
         await Parallel.ForEachAsync(files,
@@ -321,7 +321,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             return;
         }
 
-        DraftModelCapacity capacity = await _capacityClient.GetCapacityAsync(ct);
+        SimpleModelServerCapacity capacity = await _capacityClient.GetCapacityAsync(ct);
         using SemaphoreSlim throttle = new(capacity.MaxConcurrentSummaryRequests);
         _ = await IndexOneFileAsync(ctx, root, relPath, lastMod, null, throttle, ct);
         await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, [relPath], ct);

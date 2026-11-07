@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace TokenSaver.OllamaIntegration.Tests;
 
 /// <summary>
-///     In-process substitute for a live Ollama/DraftModel endpoint — intercepts
+///     In-process substitute for a live Ollama/SimpleModelServer endpoint — intercepts
 ///     <c>POST /api/generate</c> and <c>POST /api/embed</c> deterministically so RepoIndexer/
 ///     SemanticSearchService can be exercised end-to-end (including their writes/reads against the
 ///     real Chunks table) without a running model. This is the "fake HTTP transport" pattern, not a

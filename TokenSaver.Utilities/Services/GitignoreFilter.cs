@@ -230,7 +230,7 @@ public sealed class GitignoreFilter
             }
 
             // Non-anchored patterns (no '/' in pattern) match at ANY depth per gitignore spec.
-            // e.g. "bin/" in .gitignore covers "DraftModel/DraftModel.Loader/bin".
+            // e.g. "bin/" in .gitignore covers "SimpleModelServer/SimpleModelServer/bin".
             if (!stripped.Contains('/', StringComparison.Ordinal) &&
                 (normalised.EndsWith("/" + stripped, StringComparison.OrdinalIgnoreCase) ||
                  normalised.Contains("/" + stripped + "/", StringComparison.OrdinalIgnoreCase)))

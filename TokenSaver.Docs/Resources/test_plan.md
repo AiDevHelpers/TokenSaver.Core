@@ -2,7 +2,7 @@
 
 ## Goal
 
-Verify the TokenSaver MCP question-handling flow: one question the DraftModel resolves autonomously, one it must escalate to the user.
+Verify the TokenSaver MCP question-handling flow: one question the SimpleModelServer resolves autonomously, one it must escalate to the user.
 
 These are TokenSaver Tests — run them against the TokenSaver MCP, not any other MCP server or model endpoint.
 

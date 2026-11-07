@@ -6,7 +6,7 @@ public class ContextHelperConfig
 {
     /// <summary>
     ///     Whether the server builds an initial concise-context cache automatically at startup
-    ///     (fire-and-forget, waits for DraftModel to come up first). Default on. False = context
+    ///     (fire-and-forget, waits for SimpleModelServer to come up first). Default on. False = context
     ///     is only ever built when a client explicitly calls BuildConciseContext.
     /// </summary>
     public bool AutoWarmOnStartup { get; set; } = true;

@@ -23,14 +23,14 @@ public static class OllamaRequestOptions
 
 public partial class OllamaService
 {
-    [LoggerMessage(Level = LogLevel.Debug, Message = "DraftModel reachable but no models available yet — retrying in {Interval}s.")]
-    private static partial void LogDraftModelNoModelsYet(ILogger logger, double interval);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "SimpleModelServer reachable but no models available yet — retrying in {Interval}s.")]
+    private static partial void LogSimpleModelServerNoModelsYet(ILogger logger, double interval);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "DraftModel not yet reachable — retrying in {Interval}s.")]
-    private static partial void LogDraftModelNotReachable(ILogger logger, double interval);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "SimpleModelServer not yet reachable — retrying in {Interval}s.")]
+    private static partial void LogSimpleModelServerNotReachable(ILogger logger, double interval);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "DraftModel probe failed — retrying in {Interval}s.")]
-    private static partial void LogDraftModelProbeFailed(ILogger logger, Exception ex, double interval);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "SimpleModelServer probe failed — retrying in {Interval}s.")]
+    private static partial void LogSimpleModelServerProbeFailed(ILogger logger, Exception ex, double interval);
 
     private readonly IPromptAdapter? _adapter;
     private readonly TokenSaverConfig _config;
@@ -109,7 +109,7 @@ public partial class OllamaService
     ///     embedding-capable model to be pulled locally (e.g. <c>nomic-embed-text</c>) — a chat
     ///     model like the configured <see cref="EffectiveModel" /> will not work here.
     ///     Deliberately the current <c>/api/embed</c> API, not the legacy singular
-    ///     <c>/api/embeddings</c> — DraftModel.Loader's router only proxies the former (see
+    ///     <c>/api/embeddings</c> — SimpleModelServer's router only proxies the former (see
     ///     RouterHttpServer's <c>/API/EMBED</c> case); calling the legacy endpoint through the
     ///     router 404s.
     /// </summary>
@@ -203,11 +203,11 @@ public partial class OllamaService
                 {
                     if (status.Running)
                     {
-                        LogDraftModelNoModelsYet(logger, poll.TotalSeconds);
+                        LogSimpleModelServerNoModelsYet(logger, poll.TotalSeconds);
                     }
                     else
                     {
-                        LogDraftModelNotReachable(logger, poll.TotalSeconds);
+                        LogSimpleModelServerNotReachable(logger, poll.TotalSeconds);
                     }
                 }
             }
@@ -215,7 +215,7 @@ public partial class OllamaService
             {
                 if (logger is not null)
                 {
-                    LogDraftModelProbeFailed(logger, ex, poll.TotalSeconds);
+                    LogSimpleModelServerProbeFailed(logger, ex, poll.TotalSeconds);
                 }
             }
 

@@ -8,7 +8,7 @@ namespace TokenSaver.Client.Helpers.Process;
 
 /// <summary>
 /// Manages the lifecycle of a child process (start, monitor, stop).
-/// Used for managing TokenSaver.MCP and DraftModel.Loader processes.
+/// Used for managing TokenSaver.MCP and SimpleModelServer processes.
 /// </summary>
 public sealed class ProcessLifecycleManager : IAsyncDisposable
 {

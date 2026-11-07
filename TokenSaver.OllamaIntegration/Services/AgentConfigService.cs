@@ -10,7 +10,7 @@ namespace TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
 ///     Reads and writes agent configurations in the SimpleModelServer.config.json file
-///     that lives alongside DraftModel.Loader.exe in .tokensaver/ under the workspace.
+///     that lives alongside SimpleModelServer.Server.exe in .tokensaver/ under the workspace.
 ///     This lets the calling AI update system prompts and temperature settings based
 ///     on accuracy test results, then save them back to the workspace for persistence.
 /// </summary>

@@ -2,7 +2,7 @@ namespace TokenSaver.Config.Contracts;
 
 /// <summary>
 ///     Settings surface shared by the TokenSaver client extensions (VS Code, Visual Studio) that
-///     manage the TokenSaver.MCP server and DraftModel.Loader router. This is the union of the
+///     manage the TokenSaver.MCP server and SimpleModelServer router. This is the union of the
 ///     VS Code extension's <c>tokenSaver.*</c> <c>package.json</c> settings and the settings the
 ///     Visual Studio extension needs — one contract so both extensions describe the same knobs,
 ///     even though each reads/writes them through its own host mechanism (VS Code's native
@@ -20,7 +20,7 @@ public interface IExtensionSettings
     bool? AutoCodeHelperEnabled { get; }
 
     /// <summary>
-    ///     On first activation, ask once whether to install the bundled DraftModel/TokenSaver
+    ///     On first activation, ask once whether to install the bundled SimpleModelServer/TokenSaver
     ///     Windows services if they aren't already installed.
     /// </summary>
     bool? AutoInstallPrompt { get; }
@@ -37,7 +37,7 @@ public interface IExtensionSettings
     /// <summary>Notification display settings — see <see cref="IExtensionNotificationsSettings" />.</summary>
     IExtensionNotificationsSettings? Notifications { get; }
 
-    /// <summary>DraftModel.Loader router settings — see <see cref="IExtensionSimpleModelServerSettings" />.</summary>
+    /// <summary>SimpleModelServer router settings — see <see cref="IExtensionSimpleModelServerSettings" />.</summary>
     IExtensionSimpleModelServerSettings? SimpleModelServer { get; }
 }
 
@@ -74,15 +74,15 @@ public interface IExtensionNotificationsSettings
     string? Level { get; }
 }
 
-/// <summary>DraftModel.Loader router settings.</summary>
+/// <summary>SimpleModelServer router settings.</summary>
 public interface IExtensionSimpleModelServerSettings
 {
-    /// <summary>Absolute path to DraftModel.Loader.exe. Empty/null defaults to the bundled MSI install location.</summary>
+    /// <summary>Absolute path to SimpleModelServer.Server.exe. Empty/null defaults to the bundled MSI install location.</summary>
     string? ExePath { get; }
 
-    /// <summary>Health check URL for DraftModel.Loader.</summary>
+    /// <summary>Health check URL for SimpleModelServer.</summary>
     string? HealthUrl { get; }
 
-    /// <summary>Seconds to wait for DraftModel.Loader to become reachable after launch.</summary>
+    /// <summary>Seconds to wait for SimpleModelServer to become reachable after launch.</summary>
     int? StartTimeout { get; }
 }

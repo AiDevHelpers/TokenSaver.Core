@@ -14,7 +14,7 @@ namespace TokenSaver.TokenEconomy.Services;
 ///     approach from the candidate Qwen3-Reranker-0.6B pair benchmarked in
 ///     <c>docs/retrieval-benchmark/run_benchmark.py</c>: that model needs its own inference
 ///     runtime (llama.cpp/transformers) with no existing integration point in this codebase, while
-///     TokenSaver only ever reaches models through Ollama/DraftModel's HTTP API (see CLAUDE.md's
+///     TokenSaver only ever reaches models through Ollama/SimpleModelServer's HTTP API (see CLAUDE.md's
 ///     "External dependency, no build coupling" note). Judged scoring is lower-fidelity than a
 ///     true cross-encoder but requires no new inference infrastructure. Degrades to <c>null</c> on
 ///     any call/parse failure so callers can fall back to embed-only ranking, matching the

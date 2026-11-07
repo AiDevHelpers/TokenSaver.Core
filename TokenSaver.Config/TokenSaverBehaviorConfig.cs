@@ -1046,7 +1046,7 @@ public sealed record ExtensionNotificationsConfig : IExtensionNotificationsSetti
     };
 }
 
-/// <summary>DraftModel.Loader router settings. Overrides <see cref="ExtensionBehaviorConfig.SimpleModelServer" />.</summary>
+/// <summary>SimpleModelServer router settings. Overrides <see cref="ExtensionBehaviorConfig.SimpleModelServer" />.</summary>
 public sealed record ExtensionSimpleModelServerConfig : IExtensionSimpleModelServerSettings
 {
     [JsonPropertyName("exePath")]
