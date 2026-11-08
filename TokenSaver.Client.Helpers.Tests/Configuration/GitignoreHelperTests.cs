@@ -55,7 +55,7 @@ public sealed class GitignoreHelperTests
             Assert.True(File.Exists(gitignorePath));
 
             var content = File.ReadAllText(gitignorePath);
-            Assert.Contains(".tokensaver/", content);
+            Assert.Contains(".tokensaver/", content, StringComparison.Ordinal);
         }
         finally
         {

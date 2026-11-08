@@ -58,6 +58,8 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     // don't need sub-minute detection.
     private static readonly TimeSpan PruneInterval = TimeSpan.FromMinutes(10);
 
+    private const int ReferenceInsertChunk = 5000;
+
     public WorkspaceIndexService(
         IOptions<CodeHelperConfig> codeConfig,
         IEnumerable<ISymbolParser> parsers,
@@ -229,13 +231,21 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
 
         List<SymbolReferenceEntity> edges = CSharpReferenceGraph.Build(types, contents);
 
+        // Insert in small chunks: one huge SaveChanges batch ran past its time limit on a real
+        // workspace (TaskCanceledException after ~2 min) and left the scan failed. Each chunk
+        // releases the DB lock and clears the change tracker.
         await _accessor.WithDbLockAsync(async () =>
         {
             try
             {
                 _ = await ctx.SymbolReferences.ExecuteDeleteAsync(ct);
-                ctx.SymbolReferences.AddRange(edges);
-                _ = await ctx.SaveChangesAsync(ct);
+                for (int i = 0; i < edges.Count; i += ReferenceInsertChunk)
+                {
+                    int count = Math.Min(ReferenceInsertChunk, edges.Count - i);
+                    ctx.SymbolReferences.AddRange(edges.GetRange(i, count));
+                    _ = await ctx.SaveChangesAsync(ct);
+                    ctx.ChangeTracker.Clear();
+                }
             }
             finally
             {
@@ -269,7 +279,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
 
                     long lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(abs)).ToUnixTimeMilliseconds();
                     FileEntity? existing = await GetFileRowAsync(ctx, relPath, innerCt);
-                    if (existing != null && existing.LastModified == lastMod)
+                    if (existing != null && existing.LastModified == lastMod && !await NeedsReindexAsync(ctx, existing, innerCt))
                     {
                         _ = Interlocked.Increment(ref skipped);
                         return;
@@ -367,7 +377,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
 
         long lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(abs)).ToUnixTimeMilliseconds();
         FileEntity? existing = await GetFileRowAsync(ctx, relPath, ct);
-        if (existing != null && existing.LastModified == lastMod)
+        if (existing != null && existing.LastModified == lastMod && !await NeedsReindexAsync(ctx, existing, ct))
         {
             return;
         }
@@ -513,5 +523,23 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     {
         return await _accessor.WithDbLockAsync(
             () => ctx.Files.AsNoTracking().FirstOrDefaultAsync(f => f.RelativePath == relPath, ct), ct);
+    }
+
+    /// <summary>
+    ///     An unchanged file is normally skipped, but a file with a parser that has no symbol rows
+    ///     was indexed while its symbol insert failed (e.g. id collisions before ids included the
+    ///     kind). Those are re-parsed so the failure heals. Files with no parser are never retried.
+    /// </summary>
+    private async Task<bool> NeedsReindexAsync(WorkspaceIndexContext ctx, FileEntity row, CancellationToken ct)
+    {
+        string ext = Path.GetExtension(row.RelativePath);
+        if (!_parsers.Any(p => p.SupportedExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        bool hasSymbols = await _accessor.WithDbLockAsync(
+            () => ctx.Symbols.AnyAsync(s => s.FileId == row.Id, ct), ct);
+        return !hasSymbols;
     }
 }

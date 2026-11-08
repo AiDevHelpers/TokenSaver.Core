@@ -8,13 +8,14 @@ using TokenSaver.TerminalControl.Output;
 
 public sealed class NamedPipeManagerTests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<NamedPipeManager> _logger;
     private readonly NamedPipeManager _manager;
 
     public NamedPipeManagerTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-        _logger = loggerFactory.CreateLogger<NamedPipeManager>();
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+        _logger = _loggerFactory.CreateLogger<NamedPipeManager>();
         _manager = new NamedPipeManager(_logger);
     }
 
@@ -27,8 +28,8 @@ public sealed class NamedPipeManagerTests : IDisposable
         // Assert
         Assert.NotNull(pipeInfo);
         Assert.True(pipeInfo.IsValid);
-        Assert.Contains("TokenSaver-session-1-tab-1-Stdout", pipeInfo.PipeName);
-        Assert.Contains(@"\\.\pipe\", pipeInfo.PipePath);
+        Assert.Contains("TokenSaver-session-1-tab-1-Stdout", pipeInfo.PipeName, StringComparison.Ordinal);
+        Assert.Contains(@"\\.\pipe\", pipeInfo.PipePath, StringComparison.Ordinal);
         Assert.Equal(NamedPipeStreamType.Stdout, pipeInfo.StreamType);
         Assert.True(pipeInfo.CreatedAt <= DateTime.UtcNow);
     }
@@ -42,8 +43,8 @@ public sealed class NamedPipeManagerTests : IDisposable
 
         // Assert
         Assert.NotEqual(stdoutPipe.PipeName, stderrPipe.PipeName);
-        Assert.Contains("Stdout", stdoutPipe.PipeName);
-        Assert.Contains("Stderr", stderrPipe.PipeName);
+        Assert.Contains("Stdout", stdoutPipe.PipeName, StringComparison.Ordinal);
+        Assert.Contains("Stderr", stderrPipe.PipeName, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -156,8 +157,8 @@ public sealed class NamedPipeManagerTests : IDisposable
         var pipeInfo = _manager.CreateOutputPipe("my-session", "my-tab", NamedPipeStreamType.Stdout);
 
         // Assert
-        Assert.StartsWith(@"\\.\pipe\", pipeInfo.PipePath);
-        Assert.EndsWith(pipeInfo.PipeName, pipeInfo.PipePath);
+        Assert.StartsWith(@"\\.\pipe\", pipeInfo.PipePath, StringComparison.Ordinal);
+        Assert.EndsWith(pipeInfo.PipeName, pipeInfo.PipePath, StringComparison.Ordinal);
         Assert.True(pipeInfo.PipePath.Length > @"\\.\pipe\".Length);
     }
 
@@ -201,19 +202,21 @@ public sealed class NamedPipeManagerTests : IDisposable
     public void Dispose()
     {
         _manager?.Dispose();
+        _loggerFactory.Dispose();
     }
 }
 
 public sealed class NamedServerPipeTests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<NamedPipeManager> _logger;
     private NamedServerPipe? _pipe;
     private readonly string _pipeName = $"test-pipe-{Guid.NewGuid():N}";
 
     public NamedServerPipeTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-        _logger = loggerFactory.CreateLogger<NamedPipeManager>();
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+        _logger = _loggerFactory.CreateLogger<NamedPipeManager>();
     }
 
     [Fact]
@@ -256,5 +259,6 @@ public sealed class NamedServerPipeTests : IDisposable
     public void Dispose()
     {
         _pipe?.Dispose();
+        _loggerFactory.Dispose();
     }
 }

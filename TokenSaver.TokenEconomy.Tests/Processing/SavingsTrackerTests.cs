@@ -20,6 +20,7 @@ public class SavingsTrackerTests : IDisposable
 
     public void Dispose()
     {
+        GC.SuppressFinalize(this);
         if (Directory.Exists(_tempWorkspace))
         {
             try

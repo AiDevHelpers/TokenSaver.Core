@@ -16,6 +16,7 @@ public class ContextSegmentationService
     private List<ContextSegment>? _cachedSegments;
     private DateTime _cacheTime = DateTime.MinValue;
     private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(30);
+    private static readonly JsonSerializerOptions SegmentJsonOptions = new() { WriteIndented = true };
 
     public ContextSegmentationService(
         string workspaceRoot,
@@ -193,7 +194,7 @@ public class ContextSegmentationService
         Directory.CreateDirectory(contextDir);
 
         string segmentsPath = Path.Combine(contextDir, "segments.json");
-        string json = JsonSerializer.Serialize(segments, new JsonSerializerOptions { WriteIndented = true });
+        string json = JsonSerializer.Serialize(segments, SegmentJsonOptions);
 
         await File.WriteAllTextAsync(segmentsPath, json, ct);
     }

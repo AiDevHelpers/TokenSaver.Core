@@ -42,7 +42,7 @@ public sealed partial class CSharpSymbolParser : ISymbolParser
 
             yield return new SymbolEntry
             {
-                Id = CodeParserUtils.MakeId(filePath, name, line),
+                Id = CodeParserUtils.MakeId(filePath, kind, name, line),
                 Name = name,
                 FullName = name,
                 Kind = kind,
@@ -70,7 +70,7 @@ public sealed partial class CSharpSymbolParser : ISymbolParser
 
             yield return new SymbolEntry
             {
-                Id = CodeParserUtils.MakeId(filePath, name, line),
+                Id = CodeParserUtils.MakeId(filePath, SymbolKind.Method, name, line),
                 Name = name,
                 FullName = inType != null ? $"{inType}.{name}" : name,
                 Kind = SymbolKind.Method,
@@ -91,7 +91,7 @@ public sealed partial class CSharpSymbolParser : ISymbolParser
 
             yield return new SymbolEntry
             {
-                Id = CodeParserUtils.MakeId(filePath, name, line),
+                Id = CodeParserUtils.MakeId(filePath, SymbolKind.Property, name, line),
                 Name = name,
                 FullName = inType != null ? $"{inType}.{name}" : name,
                 Kind = SymbolKind.Property,
@@ -111,7 +111,7 @@ public sealed partial class CSharpSymbolParser : ISymbolParser
 
             yield return new SymbolEntry
             {
-                Id = CodeParserUtils.MakeId(filePath, name, line),
+                Id = CodeParserUtils.MakeId(filePath, SymbolKind.Field, name, line),
                 Name = name,
                 FullName = inType != null ? $"{inType}.{name}" : name,
                 Kind = SymbolKind.Field,

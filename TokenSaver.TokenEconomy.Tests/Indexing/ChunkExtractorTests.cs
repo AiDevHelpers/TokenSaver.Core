@@ -83,7 +83,7 @@ public class ChunkExtractorTests
         // "Section A" should run through "Subsection A.1" (a deeper heading doesn't end it) and
         // stop right before "Section B" (an equal-level heading does end it).
         CodeChunk sectionA = Assert.Single(chunks, c => c.Name == "Section A");
-        Assert.Contains("Subsection A.1", sectionA.Text);
-        Assert.DoesNotContain("Section B", sectionA.Text);
+        Assert.Contains("Subsection A.1", sectionA.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Section B", sectionA.Text, StringComparison.Ordinal);
     }
 }

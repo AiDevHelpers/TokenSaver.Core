@@ -6,16 +6,22 @@ using TokenSaver.TerminalControl.Contracts;
 using TokenSaver.TerminalControl.Core;
 using TokenSaver.TerminalControl.Models;
 
-public sealed class SessionRegistryTests
+public sealed class SessionRegistryTests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<SessionRegistry> _logger;
-    private readonly ISessionRegistry _registry;
+    private readonly SessionRegistry _registry;
 
     public SessionRegistryTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        _logger = loggerFactory.CreateLogger<SessionRegistry>();
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        _logger = _loggerFactory.CreateLogger<SessionRegistry>();
         _registry = new SessionRegistry(_logger);
+    }
+
+    public void Dispose()
+    {
+        _loggerFactory.Dispose();
     }
 
     [Fact]
@@ -39,7 +45,6 @@ public sealed class SessionRegistryTests
         Assert.Equal(name, metadata.Name);
         Assert.Equal(openedBy, metadata.OpenedBy);
         Assert.True(metadata.IsElevated);
-        Assert.NotNull(metadata.CreatedAt);
         Assert.Equal("Initialized", metadata.CurrentActivity);
     }
 

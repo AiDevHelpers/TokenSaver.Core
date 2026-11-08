@@ -10,7 +10,7 @@ public sealed class ElevatedTerminalSession : ITerminalSession
 {
     private readonly ILogger _logger;
     private readonly NamedPipeManager _pipeManager;
-    private Process? _process;
+    private readonly Process? _process = null;
     private TerminalSessionConfig? _config;
     private TerminalConfiguration _terminalConfig = null!;
 
@@ -26,7 +26,7 @@ public sealed class ElevatedTerminalSession : ITerminalSession
         // Create a logger for the pipe manager if not provided
         if (pipeManager is null)
         {
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddDebug());
+            using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddDebug());
             var pipeLogger = loggerFactory.CreateLogger<NamedPipeManager>();
             _pipeManager = new NamedPipeManager(pipeLogger);
         }
@@ -43,17 +43,23 @@ public sealed class ElevatedTerminalSession : ITerminalSession
 
         try
         {
-            _logger.LogInformation("Initializing elevated terminal session {SessionId}", SessionId);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Initializing elevated terminal session {SessionId}", SessionId);
+            }
 
             // Placeholder: will implement Windows Terminal launching with elevation
             // For now, create a dummy configuration
-            var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddDebug());
+            using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddDebug());
             var discoveryLogger = loggerFactory.CreateLogger<Discovery.TerminalConfigurationDiscovery>();
             var discovery = new Discovery.TerminalConfigurationDiscovery(discoveryLogger);
             _terminalConfig = await discovery.DiscoverConfigurationAsync(ct);
 
             State = TerminalSessionState.Ready;
-            _logger.LogInformation("Elevated terminal session {SessionId} initialized", SessionId);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Elevated terminal session {SessionId} initialized", SessionId);
+            }
         }
         catch (Exception ex)
         {
@@ -70,7 +76,10 @@ public sealed class ElevatedTerminalSession : ITerminalSession
     {
         EnsureReady();
 
-        _logger.LogDebug("Creating tab '{TabName}' in elevated session {SessionId}", tabName, SessionId);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Creating tab '{TabName}' in elevated session {SessionId}", tabName, SessionId);
+        }
 
         var tabId = $"{SessionId}-{Guid.NewGuid():N}".Substring(0, 24);
 
@@ -88,11 +97,14 @@ public sealed class ElevatedTerminalSession : ITerminalSession
             StdoutPipe: stdoutPipe,
             StderrPipe: stderrPipe);
 
-        _logger.LogDebug(
-            "Tab {TabId} created with pipes: stdout={StdoutPipe}, stderr={StderrPipe}",
-            tabId,
-            stdoutPipe.PipePath,
-            stderrPipe.PipePath);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug(
+                "Tab {TabId} created with pipes: stdout={StdoutPipe}, stderr={StderrPipe}",
+                tabId,
+                stdoutPipe.PipePath,
+                stderrPipe.PipePath);
+        }
 
         return Task.FromResult(tabInfo);
     }
@@ -106,7 +118,10 @@ public sealed class ElevatedTerminalSession : ITerminalSession
     {
         EnsureReady();
 
-        _logger.LogDebug("Executing command in tab {TabId}: {Command}", tabId, command);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Executing command in tab {TabId}: {Command}", tabId, command);
+        }
 
         // Placeholder implementation
         await Task.Delay(100, ct);
@@ -121,7 +136,10 @@ public sealed class ElevatedTerminalSession : ITerminalSession
     public Task CloseTabAsync(string tabId, CancellationToken ct = default)
     {
         EnsureReady();
-        _logger.LogDebug("Closing tab {TabId} in elevated session {SessionId}", tabId, SessionId);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Closing tab {TabId} in elevated session {SessionId}", tabId, SessionId);
+        }
 
         // Close associated pipes
         var stdoutPipeName = $"TokenSaver-{SessionId}-{tabId}-Stdout";
@@ -140,7 +158,10 @@ public sealed class ElevatedTerminalSession : ITerminalSession
         }
 
         State = TerminalSessionState.Closing;
-        _logger.LogInformation("Terminating elevated session {SessionId} (Graceful: {Graceful})", SessionId, graceful);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Terminating elevated session {SessionId} (Graceful: {Graceful})", SessionId, graceful);
+        }
 
         try
         {
@@ -163,7 +184,10 @@ public sealed class ElevatedTerminalSession : ITerminalSession
             }
 
             State = TerminalSessionState.Terminated;
-            _logger.LogInformation("Elevated session {SessionId} terminated", SessionId);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Elevated session {SessionId} terminated", SessionId);
+            }
         }
         catch (Exception ex)
         {
@@ -177,7 +201,8 @@ public sealed class ElevatedTerminalSession : ITerminalSession
         }
     }
 
-    public async IAsyncEnumerable<TerminalTabInfo> ListTabsAsync(CancellationToken ct = default)
+    public async IAsyncEnumerable<TerminalTabInfo> ListTabsAsync(
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
         EnsureReady();
         // Placeholder: yield empty list for now

@@ -75,7 +75,7 @@ public sealed partial class GenericSymbolParser : ISymbolParser
                 int line = content[..m.Index].Count(c => c == '\n') + 1;
                 yield return new SymbolEntry
                 {
-                    Id = CodeParserUtils.MakeId(filePath, name, line),
+                    Id = CodeParserUtils.MakeId(filePath, kind, name, line),
                     Name = name,
                     FullName = name,
                     Kind = kind,

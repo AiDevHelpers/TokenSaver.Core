@@ -6,18 +6,25 @@ using TokenSaver.TerminalControl.Core;
 using TokenSaver.TerminalControl.Models;
 using TokenSaver.TerminalControl.Output;
 
-public sealed class WindowsTerminalProviderTests
+public sealed class WindowsTerminalProviderTests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<WindowsTerminalProvider> _logger;
     private readonly NamedPipeManager _pipeManager;
     private readonly WindowsTerminalProvider _provider;
 
     public WindowsTerminalProviderTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-        _logger = loggerFactory.CreateLogger<WindowsTerminalProvider>();
-        _pipeManager = new NamedPipeManager(loggerFactory.CreateLogger<NamedPipeManager>());
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+        _logger = _loggerFactory.CreateLogger<WindowsTerminalProvider>();
+        _pipeManager = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
         _provider = new WindowsTerminalProvider(_pipeManager, _logger);
+    }
+
+    public void Dispose()
+    {
+        _pipeManager.Dispose();
+        _loggerFactory.Dispose();
     }
 
     [Fact]
@@ -40,7 +47,7 @@ public sealed class WindowsTerminalProviderTests
         if (!availability.IsInstalled)
         {
             Assert.NotNull(availability.InstallUrl);
-            Assert.Contains("microsoft.com/store", availability.InstallUrl);
+            Assert.Contains("microsoft.com/store", availability.InstallUrl, StringComparison.Ordinal);
         }
     }
 
@@ -76,18 +83,25 @@ public sealed class WindowsTerminalProviderTests
     }
 }
 
-public sealed class IntegratedTerminalProviderTests
+public sealed class IntegratedTerminalProviderTests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<IntegratedTerminalProvider> _logger;
     private readonly NamedPipeManager _pipeManager;
     private readonly IntegratedTerminalProvider _provider;
 
     public IntegratedTerminalProviderTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-        _logger = loggerFactory.CreateLogger<IntegratedTerminalProvider>();
-        _pipeManager = new NamedPipeManager(loggerFactory.CreateLogger<NamedPipeManager>());
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+        _logger = _loggerFactory.CreateLogger<IntegratedTerminalProvider>();
+        _pipeManager = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
         _provider = new IntegratedTerminalProvider(_pipeManager, _logger);
+    }
+
+    public void Dispose()
+    {
+        _pipeManager.Dispose();
+        _loggerFactory.Dispose();
     }
 
     [Fact]
@@ -128,8 +142,8 @@ public sealed class IntegratedTerminalProviderTests
         var name = _provider.GetDisplayName();
 
         // Assert
-        Assert.Contains("Integrated", name);
-        Assert.Contains("PowerShell", name);
+        Assert.Contains("Integrated", name, StringComparison.Ordinal);
+        Assert.Contains("PowerShell", name, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -140,18 +154,25 @@ public sealed class IntegratedTerminalProviderTests
     }
 }
 
-public sealed class TerminalProviderSelectorTests
+public sealed class TerminalProviderSelectorTests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<TerminalProviderSelector> _logger;
     private readonly NamedPipeManager _pipeManager;
     private readonly TerminalProviderSelector _selector;
 
     public TerminalProviderSelectorTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-        _logger = loggerFactory.CreateLogger<TerminalProviderSelector>();
-        _pipeManager = new NamedPipeManager(loggerFactory.CreateLogger<NamedPipeManager>());
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+        _logger = _loggerFactory.CreateLogger<TerminalProviderSelector>();
+        _pipeManager = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
         _selector = new TerminalProviderSelector(_pipeManager, _logger);
+    }
+
+    public void Dispose()
+    {
+        _pipeManager.Dispose();
+        _loggerFactory.Dispose();
     }
 
     [Fact]
@@ -197,8 +218,8 @@ public sealed class TerminalProviderSelectorTests
 
         // Assert
         Assert.NotEmpty(providers);
-        Assert.True(providers.Any(p => p.Provider == TerminalProviderType.Integrated));
-        Assert.True(providers.Any(p => p.Provider == TerminalProviderType.WindowsTerminal));
+        Assert.Contains(providers, p => p.Provider == TerminalProviderType.Integrated);
+        Assert.Contains(providers, p => p.Provider == TerminalProviderType.WindowsTerminal);
     }
 
     [Fact]
@@ -265,9 +286,9 @@ public sealed class TerminalProviderSelectorTests
         if (wtInstalled == false)
         {
             Assert.NotNull(result.ActionUrl);
-            Assert.Contains("microsoft.com/store", result.ActionUrl);
+            Assert.Contains("microsoft.com/store", result.ActionUrl, StringComparison.Ordinal);
             Assert.NotNull(result.ActionText);
-            Assert.Contains("Microsoft Store", result.ActionText);
+            Assert.Contains("Microsoft Store", result.ActionText, StringComparison.Ordinal);
         }
     }
 
@@ -288,7 +309,7 @@ public sealed class TerminalProviderSelectorTests
         {
             Assert.True(result.HasInstallAction);
             Assert.NotNull(result.ActionUrl);
-            Assert.True(result.ActionUrl.StartsWith("http"));
+            Assert.StartsWith("http", result.ActionUrl);
         }
     }
 

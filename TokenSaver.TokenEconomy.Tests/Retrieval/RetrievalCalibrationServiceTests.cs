@@ -243,7 +243,7 @@ public sealed class RetrievalCalibrationServiceTests : IAsyncLifetime
 
         string outcomesPath = Path.Combine(_tempWorkspace, ".tokensaver", "retrieval-calibration-outcomes.jsonl");
         Assert.True(File.Exists(outcomesPath));
-        Assert.Single(File.ReadAllLines(outcomesPath));
+        Assert.Single(await File.ReadAllLinesAsync(outcomesPath));
     }
 
     [Fact]

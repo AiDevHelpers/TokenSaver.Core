@@ -33,18 +33,18 @@ public sealed partial class ChunkExtractor : IChunkExtractor
 
     public IReadOnlyList<CodeChunk> ExtractChunks(string filePath, string content)
     {
-        string ext = Path.GetExtension(filePath).ToLowerInvariant();
-        if (ext == ".md" || ext == ".markdown")
+        string ext = Path.GetExtension(filePath).ToUpperInvariant();
+        if (ext == ".MD" || ext == ".MARKDOWN")
         {
             return ChunkMarkdown(content);
         }
 
         Regex? boundary = ext switch
         {
-            ".js" or ".jsx" or ".mjs" or ".cjs" => JsBoundary(),
-            ".ts" or ".tsx" => TsBoundary(),
-            ".py" => PyBoundary(),
-            ".cs" => CsBoundary(),
+            ".JS" or ".JSX" or ".MJS" or ".CJS" => JsBoundary(),
+            ".TS" or ".TSX" => TsBoundary(),
+            ".PY" => PyBoundary(),
+            ".CS" => CsBoundary(),
             _ => null
         };
 

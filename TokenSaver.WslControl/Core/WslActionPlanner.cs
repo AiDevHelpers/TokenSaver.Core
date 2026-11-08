@@ -122,18 +122,18 @@ public sealed partial class WslActionPlanner(
             return null;
         }
 
-        WslActionKind kind = (parsed.Action ?? "unknown").Trim().ToLowerInvariant() switch
+        WslActionKind kind = (parsed.Action ?? "unknown").Trim().ToUpperInvariant() switch
         {
-            "run" => WslActionKind.RunCommand,
-            "apt-install" or "apt_install" or "install" => WslActionKind.AptInstall,
-            "apt-update" or "apt_update" or "update" => WslActionKind.AptUpdate,
-            "apt-upgrade" or "apt_upgrade" or "upgrade" => WslActionKind.AptUpgrade,
-            "build" => WslActionKind.Build,
+            "RUN" => WslActionKind.RunCommand,
+            "APT-INSTALL" or "APT_INSTALL" or "INSTALL" => WslActionKind.AptInstall,
+            "APT-UPDATE" or "APT_UPDATE" or "UPDATE" => WslActionKind.AptUpdate,
+            "APT-UPGRADE" or "APT_UPGRADE" or "UPGRADE" => WslActionKind.AptUpgrade,
+            "BUILD" => WslActionKind.Build,
             _ => WslActionKind.Unknown
         };
 
         string command = (parsed.Command ?? string.Empty).Trim();
-        IReadOnlyList<string> packages = parsed.Packages?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList() ?? [];
+        List<string> packages = parsed.Packages?.Where(p => !string.IsNullOrWhiteSpace(p)).ToList() ?? [];
 
         if (kind == WslActionKind.Unknown && command.Length == 0 && packages.Count == 0)
         {

@@ -9,7 +9,7 @@ namespace TokenSaver.Utilities.Tests.Services;
 
 public class TestRunnerServiceTests
 {
-    private readonly ITestRunner _testRunner;
+    private readonly TestRunnerService _testRunner;
 
     public TestRunnerServiceTests()
     {

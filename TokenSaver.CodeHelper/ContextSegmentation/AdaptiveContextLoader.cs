@@ -80,14 +80,17 @@ public class AdaptiveContextLoader
 
         plan.TotalEstimatedTokens = plan.SegmentsToLoad.Sum(s => s.EstimatedTokens);
 
-        _logger.LogInformation(
-            "Adaptive load plan for {TaskType} (confidence {Confidence:F2}): " +
-            "{Count} segments, {Tokens} tokens, recommended: {Recommended}",
-            plan.DetectedTaskType,
-            plan.TaskTypeConfidence,
-            plan.SegmentsToLoad.Count,
-            plan.TotalEstimatedTokens,
-            string.Join(", ", plan.RecommendedSegmentIds));
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Adaptive load plan for {TaskType} (confidence {Confidence:F2}): " +
+                "{Count} segments, {Tokens} tokens, recommended: {Recommended}",
+                plan.DetectedTaskType,
+                plan.TaskTypeConfidence,
+                plan.SegmentsToLoad.Count,
+                plan.TotalEstimatedTokens,
+                string.Join(", ", plan.RecommendedSegmentIds));
+        }
 
         return plan;
     }

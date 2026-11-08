@@ -44,6 +44,26 @@ public sealed class CSharpSymbolParserReproTests
     }
 
     [Fact]
+    public void Parse_SameNameTypeAndPropertyOnOneLine_ProducesDistinctIds()
+    {
+        // The property regex also matches "public interface IFoo {" on one line, so the interface
+        // and a Property share name and line. Their ids must still differ or the insert collides.
+        const string source = """
+            namespace N
+            {
+                public interface IFoo { }
+            }
+            """;
+        var parser = new CSharpSymbolParser();
+
+        List<SymbolEntry> symbols = parser.Parse("Foo.cs", source).ToList();
+
+        Assert.Contains(symbols, s => s.Name == "IFoo" && s.Kind == SymbolKind.Interface);
+        Assert.Contains(symbols, s => s.Name == "IFoo" && s.Kind == SymbolKind.Property);
+        Assert.Equal(symbols.Count, symbols.Select(s => s.Id).Distinct().Count());
+    }
+
+    [Fact]
     public void Parse_CSharpFile_ReturnsMethodsWithContainingType()
     {
         var parser = new CSharpSymbolParser();

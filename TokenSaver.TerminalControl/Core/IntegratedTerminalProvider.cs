@@ -39,15 +39,21 @@ public sealed class IntegratedTerminalProvider : ITerminalProvider
         // For now, reuse the session implementations but with direct process execution
         // Future: create IntegratedTerminalSession for headless-specific implementation
 
-        ITerminalSession session = config.IsElevated
-            ? new ElevatedTerminalSession(
-                Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddDebug())
-                    .CreateLogger<ElevatedTerminalSession>(),
-                _pipeManager)
-            : new StandardTerminalSession(
-                Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddDebug())
-                    .CreateLogger<StandardTerminalSession>(),
+        ITerminalSession session;
+        if (config.IsElevated)
+        {
+            using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddDebug());
+            session = new ElevatedTerminalSession(
+                loggerFactory.CreateLogger<ElevatedTerminalSession>(),
                 _pipeManager);
+        }
+        else
+        {
+            using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddDebug());
+            session = new StandardTerminalSession(
+                loggerFactory.CreateLogger<StandardTerminalSession>(),
+                _pipeManager);
+        }
 
         await session.InitializeAsync(config, ct);
         return session;

@@ -45,6 +45,7 @@ public sealed class ContextPipelineService : IContextPipelineService
     private readonly WorkspaceConfigManager _workspaceConfig;
     private readonly BuildArtifactDetector _artifactDetector;
     private readonly BehaviorConfigService _behaviorConfig;
+    private static readonly string[] LineSeparators = ["\r\n", "\r", "\n"];
 
     public ContextPipelineService(
         WorkspaceIndexDbAccessor accessor,
@@ -86,7 +87,7 @@ public sealed class ContextPipelineService : IContextPipelineService
             return (pipelineResult.ContextText, 0);
         }
 
-        var lines = pipelineResult.ContextText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
+        var lines = pipelineResult.ContextText.Split(LineSeparators, StringSplitOptions.None).ToList();
         var artifacts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // Extract file paths from tokensaver comments: <!-- tokensaver:summary-of:path/to/file -->
@@ -216,7 +217,7 @@ public sealed class ContextPipelineService : IContextPipelineService
         Task<SemanticIndexTriggerStatus> semanticIndexTask = _semanticIndexTrigger.EnsureStartedAsync(root, ct);
 
         await Task.WhenAll(savingsTask, indexWorkspaceTask, semanticIndexTask);
-        SemanticIndexTriggerStatus semanticIndexStatus = semanticIndexTask.Result;
+        SemanticIndexTriggerStatus semanticIndexStatus = await semanticIndexTask;
 
         List<string> generatedFiles = [];
         foreach (string? absFile in ExpandRequestedPaths(root, normalizedRequested).Where(File.Exists))
