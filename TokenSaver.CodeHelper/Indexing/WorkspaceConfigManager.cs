@@ -20,7 +20,7 @@ public sealed partial class WorkspaceConfigManager : IWorkspaceConfigManager
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to load preferences.json; using defaults")]
     private static partial void LogPreferencesLoadFailed(ILogger logger, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "WorkspaceRoot not configured — falling back to CWD '{Cwd}'. Set TOKENSAVER_TokenSaver__WorkspaceRoot to fix .tokensaver placement.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "WorkspaceRoot not configured — falling back to CWD '{Cwd}'. Set TOKENSAVER_WorkspaceRoot to fix .tokensaver placement.")]
     private static partial void LogWorkspaceRootFallback(ILogger logger, string cwd);
 
     private const string PreferencesFile = "preferences.json";
