@@ -15,13 +15,13 @@ public class AccessPattern
     public string TaskType { get; set; } = null!;
 
     /// <summary>Segments loaded during this session.</summary>
-    public string[] SegmentsLoaded { get; set; } = [];
+    public IReadOnlyList<string> SegmentsLoaded { get; set; } = [];
 
     /// <summary>Segments actually referenced/used (via file reads, symbol lookups).</summary>
-    public string[] SegmentsUsed { get; set; } = [];
+    public IReadOnlyList<string> SegmentsUsed { get; set; } = [];
 
     /// <summary>Segments the user modified.</summary>
-    public string[] SegmentsModified { get; set; } = [];
+    public IReadOnlyList<string> SegmentsModified { get; set; } = [];
 
     /// <summary>User's original prompt/task description.</summary>
     public string? TaskDescription { get; set; }
