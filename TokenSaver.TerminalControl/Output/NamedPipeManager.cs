@@ -40,11 +40,14 @@ public sealed class NamedPipeManager : IDisposable
                 var serverPipe = new NamedServerPipe(pipeName, _logger);
                 _pipes[pipeName] = serverPipe;
 
-                _logger.LogDebug(
-                    "Created named pipe {PipeName} for session {SessionId} tab {TabId}",
-                    pipeName,
-                    sessionId,
-                    tabId);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug(
+                        "Created named pipe {PipeName} for session {SessionId} tab {TabId}",
+                        pipeName,
+                        sessionId,
+                        tabId);
+                }
 
                 return pipeInfo;
             }
@@ -68,7 +71,10 @@ public sealed class NamedPipeManager : IDisposable
                 try
                 {
                     serverPipe.Dispose();
-                    _logger.LogDebug("Closed named pipe {PipeName}", pipeName);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                    {
+                        _logger.LogDebug("Closed named pipe {PipeName}", pipeName);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -86,7 +92,7 @@ public sealed class NamedPipeManager : IDisposable
         lock (_syncLock)
         {
             var pipeNames = _pipes.Keys
-                .Where(name => name.Contains($"TokenSaver-{sessionId}-"))
+                .Where(name => name.Contains($"TokenSaver-{sessionId}-", StringComparison.Ordinal))
                 .ToList();
 
             foreach (var pipeName in pipeNames)
@@ -181,10 +187,7 @@ public sealed class NamedPipeManager : IDisposable
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(NamedPipeManager));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 }
 
@@ -245,7 +248,8 @@ public sealed class NamedServerPipe : IDisposable
     {
         try
         {
-            var line = await _reader.ReadLineAsync();
+            var reader = _reader ?? throw new InvalidOperationException("Pipe reader is not initialized.");
+            var line = await reader.ReadLineAsync();
             if (line is not null)
             {
                 // Write to buffer

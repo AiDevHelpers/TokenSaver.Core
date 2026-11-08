@@ -95,7 +95,10 @@ public sealed class TerminalSettingsManager : ITerminalSettingsManager
     {
         try
         {
-            _logger.LogInformation("Applying temporary profile settings to profile {ProfileGuid}", profileGuid);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Applying temporary profile settings to profile {ProfileGuid}", profileGuid);
+            }
 
             _settingsPath = GetTerminalSettingsPath();
             if (!File.Exists(_settingsPath))
@@ -156,7 +159,10 @@ public sealed class TerminalSettingsManager : ITerminalSettingsManager
             }
 
             await File.WriteAllTextAsync(_settingsPath, modifiedSettings.ToJsonString(), ct);
-            _logger.LogInformation("Temporary profile settings applied to profile {ProfileGuid}", profileGuid);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Temporary profile settings applied to profile {ProfileGuid}", profileGuid);
+            }
 
             return new SettingsReverter(this, ct);
         }

@@ -32,11 +32,14 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
             DiscoveredAt: DateTime.UtcNow,
             TerminalVersion: version);
 
-        _logger.LogInformation(
-            "Terminal configuration discovery complete: {ProfileCount} profiles, {WslCount} WSL instances, {ExtensionCount} extensions",
-            profiles.Count,
-            wslInstances.Count,
-            extensions.Count);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Terminal configuration discovery complete: {ProfileCount} profiles, {WslCount} WSL instances, {ExtensionCount} extensions",
+                profiles.Count,
+                wslInstances.Count,
+                extensions.Count);
+        }
 
         return config;
     }
@@ -74,7 +77,10 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
                 }
             }
 
-            _logger.LogDebug("Discovered {ProfileCount} terminal profiles", profiles.Count);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Discovered {ProfileCount} terminal profiles", profiles.Count);
+            }
             return profiles;
         }
         catch (Exception ex)
@@ -111,7 +117,10 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
                 instances = ParseWslOutput(output);
             }
 
-            _logger.LogDebug("Discovered {WslCount} WSL instances", instances.Count);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Discovered {WslCount} WSL instances", instances.Count);
+            }
             return instances;
         }
         catch (Exception ex)
@@ -133,7 +142,10 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
 
             if (!Directory.Exists(extensionsDir))
             {
-                _logger.LogDebug("Terminal extensions directory not found at {Path}", extensionsDir);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug("Terminal extensions directory not found at {Path}", extensionsDir);
+                }
                 return new List<TerminalExtension>();
             }
 
@@ -153,7 +165,10 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
                 }
             }
 
-            _logger.LogDebug("Discovered {ExtensionCount} terminal extensions", extensions.Count);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Discovered {ExtensionCount} terminal extensions", extensions.Count);
+            }
             return extensions;
         }
         catch (Exception ex)
@@ -183,7 +198,10 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
             var output = await process.StandardOutput.ReadLineAsync(ct);
             await process.WaitForExitAsync(ct);
 
-            _logger.LogDebug("Windows Terminal version: {Version}", output);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Windows Terminal version: {Version}", output);
+            }
             return output;
         }
         catch (Exception ex)
@@ -276,7 +294,7 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
 
         foreach (var line in lines.Skip(1)) // Skip header
         {
-            var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length >= 3)
             {
                 var name = parts[0];
@@ -287,7 +305,7 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
                     Name: name,
                     State: state,
                     Version: version,
-                    IsDefault: line.StartsWith("* ")));
+                    IsDefault: line.StartsWith("* ", StringComparison.Ordinal)));
             }
         }
 
