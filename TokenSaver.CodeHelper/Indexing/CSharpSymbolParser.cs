@@ -126,8 +126,8 @@ public sealed partial class CSharpSymbolParser : ISymbolParser
     // ── Type declarations ─────────────────────────────────────────────────────
 
     [GeneratedRegex(
-        @"^\s*(?:(?:public|private|protected|internal|static|sealed|abstract|partial|file)\s+)*" +
-        @"(class|interface|struct|enum|record|delegate)\s+(\w+)(?:<[^>]+>)?",
+        @"^\s*(?:(?:public|private|protected|internal|static|sealed|abstract|partial|file|readonly|ref|unsafe)\s+)*" +
+        @"(class|interface|struct|enum|record|delegate)(?:\s+(?:class|struct))?\s+(\w+)(?:<[^>]+>)?",
         RegexOptions.Multiline)]
     private static partial Regex TypeDeclRegex();
 
