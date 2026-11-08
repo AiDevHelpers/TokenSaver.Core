@@ -16,9 +16,11 @@ namespace TokenSaver.TokenEconomy.Tests;
 ///     pattern as SemanticSearchServiceTests) — no live Ollama. The judged-scoring approach itself
 ///     (LLM prompt vs a real cross-encoder) is explained in RerankService's doc comment.
 /// </summary>
-public sealed class RerankServiceTests
+public sealed class RerankServiceTests : IDisposable
 {
     private readonly FakeOllamaHandler _fakeHandler = new();
+
+    public void Dispose() => _fakeHandler.Dispose();
 
     private RerankService CreateService()
     {

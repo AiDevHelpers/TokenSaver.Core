@@ -10,5 +10,5 @@ namespace TokenSaver.OllamaIntegration.Models.Ollama;
 /// </summary>
 public class OllamaEmbeddingResponse
 {
-    [JsonPropertyName("embeddings")] public float[][] Embeddings { get; set; } = [];
+    [JsonPropertyName("embeddings")] public IReadOnlyList<float[]> Embeddings { get; set; } = [];
 }

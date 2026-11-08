@@ -125,10 +125,9 @@ public static class HealthCheckClient
     /// <summary>
     /// Polls a health endpoint and checks if it returns 200 "ok" or 503 "degraded".
     /// </summary>
-    public static async Task<bool> IsDraftModelHealthyAsync(string healthUrl, TimeSpan timeout = default)
+    public static async Task<bool> IsDraftModelHealthyAsync(Uri healthUrl, TimeSpan timeout = default)
     {
-        if (string.IsNullOrWhiteSpace(healthUrl))
-            throw new ArgumentException("Health URL cannot be null or empty", nameof(healthUrl));
+        ArgumentNullException.ThrowIfNull(healthUrl);
 
         if (timeout == default)
             timeout = TimeSpan.FromSeconds(30);
@@ -136,7 +135,7 @@ public static class HealthCheckClient
         try
         {
             using var cts = new CancellationTokenSource(timeout);
-            var response = await _httpClient.GetAsync(new Uri(healthUrl), HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            var response = await _httpClient.GetAsync(healthUrl, HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
             if (response.StatusCode != HttpStatusCode.OK &&
                 response.StatusCode != HttpStatusCode.ServiceUnavailable)
@@ -221,10 +220,9 @@ public static class HealthCheckClient
     /// <summary>
     /// Waits for a health endpoint to report ok/degraded, polling at 2s intervals.
     /// </summary>
-    public static async Task<bool> WaitForHealthOkAsync(string healthUrl, TimeSpan timeout)
+    public static async Task<bool> WaitForHealthOkAsync(Uri healthUrl, TimeSpan timeout)
     {
-        if (string.IsNullOrWhiteSpace(healthUrl))
-            throw new ArgumentException("Health URL cannot be null or empty", nameof(healthUrl));
+        ArgumentNullException.ThrowIfNull(healthUrl);
 
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
@@ -264,7 +262,7 @@ public sealed class McpHealthReport
     public string? Status { get; set; }
 
     [JsonPropertyName("checks")]
-    public List<McpHealthCheckEntry>? Checks { get; set; }
+    public IReadOnlyList<McpHealthCheckEntry>? Checks { get; set; }
 }
 
 /// <summary>

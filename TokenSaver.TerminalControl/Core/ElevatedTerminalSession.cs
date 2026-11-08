@@ -6,10 +6,11 @@ using TokenSaver.TerminalControl.Contracts;
 using TokenSaver.TerminalControl.Models;
 using TokenSaver.TerminalControl.Output;
 
-public sealed class ElevatedTerminalSession : ITerminalSession
+public sealed class ElevatedTerminalSession : ITerminalSession, IDisposable
 {
     private readonly ILogger _logger;
     private readonly NamedPipeManager _pipeManager;
+    private readonly bool _ownsPipeManager;
     private readonly Process? _process = null;
     private TerminalSessionConfig? _config;
     private TerminalConfiguration _terminalConfig = null!;
@@ -29,10 +30,19 @@ public sealed class ElevatedTerminalSession : ITerminalSession
             using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddDebug());
             var pipeLogger = loggerFactory.CreateLogger<NamedPipeManager>();
             _pipeManager = new NamedPipeManager(pipeLogger);
+            _ownsPipeManager = true;
         }
         else
         {
             _pipeManager = pipeManager;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_ownsPipeManager)
+        {
+            _pipeManager.Dispose();
         }
     }
 
