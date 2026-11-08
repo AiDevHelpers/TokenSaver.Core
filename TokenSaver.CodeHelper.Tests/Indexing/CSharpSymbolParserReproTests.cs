@@ -64,6 +64,26 @@ public sealed class CSharpSymbolParserReproTests
     }
 
     [Fact]
+    public void Parse_ReadonlyRecordStruct_ReturnsNamedType()
+    {
+        const string source = """
+            namespace N;
+
+            public readonly record struct LogRecord(int Seq, string Text);
+            public record struct Point(int X, int Y);
+            public sealed record Person(string Name);
+            """;
+        var parser = new CSharpSymbolParser();
+
+        List<SymbolEntry> symbols = parser.Parse("Records.cs", source).ToList();
+
+        Assert.Contains(symbols, s => s.Name == "LogRecord" && s.Kind == SymbolKind.Class);
+        Assert.Contains(symbols, s => s.Name == "Point" && s.Kind == SymbolKind.Class);
+        Assert.Contains(symbols, s => s.Name == "Person" && s.Kind == SymbolKind.Class);
+        Assert.DoesNotContain(symbols, s => s.Name == "struct");
+    }
+
+    [Fact]
     public void Parse_CSharpFile_ReturnsMethodsWithContainingType()
     {
         var parser = new CSharpSymbolParser();
