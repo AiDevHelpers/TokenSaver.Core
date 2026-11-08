@@ -68,17 +68,20 @@ public sealed class NamedPipeManager : IDisposable
         {
             if (_pipes.Remove(pipeName, out var serverPipe))
             {
-                try
+                using (serverPipe)
                 {
-                    serverPipe.Dispose();
-                    if (_logger.IsEnabled(LogLevel.Debug))
+                    try
                     {
-                        _logger.LogDebug("Closed named pipe {PipeName}", pipeName);
+                        serverPipe.Dispose();
+                        if (_logger.IsEnabled(LogLevel.Debug))
+                        {
+                            _logger.LogDebug("Closed named pipe {PipeName}", pipeName);
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error closing named pipe {PipeName}", pipeName);
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error closing named pipe {PipeName}", pipeName);
+                    }
                 }
             }
         }

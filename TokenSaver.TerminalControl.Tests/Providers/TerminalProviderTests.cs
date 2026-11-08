@@ -309,7 +309,7 @@ public sealed class TerminalProviderSelectorTests : IDisposable
         {
             Assert.True(result.HasInstallAction);
             Assert.NotNull(result.ActionUrl);
-            Assert.StartsWith("http", result.ActionUrl);
+            Assert.StartsWith("http", result.ActionUrl, StringComparison.Ordinal);
         }
     }
 
