@@ -62,5 +62,5 @@ public sealed record TerminalProviderValidationResult(
     string? ActionUrl = null,
     string? ActionText = null)
 {
-    public bool HasInstallAction => !string.IsNullOrEmpty(ActionUrl) && ActionUrl.StartsWith("http");
+    public bool HasInstallAction => !string.IsNullOrEmpty(ActionUrl) && ActionUrl.StartsWith("http", StringComparison.Ordinal);
 }

@@ -21,7 +21,10 @@ public sealed class NamedPipeMonitor : INamedPipeMonitor
         string pipeName,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
-        _logger.LogDebug("Monitoring pipe {PipeName}", pipeName);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Monitoring pipe {PipeName}", pipeName);
+        }
 
         var pipe = _pipeManager.GetPipe(pipeName);
         if (pipe is null)
@@ -38,7 +41,10 @@ public sealed class NamedPipeMonitor : INamedPipeMonitor
 
     public async Task<string> ReadPipeOutputAsync(string pipeName, CancellationToken ct = default)
     {
-        _logger.LogDebug("Reading output from pipe {PipeName}", pipeName);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Reading output from pipe {PipeName}", pipeName);
+        }
 
         try
         {
@@ -54,7 +60,10 @@ public sealed class NamedPipeMonitor : INamedPipeMonitor
     public Task<long> GetPipeSizeAsync(string pipeName, CancellationToken ct = default)
     {
         var size = _pipeManager.GetPipeSize(pipeName);
-        _logger.LogDebug("Pipe {PipeName} size: {Size} bytes", pipeName, size);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Pipe {PipeName} size: {Size} bytes", pipeName, size);
+        }
         return Task.FromResult(size);
     }
 
@@ -63,7 +72,10 @@ public sealed class NamedPipeMonitor : INamedPipeMonitor
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
         var pipeList = pipeNames.ToList();
-        _logger.LogDebug("Monitoring {PipeCount} pipes", pipeList.Count);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Monitoring {PipeCount} pipes", pipeList.Count);
+        }
 
         // Simplified: just yield from each in sequence
         // For true multiplexing, would need more sophisticated task orchestration
@@ -109,7 +121,10 @@ public sealed class NamedPipeMonitor : INamedPipeMonitor
         if (pipe is not null)
         {
             pipe.ClearBuffer();
-            _logger.LogDebug("Cleared pipe {PipeName}", pipeName);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Cleared pipe {PipeName}", pipeName);
+            }
         }
 
         return Task.CompletedTask;
