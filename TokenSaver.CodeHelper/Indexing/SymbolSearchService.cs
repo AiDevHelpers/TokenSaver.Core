@@ -28,11 +28,10 @@ public sealed class SymbolSearchService
         string requested = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
         (string indexRoot, string prefix) = IndexRootResolver.Resolve(requested);
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(indexRoot, ct);
-        string nameUpper = name.ToUpperInvariant();
 
         return await _accessor.WithDbLockAsync(async () =>
         {
-            IQueryable<SymbolEntity> query = ctx.Symbols.Include(s => s.File).Where(s => s.Name.ToUpper() == nameUpper);
+            IQueryable<SymbolEntity> query = ctx.Symbols.Include(s => s.File).Where(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
             if (kind.HasValue)
             {
                 query = query.Where(s => s.Kind == (int)kind.Value);
@@ -95,7 +94,7 @@ public sealed class SymbolSearchService
         return await _accessor.WithDbLockAsync(async () =>
         {
             List<SymbolEntity> rows = await ctx.Symbols.Include(s => s.File)
-                .Where(s => s.Name.ToUpper().Contains(qUpper) || (s.FullName != null && s.FullName.ToUpper().Contains(qUpper)))
+                .Where(s => s.Name.ToUpperInvariant().Contains(qUpper) || (s.FullName != null && s.FullName.ToUpperInvariant().Contains(qUpper)))
                 .Take(limit)
                 .ToListAsync(ct);
             return (IReadOnlyList<SymbolEntry>)rows.Select(ToSymbolEntry).ToList();

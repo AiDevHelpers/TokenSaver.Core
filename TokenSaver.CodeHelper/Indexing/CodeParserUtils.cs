@@ -1,3 +1,5 @@
+using TokenSaver.CodeHelper.Models.Index;
+
 using System.Security.Cryptography;
 using System.Text;
 
@@ -71,14 +73,17 @@ internal static class CodeParserUtils
     }
 
     /// <summary>
-    ///     Stable, non-cryptographic id from file path + symbol name + line number.
+    ///     Stable, non-cryptographic id from file path + symbol kind + name + line number.
+    ///     The kind is part of the identity: a type and a member with the same name on the same
+    ///     line (e.g. `public interface IFoo { }` also matched as a property) must not share an id,
+    ///     or the batch insert fails and the whole file loses its symbols.
     ///     Not used for security purposes — only for deterministic symbol identity in the index.
     ///     Uses SHA-256 (truncated) purely because it's a convenient, collision-resistant,
     ///     built-in stable hash; no cryptographic guarantee is required or relied upon here.
     /// </summary>
-    public static string MakeId(string filePath, string name, int line)
+    public static string MakeId(string filePath, SymbolKind kind, string name, int line)
     {
-        string input = $"{filePath}|{name}|{line}";
+        string input = $"{filePath}|{kind}|{name}|{line}";
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hash)[..16].ToUpperInvariant();
     }

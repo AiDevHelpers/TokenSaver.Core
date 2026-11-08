@@ -40,7 +40,7 @@ public sealed class TestRunnerService : ITestRunner
                         ? $"tests in project '{projectPath}'"
                         : "all tests";
 
-        _logger.LogInformation($"Running {scope}");
+        _logger.LogInformation("Running {Scope}", scope);
 
         // In production, this would send a command to the IDE extension or invoke a test runner
         // The extension would call vscode.testing.runTests() or VS's test runner

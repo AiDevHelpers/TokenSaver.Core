@@ -51,7 +51,7 @@ public sealed class WslProviderTests
         WslCommandResult result = await provider.AptInstallAsync(["ripgrep", "bad;rm -rf"]);
 
         Assert.False(result.Succeeded);
-        Assert.Contains("bad;rm -rf", result.ExecutionError);
+        Assert.Contains("bad;rm -rf", result.ExecutionError, StringComparison.Ordinal);
         Assert.Empty(executor.Calls);
     }
 
@@ -76,9 +76,9 @@ public sealed class WslProviderTests
         Assert.Equal("/bin/bash", executor.Calls[^1].FileName);
         Assert.Equal("-c", executor.Calls[^1].Args[0]);
         string line = executor.LastCommandLine!;
-        Assert.Contains("apt-get install -y 'ripgrep' 'fd-find'", line);
-        Assert.Contains("DEBIAN_FRONTEND=noninteractive", line);
-        Assert.Contains("sudo -n", line);
+        Assert.Contains("apt-get install -y 'ripgrep' 'fd-find'", line, StringComparison.Ordinal);
+        Assert.Contains("DEBIAN_FRONTEND=noninteractive", line, StringComparison.Ordinal);
+        Assert.Contains("sudo -n", line, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -90,8 +90,8 @@ public sealed class WslProviderTests
         _ = await provider.BuildAsync(@"F:\mcp\TokenSaver", "dotnet build");
 
         string line = executor.LastCommandLine!;
-        Assert.Contains("wslpath -a 'F:\\mcp\\TokenSaver'", line);
-        Assert.Contains("&& dotnet build", line);
+        Assert.Contains("wslpath -a 'F:\\mcp\\TokenSaver'", line, StringComparison.Ordinal);
+        Assert.Contains("&& dotnet build", line, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -103,8 +103,8 @@ public sealed class WslProviderTests
         _ = await provider.BuildAsync("/home/rich/proj", "make");
 
         string line = executor.LastCommandLine!;
-        Assert.DoesNotContain("wslpath", line);
-        Assert.Contains("cd '/home/rich/proj' && make", line);
+        Assert.DoesNotContain("wslpath", line, StringComparison.Ordinal);
+        Assert.Contains("cd '/home/rich/proj' && make", line, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -103,7 +103,7 @@ public sealed class CodeIndexFindReproTests : IDisposable
     {
         string dir = Path.Combine(_root, "src", "Services");
         _ = Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "EventPullService.cs"), Source);
+        await File.WriteAllTextAsync(Path.Combine(dir, "EventPullService.cs"), Source);
 
         IndexStats stats = await _index.IndexWorkspaceAsync(_root, CancellationToken.None);
         Assert.True(stats.FilesIndexed >= 1, $"expected the .cs file to be indexed, got {stats.FilesIndexed}");
@@ -122,7 +122,7 @@ public sealed class CodeIndexFindReproTests : IDisposable
         string srcRoot = Path.Combine(_root, "src");
         string dir = Path.Combine(srcRoot, "Services");
         _ = Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "EventPullService.cs"), Source);
+        await File.WriteAllTextAsync(Path.Combine(dir, "EventPullService.cs"), Source);
 
         _ = await _index.IndexWorkspaceAsync(srcRoot, CancellationToken.None);
 
@@ -138,8 +138,8 @@ public sealed class CodeIndexFindReproTests : IDisposable
         string otherDir = Path.Combine(srcRoot, "Other");
         _ = Directory.CreateDirectory(servicesDir);
         _ = Directory.CreateDirectory(otherDir);
-        File.WriteAllText(Path.Combine(servicesDir, "EventPullService.cs"), Source);
-        File.WriteAllText(Path.Combine(otherDir, "Helper.cs"),
+        await File.WriteAllTextAsync(Path.Combine(servicesDir, "EventPullService.cs"), Source);
+        await File.WriteAllTextAsync(Path.Combine(otherDir, "Helper.cs"),
             "namespace VideoForensics.Other;\n\npublic sealed class Helper\n{\n}\n");
 
         _ = await _index.IndexWorkspaceAsync(_root, CancellationToken.None);
@@ -173,10 +173,10 @@ public sealed class CodeIndexFindReproTests : IDisposable
         string otherDir = Path.Combine(srcRoot, "Other");
         _ = Directory.CreateDirectory(servicesDir);
         _ = Directory.CreateDirectory(otherDir);
-        File.WriteAllText(Path.Combine(servicesDir, "EventPullService.cs"),
+        await File.WriteAllTextAsync(Path.Combine(servicesDir, "EventPullService.cs"),
             "using VideoForensics.Other;\n\nnamespace VideoForensics.Services;\n\n" +
             "public sealed class EventPullService\n{\n    private readonly Helper _helper = new();\n}\n");
-        File.WriteAllText(Path.Combine(otherDir, "Helper.cs"),
+        await File.WriteAllTextAsync(Path.Combine(otherDir, "Helper.cs"),
             "namespace VideoForensics.Other;\n\npublic sealed class Helper\n{\n}\n");
 
         _ = await _index.IndexWorkspaceAsync(_root, CancellationToken.None);
@@ -191,12 +191,26 @@ public sealed class CodeIndexFindReproTests : IDisposable
     }
 
     [Fact]
+    public async Task Scan_SameNameTypeAndPropertyOnOneLine_StillIndexesType()
+    {
+        string dir = Path.Combine(_root, "src");
+        _ = Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "Foo.cs"),
+            "namespace N\n{\n    public interface IFoo { }\n}\n");
+
+        _ = await _index.IndexWorkspaceAsync(_root, CancellationToken.None);
+
+        IReadOnlyList<SymbolEntry> found = await _search.FindSymbolAsync("IFoo", SymbolKind.Interface, null, _root, CancellationToken.None);
+        Assert.Single(found);
+    }
+
+    [Fact]
     public async Task ScanWorkspaceRoot_ThenFindWithSubRoot_ReturnsClass()
     {
         string srcRoot = Path.Combine(_root, "src");
         string dir = Path.Combine(srcRoot, "Services");
         _ = Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "EventPullService.cs"), Source);
+        await File.WriteAllTextAsync(Path.Combine(dir, "EventPullService.cs"), Source);
 
         _ = await _index.IndexWorkspaceAsync(_root, CancellationToken.None);
 
@@ -211,7 +225,7 @@ public sealed class CodeIndexFindReproTests : IDisposable
         string srcRoot = Path.Combine(_root, "src");
         string dir = Path.Combine(srcRoot, "Services");
         _ = Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "EventPullService.cs"), Source);
+        await File.WriteAllTextAsync(Path.Combine(dir, "EventPullService.cs"), Source);
 
         _ = await _index.IndexWorkspaceAsync(srcRoot, CancellationToken.None);
 

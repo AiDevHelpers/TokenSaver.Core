@@ -108,7 +108,7 @@ public sealed partial class TypeScriptSymbolParser : ISymbolParser
     {
         return new SymbolEntry
         {
-            Id = CodeParserUtils.MakeId(fp, name, line),
+            Id = CodeParserUtils.MakeId(fp, kind, name, line),
             Name = name,
             FullName = fullName,
             Kind = kind,

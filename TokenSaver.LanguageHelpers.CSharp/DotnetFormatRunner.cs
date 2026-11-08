@@ -157,7 +157,7 @@ public sealed class DotnetFormatRunner(IProcessRunner processRunner, ILogger log
     }
 
     /// <summary>Maps the scoped target files to paths relative to the workspace for <c>--include</c>.</summary>
-    private static IReadOnlyList<string> ResolveIncludes(AnalysisScope scope, string workspace)
+    private static List<string> ResolveIncludes(AnalysisScope scope, string workspace)
     {
         if (scope.Targets.Count == 0)
         {
@@ -233,7 +233,10 @@ public sealed class DotnetFormatRunner(IProcessRunner processRunner, ILogger log
         }
         catch (JsonException ex)
         {
-            logger.LogDebug(ex, "Failed to parse dotnet format report at {Path}", reportPath);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.LogDebug(ex, "Failed to parse dotnet format report at {Path}", reportPath);
+            }
             return ([], []);
         }
         finally
@@ -250,7 +253,10 @@ public sealed class DotnetFormatRunner(IProcessRunner processRunner, ILogger log
         }
         catch (IOException ex)
         {
-            logger.LogDebug(ex, "Could not delete temp report {Path}", path);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.LogDebug(ex, "Could not delete temp report {Path}", path);
+            }
         }
     }
 

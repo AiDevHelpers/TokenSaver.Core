@@ -87,7 +87,10 @@ public sealed class PwshRunner(IProcessRunner processRunner, ILogger logger)
         }
         catch (IOException ex)
         {
-            logger.LogDebug(ex, "Could not delete temp script {Path}", path);
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.LogDebug(ex, "Could not delete temp script {Path}", path);
+            }
         }
     }
 

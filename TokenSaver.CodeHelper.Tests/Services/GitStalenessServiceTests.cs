@@ -99,7 +99,7 @@ public sealed class GitStalenessServiceTests : IDisposable
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(_root, CancellationToken.None);
         string relPath = "file1.txt";
         string abs = Path.Combine(_root, relPath);
-        File.WriteAllText(abs, "hello");
+        await File.WriteAllTextAsync(abs, "hello");
 
         // Simulate an already-indexed row with a stale (older) LastModified than the file's real mtime.
         int rootFolderId = await EnsureRootFolderAsync(ctx);
@@ -127,7 +127,7 @@ public sealed class GitStalenessServiceTests : IDisposable
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(_root, CancellationToken.None);
         string relPath = "file1.txt";
         string abs = Path.Combine(_root, relPath);
-        File.WriteAllText(abs, "hello");
+        await File.WriteAllTextAsync(abs, "hello");
 
         long writeMs = new DateTimeOffset(File.GetLastWriteTimeUtc(abs)).ToUnixTimeMilliseconds();
         int rootFolderId = await EnsureRootFolderAsync(ctx);
@@ -176,7 +176,7 @@ public sealed class GitStalenessServiceTests : IDisposable
     public async Task ResolveTargetFilesAsync_ReturnsNull_WhenNoGitRepoAnywhere()
     {
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(_root, CancellationToken.None);
-        File.WriteAllText(Path.Combine(_root, "a.txt"), "a");
+        await File.WriteAllTextAsync(Path.Combine(_root, "a.txt"), "a");
 
         List<string>? targets = await _service.ResolveTargetFilesAsync(ctx, _root, CancellationToken.None);
 
@@ -189,8 +189,8 @@ public sealed class GitStalenessServiceTests : IDisposable
         RunGit(_root, "init");
         RunGit(_root, "config user.email test@example.com");
         RunGit(_root, "config user.name Test");
-        File.WriteAllText(Path.Combine(_root, "a.txt"), "a");
-        File.WriteAllText(Path.Combine(_root, "b.txt"), "b");
+        await File.WriteAllTextAsync(Path.Combine(_root, "a.txt"), "a");
+        await File.WriteAllTextAsync(Path.Combine(_root, "b.txt"), "b");
         RunGit(_root, "add -A");
         RunGit(_root, "commit -m init");
 
@@ -213,8 +213,8 @@ public sealed class GitStalenessServiceTests : IDisposable
         RunGit(_root, "init");
         RunGit(_root, "config user.email test@example.com");
         RunGit(_root, "config user.name Test");
-        File.WriteAllText(Path.Combine(_root, ".gitignore"), ".tokensaver/\n");
-        File.WriteAllText(Path.Combine(_root, "a.txt"), "a");
+        await File.WriteAllTextAsync(Path.Combine(_root, ".gitignore"), ".tokensaver/\n");
+        await File.WriteAllTextAsync(Path.Combine(_root, "a.txt"), "a");
         RunGit(_root, "add -A");
         RunGit(_root, "commit -m init");
 

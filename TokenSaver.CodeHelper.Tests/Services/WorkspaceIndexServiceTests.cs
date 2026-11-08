@@ -135,7 +135,7 @@ public sealed class WorkspaceIndexServiceTests : IDisposable
             await ctxBefore.Files.AsNoTracking().ToListAsync(),
             f => f.RelativePath == "a.cs");
 
-        File.WriteAllText(Path.Combine(_root, ".gitignore"), "a.cs\n");
+        await File.WriteAllTextAsync(Path.Combine(_root, ".gitignore"), "a.cs\n");
 
         IndexStats reconcileStats = await _service.ReconcileIgnoreChangeAsync(_root, CancellationToken.None);
 

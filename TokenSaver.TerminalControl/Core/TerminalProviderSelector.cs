@@ -18,10 +18,9 @@ public sealed class TerminalProviderSelector : ITerminalProviderSelector
         _pipeManager = pipeManager;
         _logger = logger;
 
-        var wtLogger = LoggerFactory.Create(b => b.AddDebug())
-            .CreateLogger<WindowsTerminalProvider>();
-        var intLogger = LoggerFactory.Create(b => b.AddDebug())
-            .CreateLogger<IntegratedTerminalProvider>();
+        using var loggerFactory = LoggerFactory.Create(b => b.AddDebug());
+        var wtLogger = loggerFactory.CreateLogger<WindowsTerminalProvider>();
+        var intLogger = loggerFactory.CreateLogger<IntegratedTerminalProvider>();
 
         _providers = new Dictionary<TerminalProviderType, ITerminalProvider>
         {
@@ -34,17 +33,23 @@ public sealed class TerminalProviderSelector : ITerminalProviderSelector
         TerminalProviderSelection selection,
         CancellationToken ct = default)
     {
-        _logger.LogInformation(
-            "Selecting terminal provider: Preferred={Preferred}, Fallback={Fallback}",
-            selection.PreferredProvider,
-            selection.FallbackProvider);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Selecting terminal provider: Preferred={Preferred}, Fallback={Fallback}",
+                selection.PreferredProvider,
+                selection.FallbackProvider);
+        }
 
         var preferred = _providers[selection.PreferredProvider];
         var availability = await preferred.CheckAvailabilityAsync(ct);
 
         if (availability.IsAvailable)
         {
-            _logger.LogInformation("Using preferred provider: {Provider}", preferred.GetDisplayName());
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Using preferred provider: {Provider}", preferred.GetDisplayName());
+            }
             return preferred;
         }
 
@@ -65,10 +70,13 @@ public sealed class TerminalProviderSelector : ITerminalProviderSelector
         {
             var availability = await provider.CheckAvailabilityAsync(ct);
             results.Add(availability);
-            _logger.LogDebug(
-                "Provider {Provider}: Available={IsAvailable}",
-                provider.GetDisplayName(),
-                availability.IsAvailable);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug(
+                    "Provider {Provider}: Available={IsAvailable}",
+                    provider.GetDisplayName(),
+                    availability.IsAvailable);
+            }
         }
 
         return results;
@@ -78,16 +86,22 @@ public sealed class TerminalProviderSelector : ITerminalProviderSelector
         TerminalProviderSelection selection,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Validating provider selection: {Provider}", selection.PreferredProvider);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Validating provider selection: {Provider}", selection.PreferredProvider);
+        }
 
         var preferred = _providers[selection.PreferredProvider];
         var availability = await preferred.CheckAvailabilityAsync(ct);
 
         if (availability.IsAvailable)
         {
-            _logger.LogInformation(
-                "Provider validation passed: {Provider} is available",
-                preferred.GetDisplayName());
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Provider validation passed: {Provider} is available",
+                    preferred.GetDisplayName());
+            }
 
             return new TerminalProviderValidationResult(IsValid: true);
         }

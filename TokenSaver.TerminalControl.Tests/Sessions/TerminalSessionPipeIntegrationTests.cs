@@ -6,25 +6,31 @@ using TokenSaver.TerminalControl.Core;
 using TokenSaver.TerminalControl.Models;
 using TokenSaver.TerminalControl.Output;
 
-public sealed class TerminalSessionPipeIntegrationTests
+public sealed class TerminalSessionPipeIntegrationTests : IDisposable
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<NamedPipeManager> _loggerPipeManager;
     private readonly ILogger<ElevatedTerminalSession> _loggerElevated;
     private readonly ILogger<StandardTerminalSession> _loggerStandard;
 
     public TerminalSessionPipeIntegrationTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-        _loggerPipeManager = loggerFactory.CreateLogger<NamedPipeManager>();
-        _loggerElevated = loggerFactory.CreateLogger<ElevatedTerminalSession>();
-        _loggerStandard = loggerFactory.CreateLogger<StandardTerminalSession>();
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+        _loggerPipeManager = _loggerFactory.CreateLogger<NamedPipeManager>();
+        _loggerElevated = _loggerFactory.CreateLogger<ElevatedTerminalSession>();
+        _loggerStandard = _loggerFactory.CreateLogger<StandardTerminalSession>();
+    }
+
+    public void Dispose()
+    {
+        _loggerFactory.Dispose();
     }
 
     [Fact]
     public async Task ElevatedSession_CreateTabAsync_CreatesPipes()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
@@ -44,7 +50,7 @@ public sealed class TerminalSessionPipeIntegrationTests
     public async Task StandardSession_CreateTabAsync_CreatesPipes()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new StandardTerminalSession(_loggerStandard, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
@@ -63,7 +69,7 @@ public sealed class TerminalSessionPipeIntegrationTests
     public async Task CreateTabAsync_PipeNamesContainSessionAndTabId()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
@@ -71,17 +77,19 @@ public sealed class TerminalSessionPipeIntegrationTests
         var tab = await session.CreateTabAsync("my-task");
 
         // Assert
-        Assert.Contains(session.SessionId, tab.StdoutPipe.PipeName);
-        Assert.Contains(tab.TabId, tab.StdoutPipe.PipeName);
-        Assert.Contains("Stdout", tab.StdoutPipe.PipeName);
-        Assert.Contains("Stderr", tab.StderrPipe.PipeName);
+        Assert.NotNull(tab.StdoutPipe);
+        Assert.NotNull(tab.StderrPipe);
+        Assert.Contains(session.SessionId, tab.StdoutPipe.PipeName, StringComparison.Ordinal);
+        Assert.Contains(tab.TabId, tab.StdoutPipe.PipeName, StringComparison.Ordinal);
+        Assert.Contains("Stdout", tab.StdoutPipe.PipeName, StringComparison.Ordinal);
+        Assert.Contains("Stderr", tab.StderrPipe.PipeName, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task CreateTabAsync_PipePathsAreValid()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new StandardTerminalSession(_loggerStandard, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
@@ -89,17 +97,19 @@ public sealed class TerminalSessionPipeIntegrationTests
         var tab = await session.CreateTabAsync("test");
 
         // Assert
-        Assert.StartsWith(@"\\.\pipe\", tab.StdoutPipe.PipePath);
-        Assert.StartsWith(@"\\.\pipe\", tab.StderrPipe.PipePath);
-        Assert.EndsWith(tab.StdoutPipe.PipeName, tab.StdoutPipe.PipePath);
-        Assert.EndsWith(tab.StderrPipe.PipeName, tab.StderrPipe.PipePath);
+        Assert.NotNull(tab.StdoutPipe);
+        Assert.NotNull(tab.StderrPipe);
+        Assert.StartsWith(@"\\.\pipe\", tab.StdoutPipe.PipePath, StringComparison.Ordinal);
+        Assert.StartsWith(@"\\.\pipe\", tab.StderrPipe.PipePath, StringComparison.Ordinal);
+        Assert.EndsWith(tab.StdoutPipe.PipeName, tab.StdoutPipe.PipePath, StringComparison.Ordinal);
+        Assert.EndsWith(tab.StderrPipe.PipeName, tab.StderrPipe.PipePath, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task GetActivePipes_ReturnsBothPipes()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
@@ -117,7 +127,7 @@ public sealed class TerminalSessionPipeIntegrationTests
     public async Task MultipleTabsInSession_HaveSeparatePipes()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new StandardTerminalSession(_loggerStandard, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
@@ -126,6 +136,10 @@ public sealed class TerminalSessionPipeIntegrationTests
         var tab2 = await session.CreateTabAsync("tab-2");
 
         // Assert
+        Assert.NotNull(tab1.StdoutPipe);
+        Assert.NotNull(tab1.StderrPipe);
+        Assert.NotNull(tab2.StdoutPipe);
+        Assert.NotNull(tab2.StderrPipe);
         Assert.NotEqual(tab1.StdoutPipe.PipeName, tab2.StdoutPipe.PipeName);
         Assert.NotEqual(tab1.StderrPipe.PipeName, tab2.StderrPipe.PipeName);
         Assert.NotEqual(tab1.TabId, tab2.TabId);
@@ -135,12 +149,14 @@ public sealed class TerminalSessionPipeIntegrationTests
     public async Task CloseTabAsync_ClosesPipes()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
         var tab = await session.CreateTabAsync("test");
 
         // Verify pipes exist
+        Assert.NotNull(tab.StdoutPipe);
+        Assert.NotNull(tab.StderrPipe);
         Assert.NotNull(pipeManager.GetPipe(tab.StdoutPipe.PipeName));
         Assert.NotNull(pipeManager.GetPipe(tab.StderrPipe.PipeName));
 
@@ -156,13 +172,20 @@ public sealed class TerminalSessionPipeIntegrationTests
     public async Task TerminateAsync_ClosesAllSessionPipes()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new StandardTerminalSession(_loggerStandard, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
         var tab1 = await session.CreateTabAsync("tab-1");
         var tab2 = await session.CreateTabAsync("tab-2");
         var tab3 = await session.CreateTabAsync("tab-3");
+
+        Assert.NotNull(tab1.StdoutPipe);
+        Assert.NotNull(tab1.StderrPipe);
+        Assert.NotNull(tab2.StdoutPipe);
+        Assert.NotNull(tab2.StderrPipe);
+        Assert.NotNull(tab3.StdoutPipe);
+        Assert.NotNull(tab3.StderrPipe);
 
         var pipes = new[] {
             tab1.StdoutPipe.PipeName, tab1.StderrPipe.PipeName,
@@ -190,7 +213,7 @@ public sealed class TerminalSessionPipeIntegrationTests
     public async Task TabInfo_StoresPipeMetadata()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
@@ -198,6 +221,8 @@ public sealed class TerminalSessionPipeIntegrationTests
         var tab = await session.CreateTabAsync("metadata-test");
 
         // Assert
+        Assert.NotNull(tab.StdoutPipe);
+        Assert.NotNull(tab.StderrPipe);
         Assert.Equal(NamedPipeStreamType.Stdout, tab.StdoutPipe.StreamType);
         Assert.Equal(NamedPipeStreamType.Stderr, tab.StderrPipe.StreamType);
         Assert.True(tab.StdoutPipe.CreatedAt <= DateTime.UtcNow);
@@ -208,12 +233,15 @@ public sealed class TerminalSessionPipeIntegrationTests
     public async Task CreateTabAsync_PipeRefIsConsistent()
     {
         // Arrange
-        var pipeManager = new NamedPipeManager(_loggerPipeManager);
+        using var pipeManager = new NamedPipeManager(_loggerPipeManager);
         var session = new StandardTerminalSession(_loggerStandard, pipeManager);
         await session.InitializeAsync(new TerminalSessionConfig());
 
         // Act
         var tab = await session.CreateTabAsync("consistent-test");
+
+        Assert.NotNull(tab.StdoutPipe);
+        Assert.NotNull(tab.StderrPipe);
 
         // The pipe name in the tab should match what the pipe manager has
         var stdout = pipeManager.GetPipe(tab.StdoutPipe.PipeName);

@@ -94,11 +94,11 @@ public sealed class PythonLanguageHelper : LanguageHelperBase
                 return ToolUnavailable<FixResult>("ruff");
             }
 
-            IReadOnlyList<RuffDiagnostic> fixable = before.Diagnostics.Where(d => d.IsFixable).ToList();
+            List<RuffDiagnostic> fixable =before.Diagnostics.Where(d => d.IsFixable).ToList();
 
             RuffCheckOutcome after = await _ruff.CheckAsync(scope, fix: true, ct: ct);
             List<CodeIssue> remaining = after.Diagnostics.Select(d => d.ToCodeIssue()).ToList();
-            IReadOnlyList<string> changed = fixable
+            List<string> changed = fixable
                 .Select(d => d.Filename)
                 .Where(f => f is not null)
                 .Select(f => f!)
@@ -132,7 +132,7 @@ public sealed class PythonLanguageHelper : LanguageHelperBase
             int reordered = before.Diagnostics.Count(d => d.Code is not null && d.Code.StartsWith('I') && d.IsFixable);
 
             RuffCheckOutcome after = await _ruff.CheckAsync(scope, select: ["I", "F401"], fix: true, ct: ct);
-            IReadOnlyList<string> changed = before.Diagnostics
+            List<string> changed = before.Diagnostics
                 .Where(d => d.IsFixable)
                 .Select(d => d.Filename)
                 .Where(f => f is not null)

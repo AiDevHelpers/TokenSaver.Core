@@ -46,11 +46,14 @@ public sealed class SessionRegistry : ISessionRegistry
 
         _activityHistory.TryAdd(sessionId, new List<SessionActivity>());
 
-        _logger.LogInformation(
-            "Session registered: {SessionId} ({Name}) opened by {OpenedBy}",
-            sessionId,
-            name,
-            openedBy);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Session registered: {SessionId} ({Name}) opened by {OpenedBy}",
+                sessionId,
+                name,
+                openedBy);
+        }
 
         return Task.FromResult(metadata);
     }
@@ -108,10 +111,13 @@ public sealed class SessionRegistry : ISessionRegistry
             }
         }
 
-        _logger.LogDebug(
-            "Session {SessionId} activity updated: {Activity}",
-            sessionId,
-            activity);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug(
+                "Session {SessionId} activity updated: {Activity}",
+                sessionId,
+                activity);
+        }
 
         return Task.CompletedTask;
     }
@@ -135,7 +141,10 @@ public sealed class SessionRegistry : ISessionRegistry
             updated.LastActivityAt = DateTime.UtcNow;
             _sessions[sessionId] = updated;
 
-            _logger.LogDebug("Tab {TabId} added to session {SessionId}", tabId, sessionId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Tab {TabId} added to session {SessionId}", tabId, sessionId);
+            }
         }
 
         return Task.CompletedTask;
@@ -159,7 +168,10 @@ public sealed class SessionRegistry : ISessionRegistry
             updated.LastActivityAt = DateTime.UtcNow;
             _sessions[sessionId] = updated;
 
-            _logger.LogDebug("Tab {TabId} removed from session {SessionId}", tabId, sessionId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Tab {TabId} removed from session {SessionId}", tabId, sessionId);
+            }
         }
 
         return Task.CompletedTask;
@@ -169,12 +181,15 @@ public sealed class SessionRegistry : ISessionRegistry
     {
         if (_sessions.TryRemove(sessionId, out var metadata))
         {
-            _logger.LogInformation(
-                "Session closed: {SessionId} ({Name}) opened by {OpenedBy} (duration: {Duration})",
-                sessionId,
-                metadata.Name,
-                metadata.OpenedBy,
-                metadata.ElapsedTime);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Session closed: {SessionId} ({Name}) opened by {OpenedBy} (duration: {Duration})",
+                    sessionId,
+                    metadata.Name,
+                    metadata.OpenedBy,
+                    metadata.ElapsedTime);
+            }
         }
         else
         {
@@ -213,7 +228,10 @@ public sealed class SessionRegistry : ISessionRegistry
                 history.Clear();
             }
 
-            _logger.LogDebug("Activity history cleared for session {SessionId}", sessionId);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Activity history cleared for session {SessionId}", sessionId);
+            }
         }
 
         return Task.CompletedTask;

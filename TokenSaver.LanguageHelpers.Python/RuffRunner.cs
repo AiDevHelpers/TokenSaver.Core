@@ -131,10 +131,10 @@ public sealed class RuffRunner(IProcessRunner processRunner, ILogger logger)
         return files;
     }
 
-    private static IReadOnlyList<string> TargetArgs(AnalysisScope scope) =>
+    private static List<string> TargetArgs(AnalysisScope scope) =>
         scope.Targets.Count > 0 ? scope.Targets.ToList() : ["."];
 
-    private IReadOnlyList<RuffDiagnostic> ParseDiagnostics(string stdout)
+    private List<RuffDiagnostic> ParseDiagnostics(string stdout)
     {
         string trimmed = stdout.Trim();
         if (trimmed.Length == 0 || trimmed[0] != '[')

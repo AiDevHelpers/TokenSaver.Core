@@ -26,6 +26,8 @@ public static class HealthCheckClient
         Timeout = Timeout.InfiniteTimeSpan,
     };
 
+    private static readonly JsonSerializerOptions _healthJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
     /// <summary>
     /// Checks if a port is open and accepting connections on the specified host.
     /// Supports both IPv4 and IPv6.
@@ -101,7 +103,7 @@ public static class HealthCheckClient
         try
         {
             using var cts = new CancellationTokenSource(timeout);
-            var url = $"http://{host}:{port}/mcp";
+            var url = new Uri($"http://{host}:{port}/mcp");
             var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token);
             return response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.MethodNotAllowed;
         }
@@ -134,7 +136,7 @@ public static class HealthCheckClient
         try
         {
             using var cts = new CancellationTokenSource(timeout);
-            var response = await _httpClient.GetAsync(healthUrl, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            var response = await _httpClient.GetAsync(new Uri(healthUrl), HttpCompletionOption.ResponseHeadersRead, cts.Token);
 
             if (response.StatusCode != HttpStatusCode.OK &&
                 response.StatusCode != HttpStatusCode.ServiceUnavailable)
@@ -191,12 +193,11 @@ public static class HealthCheckClient
         try
         {
             using var cts = new CancellationTokenSource(timeout);
-            var url = $"http://{host}:{port}/health";
+            var url = new Uri($"http://{host}:{port}/health");
             var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseContentRead, cts.Token);
             var json = await response.Content.ReadAsStringAsync(cts.Token);
 
-            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            return JsonSerializer.Deserialize<McpHealthReport>(json, options);
+            return JsonSerializer.Deserialize<McpHealthReport>(json, _healthJsonOptions);
         }
         catch (OperationCanceledException)
         {

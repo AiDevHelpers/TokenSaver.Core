@@ -53,7 +53,10 @@ public sealed class TerminalSessionManager : ITerminalSessionManager, IAsyncDisp
     {
         ThrowIfDisposed();
 
-        _logger.LogInformation("Creating new terminal session (Elevated: {Elevated})", config.IsElevated);
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Creating new terminal session (Elevated: {Elevated})", config.IsElevated);
+        }
 
         ITerminalSession session = config.IsElevated
             ? new ElevatedTerminalSession(_logger)
@@ -77,9 +80,12 @@ public sealed class TerminalSessionManager : ITerminalSessionManager, IAsyncDisp
                 "Session initialized",
                 ct: ct);
 
-            _logger.LogInformation(
-                "Terminal session created successfully (SessionId: {SessionId})",
-                session.SessionId);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Terminal session created successfully (SessionId: {SessionId})",
+                    session.SessionId);
+            }
 
             return session;
         }
@@ -109,16 +115,22 @@ public sealed class TerminalSessionManager : ITerminalSessionManager, IAsyncDisp
 
         if (_activeSessions.TryRemove(sessionId, out var session))
         {
-            _logger.LogInformation(
-                "Closing terminal session {SessionId} (Graceful: {Graceful})",
-                sessionId,
-                graceful);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Closing terminal session {SessionId} (Graceful: {Graceful})",
+                    sessionId,
+                    graceful);
+            }
 
             try
             {
                 await session.TerminateAsync(graceful, ct);
                 await _sessionRegistry.CloseSessionAsync(sessionId, ct);
-                _logger.LogInformation("Terminal session {SessionId} closed successfully", sessionId);
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation("Terminal session {SessionId} closed successfully", sessionId);
+                }
             }
             catch (Exception ex)
             {
@@ -153,9 +165,6 @@ public sealed class TerminalSessionManager : ITerminalSessionManager, IAsyncDisp
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(TerminalSessionManager));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 }

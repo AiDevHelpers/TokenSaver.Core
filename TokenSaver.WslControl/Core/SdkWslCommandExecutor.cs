@@ -47,7 +47,7 @@ public sealed partial class SdkWslCommandExecutor(ILogger<SdkWslCommandExecutor>
 
         try
         {
-            Command command = new(distro, fileName, args, options);
+            using Command command = new(distro, fileName, args, options);
             Task<CommandResult> exec = command.StartAndGetResultsAsync();
 
             CommandResult result;

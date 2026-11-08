@@ -9,6 +9,8 @@ namespace TokenSaver.Client.Helpers.Configuration;
 /// </summary>
 public static class GitignoreHelper
 {
+    private static readonly string[] LineSeparators = { "\r\n", "\r", "\n" };
+
     /// <summary>
     /// Checks if .tokensaver/ is already covered by .gitignore in the workspace.
     /// </summary>
@@ -41,7 +43,7 @@ public static class GitignoreHelper
         {
             File.WriteAllText(gitignorePath, ".tokensaver/\n");
         }
-        else if (!existing.EndsWith("\n"))
+        else if (!existing.EndsWith('\n'))
         {
             File.AppendAllText(gitignorePath, "\n.tokensaver/\n");
         }
@@ -56,24 +58,24 @@ public static class GitignoreHelper
     /// </summary>
     private static bool IsEntryCovered(string gitignoreContent, string entry)
     {
-        var normalized = entry.ToLowerInvariant();
+        var normalized = entry;
 
-        foreach (var rawLine in gitignoreContent.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+        foreach (var rawLine in gitignoreContent.Split(LineSeparators, StringSplitOptions.None))
         {
             var line = rawLine.Trim();
 
             // Skip comments and empty lines
-            if (string.IsNullOrEmpty(line) || line.StartsWith("#") || line.StartsWith("!"))
+            if (string.IsNullOrEmpty(line) || line.StartsWith('#') || line.StartsWith('!'))
                 continue;
 
             // Normalize the pattern by removing leading/trailing slashes
-            var stripped = line.Replace("/", "");
+            var stripped = line.Replace("/", "", StringComparison.Ordinal);
             if (string.IsNullOrEmpty(stripped))
                 continue;
 
-            // Check if this pattern matches the entry
-            if (normalized == stripped.ToLowerInvariant() ||
-                normalized.StartsWith(stripped.ToLowerInvariant() + "/"))
+            // Check if this pattern matches the entry (case-insensitive)
+            if (string.Equals(normalized, stripped, StringComparison.OrdinalIgnoreCase) ||
+                normalized.StartsWith(stripped + "/", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

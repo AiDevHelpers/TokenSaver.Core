@@ -64,10 +64,10 @@ public sealed class RerankService(OllamaService ollama, ModelRouteResolver model
         return sb.ToString();
     }
 
-    private static IReadOnlyList<double>? ParseScores(string response, int expectedCount)
+    private static double[]? ParseScores(string response, int expectedCount)
     {
         string trimmed = response.Trim();
-        int start = trimmed.IndexOf('[');
+        int start = trimmed.IndexOf('[', StringComparison.Ordinal);
         int end = trimmed.LastIndexOf(']');
         if (start < 0 || end <= start)
         {

@@ -46,10 +46,13 @@ public sealed class WindowsTerminalProvider : ITerminalProvider
 
                 var version = await GetWindowsTerminalVersionAsync(ct);
 
-                _logger.LogInformation(
-                    "Windows Terminal detected: {Path}, Version: {Version}",
-                    wtPath,
-                    version ?? "Unknown");
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation(
+                        "Windows Terminal detected: {Path}, Version: {Version}",
+                        wtPath,
+                        version ?? "Unknown");
+                }
 
                 return new TerminalProviderAvailability(
                     Provider: TerminalProviderType.WindowsTerminal,
@@ -84,15 +87,21 @@ public sealed class WindowsTerminalProvider : ITerminalProvider
         CancellationToken ct = default)
     {
         // For now, use elevated/standard session implementations
-        ITerminalSession session = config.IsElevated
-            ? new ElevatedTerminalSession(
-                Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddDebug())
-                    .CreateLogger<ElevatedTerminalSession>(),
-                _pipeManager)
-            : new StandardTerminalSession(
-                Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddDebug())
-                    .CreateLogger<StandardTerminalSession>(),
+        ITerminalSession session;
+        if (config.IsElevated)
+        {
+            using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddDebug());
+            session = new ElevatedTerminalSession(
+                loggerFactory.CreateLogger<ElevatedTerminalSession>(),
                 _pipeManager);
+        }
+        else
+        {
+            using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(b => b.AddDebug());
+            session = new StandardTerminalSession(
+                loggerFactory.CreateLogger<StandardTerminalSession>(),
+                _pipeManager);
+        }
 
         await session.InitializeAsync(config, ct);
         return session;

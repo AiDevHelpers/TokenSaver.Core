@@ -105,7 +105,7 @@ public sealed class CSharpLanguageHelper : LanguageHelperBase
             // First surface unfixable parse errors (Roslyn cannot invent missing tokens),
             // then apply the code-style fixers dotnet format can automate.
             SyntaxCheckReport check = await RunSyntaxCheckerAsync(scope, ct);
-            IReadOnlyList<CodeIssue> parseErrors = check.Issues.Where(i => i.Severity == CodeIssueSeverity.Error).ToList();
+            List<CodeIssue> parseErrors = check.Issues.Where(i => i.Severity == CodeIssueSeverity.Error).ToList();
 
             DotnetFormatOutcome outcome = await _format.RunAsync("style", scope, verifyOnly: false, severity: "info", ct: ct);
             if (!outcome.ToolAvailable)
@@ -242,7 +242,7 @@ public sealed class CSharpLanguageHelper : LanguageHelperBase
         return new CodeIssue
         {
             Severity = diag.Severity == DiagnosticSeverity.Error ? CodeIssueSeverity.Error : CodeIssueSeverity.Warning,
-            Message = diag.GetMessage(),
+            Message = diag.GetMessage(CultureInfo.InvariantCulture),
             RuleId = diag.Id,
             Location = new CodeLocation
             {
