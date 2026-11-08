@@ -97,7 +97,7 @@ public sealed class DotnetFormatRunner(IProcessRunner processRunner, ILogger log
             args.AddRange(diagnostics);
         }
 
-        IReadOnlyList<string> includes = ResolveIncludes(scope, workspace);
+        List<string> includes = ResolveIncludes(scope, workspace);
         if (includes.Count > 0)
         {
             args.Add("--include");
