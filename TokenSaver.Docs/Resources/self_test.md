@@ -82,6 +82,14 @@ Do not run these without explicit approval from the user. Describe what each wou
 - container_start, container_stop, container_restart (on a real container; these change its running state)
 - container_exec (on a real container; runs a command inside it)
 
+## Tier 4: Windows Terminal session (not an MCP tool)
+
+No MCP tool exposes the terminal session code, so run these test suites instead. They are not MCP calls, so record them as their own rows.
+
+- `dotnet test src/Core/TokenSaver.TerminalControl.Tests`: unit tests, command pipe tests, and the end-to-end test that runs the real wrapper under `pwsh`. Expect every test to pass. Record the pass and fail counts.
+- Real Windows Terminal smoke test: `TOKENSAVER_WT_SMOKE=1 dotnet test src/Core/TokenSaver.TerminalControl.Tests --filter WindowsTerminalSmokeTests`. It opens a real `wt` window, so run it only with explicit approval (tier 3 rule). Otherwise record it as NOT RUN.
+- Elevated smoke test: `TOKENSAVER_WT_ELEVATED_SMOKE=1 dotnet test src/Core/TokenSaver.TerminalControl.Tests --filter ElevatedSessionTabRunsElevated`. It needs a UAC approval and must run from a standard (non-elevated) process, or it proves nothing about pipes across integrity levels. Record the process elevation alongside the result. Same approval rule as above.
+
 ## Rules
 
 - For each tool, record: tier, arguments used, PASS, FAIL, SKIPPED, or NOT RUN, and a one-line note with the key output or error text.

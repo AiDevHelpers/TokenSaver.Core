@@ -178,37 +178,13 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
         }
     }
 
-    public async Task<string?> GetTerminalVersionAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Returns null. Running "wt.exe --version" opens a Windows Terminal Help dialog on this build,
+    /// once per session, so the version is not read from the process.
+    /// </summary>
+    public Task<string?> GetTerminalVersionAsync(CancellationToken ct = default)
     {
-        try
-        {
-            using var process = new System.Diagnostics.Process
-            {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "wt.exe",
-                    Arguments = "--version",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    CreateNoWindow = true
-                }
-            };
-
-            process.Start();
-            var output = await process.StandardOutput.ReadLineAsync(ct);
-            await process.WaitForExitAsync(ct);
-
-            if (_logger.IsEnabled(LogLevel.Debug))
-            {
-                _logger.LogDebug("Windows Terminal version: {Version}", output);
-            }
-            return output;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error getting Windows Terminal version");
-            return null;
-        }
+        return Task.FromResult<string?>(null);
     }
 
     private static string GetTerminalSettingsPath()

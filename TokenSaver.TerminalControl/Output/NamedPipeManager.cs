@@ -8,6 +8,7 @@ public sealed class NamedPipeManager : IDisposable
 {
     private readonly ILogger<NamedPipeManager> _logger;
     private readonly Dictionary<string, NamedServerPipe> _pipes = new();
+    private readonly Dictionary<string, NamedCommandPipe> _commandPipes = new();
     private readonly object _syncLock = new();
     private bool _disposed;
 
@@ -60,12 +61,46 @@ public sealed class NamedPipeManager : IDisposable
     }
 
     /// <summary>
+    /// Creates a pipe that TokenSaver writes commands into; the tab's wrapper connects as the client.
+    /// Server-side writes are used so an elevated client can read from a pipe created at a lower integrity level.
+    /// </summary>
+    public string CreateCommandPipe(string sessionId, string tabId)
+    {
+        ThrowIfDisposed();
+
+        var pipeName = $"TokenSaver-{sessionId}-{tabId}-Cmd";
+        lock (_syncLock)
+        {
+            _commandPipes[pipeName] = new NamedCommandPipe(pipeName, _logger);
+        }
+
+        return pipeName;
+    }
+
+    /// <summary>
+    /// Gets a command pipe by name.
+    /// </summary>
+    public NamedCommandPipe? GetCommandPipe(string pipeName)
+    {
+        lock (_syncLock)
+        {
+            _commandPipes.TryGetValue(pipeName, out var pipe);
+            return pipe;
+        }
+    }
+
+    /// <summary>
     /// Closes and removes a named pipe.
     /// </summary>
     public void ClosePipe(string pipeName)
     {
         lock (_syncLock)
         {
+            if (_commandPipes.Remove(pipeName, out var commandPipe))
+            {
+                commandPipe.Dispose();
+            }
+
             if (_pipes.Remove(pipeName, out var serverPipe))
             {
                 using (serverPipe)
@@ -95,7 +130,9 @@ public sealed class NamedPipeManager : IDisposable
         lock (_syncLock)
         {
             var pipeNames = _pipes.Keys
+                .Concat(_commandPipes.Keys)
                 .Where(name => name.Contains($"TokenSaver-{sessionId}-", StringComparison.Ordinal))
+                .Distinct()
                 .ToList();
 
             foreach (var pipeName in pipeNames)
@@ -183,6 +220,13 @@ public sealed class NamedPipeManager : IDisposable
             }
 
             _pipes.Clear();
+
+            foreach (var commandPipe in _commandPipes.Values)
+            {
+                commandPipe.Dispose();
+            }
+
+            _commandPipes.Clear();
         }
 
         _disposed = true;
@@ -191,6 +235,64 @@ public sealed class NamedPipeManager : IDisposable
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+    }
+}
+
+/// <summary>
+/// Server side of a one-client command pipe: TokenSaver writes lines, the tab's wrapper reads them.
+/// </summary>
+public sealed class NamedCommandPipe : IDisposable
+{
+    private readonly string _pipeName;
+    private readonly ILogger _logger;
+    private readonly NamedPipeServerStream _stream;
+    private StreamWriter? _writer;
+
+    public NamedCommandPipe(string pipeName, ILogger logger)
+    {
+        _pipeName = pipeName;
+        _logger = logger;
+        _stream = new NamedPipeServerStream(
+            pipeName,
+            PipeDirection.Out,
+            maxNumberOfServerInstances: 1,
+            PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous);
+    }
+
+    /// <summary>
+    /// Waits until the wrapper connects. Throws OperationCanceledException on timeout.
+    /// </summary>
+    public async Task WaitForClientAsync(TimeSpan timeout, CancellationToken ct)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        linked.CancelAfter(timeout);
+        await _stream.WaitForConnectionAsync(linked.Token);
+        _writer = new StreamWriter(_stream, new System.Text.UTF8Encoding(false), leaveOpen: true)
+        {
+            AutoFlush = true,
+            NewLine = "\n",
+        };
+    }
+
+    public async Task WriteLineAsync(string line)
+    {
+        var writer = _writer ?? throw new InvalidOperationException($"Pipe {_pipeName} has no connected client.");
+        await writer.WriteLineAsync(line);
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            _writer?.Dispose();
+        }
+        catch (IOException ex)
+        {
+            _logger.LogDebug(ex, "Command pipe {PipeName} already closed", _pipeName);
+        }
+
+        _stream.Dispose();
     }
 }
 
