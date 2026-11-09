@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace TokenSaver.OllamaIntegration.Services;
 
@@ -171,8 +172,11 @@ public partial class OllamaService
                 response.StatusCode);
         }
 
-        OllamaGenerateResponse? result = await response.Content.ReadFromJsonAsync<OllamaGenerateResponse>(ct);
-        return result?.Response ?? "";
+        // Read the body once so a reply without a "response" field can be reported with its content.
+        string okBody = await response.Content.ReadAsStringAsync(ct);
+        OllamaGenerateResponse? result = JsonSerializer.Deserialize<OllamaGenerateResponse>(okBody, JsonSerializerOptions.Web);
+        return result?.Response
+            ?? throw new HttpRequestException($"POST /api/generate returned 200 without a 'response' field: {okBody}");
     }
 
     /// <summary>

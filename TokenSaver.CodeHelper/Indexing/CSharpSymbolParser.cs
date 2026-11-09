@@ -126,15 +126,18 @@ public sealed partial class CSharpSymbolParser : ISymbolParser
     // ── Type declarations ─────────────────────────────────────────────────────
 
     [GeneratedRegex(
-        @"^\s*(?:(?:public|private|protected|internal|static|sealed|abstract|partial|file|readonly|ref|unsafe)\s+)*" +
-        @"(class|interface|struct|enum|record|delegate)(?:\s+(?:class|struct))?\s+(\w+)(?:<[^>]+>)?",
+        // [ \t] (not \s) so a leading blank line can't pull the match start back, which skewed Line.
+        // The optional non-capturing group skips a delegate's return type so the name is group 2.
+        @"^[ \t]*(?:(?:public|private|protected|internal|static|sealed|abstract|partial|file|readonly|ref|unsafe)\s+)*" +
+        @"(class|interface|struct|enum|record|delegate)(?:\s+(?:class|struct))?\s+" +
+        @"(?:[\w<>\[\]?.,]+\s+(?=\w+\s*[(<]))?(\w+)(?:<[^>]+>)?",
         RegexOptions.Multiline)]
     private static partial Regex TypeDeclRegex();
 
     // ── Methods ───────────────────────────────────────────────────────────────
 
     [GeneratedRegex(
-        @"^\s{4,}((?:(?:public|private|protected|internal|static|async|override|virtual|abstract|sealed|new|partial)\s+)+)" +
+        @"^[ \t]{4,}((?:(?:public|private|protected|internal|static|async|override|virtual|abstract|sealed|new|partial)\s+)+)" +
         @"(Task(?:<[^>]+>)?|ValueTask(?:<[^>]+>)?|(?:[\w<>\[\]?.]+))\s+(\w+)\s*(\([^)]{0,400}\))\s*(?:=>|where|{|;)",
         RegexOptions.Multiline)]
     private static partial Regex MethodRegex();
@@ -142,21 +145,22 @@ public sealed partial class CSharpSymbolParser : ISymbolParser
     // ── Constructors ──────────────────────────────────────────────────────────
 
     [GeneratedRegex(
-        @"^\s{4,}(?:public|private|protected|internal)\s+(\w+)\s*(\([^)]{0,400}\))\s*(?::|{)",
+        @"^[ \t]{4,}(?:public|private|protected|internal)\s+(\w+)\s*(\([^)]{0,400}\))\s*(?::|{)",
         RegexOptions.Multiline)]
     private static partial Regex ConstructorRegex();
 
     // ── Properties ────────────────────────────────────────────────────────────
 
     [GeneratedRegex(
-        @"^\s{4,}(?:(?:public|private|protected|internal|static|virtual|override|abstract|new)\s+)+([\w<>\[\]?.]+)\s+(\w+)\s*\{",
+        // Same-line "{" only ([ \t]*): a class header with its brace on the next line is not a property.
+        @"^[ \t]{4,}(?:(?:public|private|protected|internal|static|virtual|override|abstract|new)\s+)+([\w<>\[\]?.]+)[ \t]+(\w+)[ \t]*\{",
         RegexOptions.Multiline)]
     private static partial Regex PropertyRegex();
 
     // ── Fields ────────────────────────────────────────────────────────────────
 
     [GeneratedRegex(
-        @"^\s{4,}(?:(?:public|private|protected|internal|static|readonly|const|volatile)\s+)+([\w<>\[\]?.]+)\s+(\w+)\s*[=;]",
+        @"^[ \t]{4,}(?:(?:public|private|protected|internal|static|readonly|const|volatile)\s+)+([\w<>\[\]?.]+)\s+(\w+)\s*[=;]",
         RegexOptions.Multiline)]
     private static partial Regex FieldRegex();
 
