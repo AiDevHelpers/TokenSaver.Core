@@ -37,6 +37,9 @@ Call these directly and record the result.
 - wsl_status
 - wsl_health
 - container_logs (containerName: "tokensaver-self-test-nonexistent")
+- container_logs (containerName: "bad;name") — expect an "Invalid container name" message, no docker call
+- container_start, container_stop, container_restart (containerName: "tokensaver-self-test-nonexistent") — each must return a "not found" message; the preflight stops before any docker action runs
+- container_exec (containerName: "tokensaver-self-test-nonexistent", command: "echo hi") — expect "not found"; no command runs
 - code_index (action: find, name: "TokenSaver")
 - semantic_grep (query: "where are the MCP tool definitions registered")
 
@@ -76,6 +79,8 @@ Do not run these without explicit approval from the user. Describe what each wou
 - build_watch
 - worth_keeping
 - calibration
+- container_start, container_stop, container_restart (on a real container; these change its running state)
+- container_exec (on a real container; runs a command inside it)
 
 ## Rules
 
