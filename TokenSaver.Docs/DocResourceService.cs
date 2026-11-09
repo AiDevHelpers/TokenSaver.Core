@@ -14,6 +14,7 @@ namespace TokenSaver.Docs;
 ///     docs://tokensaver/test-plan     — question-handling test plan
 ///     docs://tokensaver/accuracy-test — Ollama chain accuracy test
 ///     docs://tokensaver/context-test  — context cache / hygiene test
+///     docs://tokensaver/self-test     — full self-test of every TokenSaver tool
 /// </summary>
 // Not `static` — ModelContextProtocol.Server's WithResources<T>() requires a non-static type
 // argument (CS0718 otherwise). The individual resource methods remain static since they're
@@ -77,5 +78,14 @@ public sealed class DocResourceService
     public static string GetContextTest()
     {
         return Load("context_test.md");
+    }
+
+    [McpServerResource(UriTemplate = "docs://tokensaver/self-test", Name = "TokenSaver Self-Test",
+        MimeType = "text/markdown")]
+    [Description(
+        "Full self-test of every TokenSaver MCP tool, in three tiers (read-only, scratch-scoped writes, confirm-first). Trigger: 'ask tokensaver to run the full self test'.")]
+    public static string GetSelfTest()
+    {
+        return Load("self_test.md");
     }
 }
