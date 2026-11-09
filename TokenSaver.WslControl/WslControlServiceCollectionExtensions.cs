@@ -22,10 +22,22 @@ public static class WslControlServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddWslControl(this IServiceCollection services)
     {
-        // SDK entry point. WslApi reads the registry to enumerate distros; a single instance is fine.
-        services.TryAddSingleton<IWslApi>(_ => new WslApi());
+        // WSL distros are registered per user. As LocalSystem the SDK's registry read and command
+        // execution see no distros, so run listing and commands in the console user's session.
+        bool runAsSystem = System.Security.Principal.WindowsIdentity.GetCurrent().IsSystem;
+        if (runAsSystem)
+        {
+            services.TryAddSingleton<ISessionProcessRunner>(_ => new ConsoleUserProcessRunner());
+            services.TryAddSingleton<IWslApi>(sp => new SessionWslApi(sp.GetRequiredService<ISessionProcessRunner>()));
+            services.TryAddSingleton<IWslCommandExecutor>(sp => new SessionWslCommandExecutor(sp.GetRequiredService<ISessionProcessRunner>()));
+        }
+        else
+        {
+            // SDK entry point. WslApi reads the registry to enumerate distros; a single instance is fine.
+            services.TryAddSingleton<IWslApi>(_ => new WslApi());
+            services.TryAddSingleton<IWslCommandExecutor, SdkWslCommandExecutor>();
+        }
 
-        services.TryAddSingleton<IWslCommandExecutor, SdkWslCommandExecutor>();
         services.TryAddSingleton<IWslProvider, WslProvider>();
         services.TryAddSingleton<IWslActionPlanner, WslActionPlanner>();
         services.TryAddSingleton<IWslDebugConfigService, WslDebugConfigService>();
