@@ -10,10 +10,15 @@ using TokenSaver.TerminalControl.Models;
 using TokenSaver.TerminalControl.Output;
 
 /// <summary>
-/// Manual smoke test: opens a real Windows Terminal window. Runs only when TOKENSAVER_WT_SMOKE=1.
+/// Manual smoke tests against real Windows Terminal. Opt-in:
+/// TOKENSAVER_WT_SMOKE=1 for a standard window; TOKENSAVER_WT_ELEVATED_SMOKE=1 for an elevated window (UAC prompt).
 /// </summary>
 public sealed class WindowsTerminalSmokeTests : IDisposable
 {
+    private const string IsAdminCommand =
+        "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent())" +
+        ".IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)";
+
     private readonly ILoggerFactory _loggerFactory = LoggerFactory.Create(b => b.AddDebug());
 
     public void Dispose() => _loggerFactory.Dispose();
@@ -26,12 +31,11 @@ public sealed class WindowsTerminalSmokeTests : IDisposable
             return;
         }
 
-        var wrapper = FindWrapperScript();
         using var pipes = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
         var session = new StandardTerminalSession(
             _loggerFactory.CreateLogger<StandardTerminalSession>(),
             pipes,
-            new WrapperPathRewritingLauncher(wrapper));
+            new WrapperPathRewritingLauncher(FindWrapperScript()));
 
         await session.InitializeAsync(new TerminalSessionConfig());
         var tab = await session.CreateTabAsync("smoke");
@@ -43,6 +47,33 @@ public sealed class WindowsTerminalSmokeTests : IDisposable
 
         Assert.True(result.Success, $"Command failed: {string.Join("; ", result.Errors ?? Array.Empty<string>())}");
         Assert.Contains("smoke-ok", result.Stdout ?? string.Empty, StringComparison.Ordinal);
+
+        await session.CloseTabAsync(tab.TabId);
+        await session.TerminateAsync(graceful: true);
+    }
+
+    [Fact]
+    public async Task RealWindowsTerminal_ElevatedSessionTabRunsElevated()
+    {
+        if (Environment.GetEnvironmentVariable("TOKENSAVER_WT_ELEVATED_SMOKE") != "1")
+        {
+            return;
+        }
+
+        using var pipes = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
+        var session = new ElevatedTerminalSession(
+            _loggerFactory.CreateLogger<ElevatedTerminalSession>(),
+            pipes,
+            new WrapperPathRewritingLauncher(FindWrapperScript()));
+
+        // One UAC prompt for the window.
+        await session.InitializeAsync(new TerminalSessionConfig(IsElevated: true));
+        var tab = await session.CreateTabAsync("elevated-smoke");
+
+        var result = await session.ExecuteInTabAsync(tab.TabId, IsAdminCommand, timeout: TimeSpan.FromSeconds(90));
+
+        Assert.True(result.Success, $"Command failed: {string.Join("; ", result.Errors ?? Array.Empty<string>())}");
+        Assert.Equal("True", result.Stdout?.Trim());
 
         await session.CloseTabAsync(tab.TabId);
         await session.TerminateAsync(graceful: true);
@@ -65,7 +96,7 @@ public sealed class WindowsTerminalSmokeTests : IDisposable
         throw new FileNotFoundException("tokensaver-tab.ps1 not found above the test output folder.");
     }
 
-    /// <summary>Starts the real wt.exe, pointing the wrapper path at the source script.</summary>
+    /// <summary>Starts the real wt.exe (keeping Verb/UseShellExecute), pointing the wrapper path at the source script.</summary>
     private sealed class WrapperPathRewritingLauncher : ITerminalProcessLauncher
     {
         private static readonly Regex WrapperArg = new("-File \"([^\"]+)\"", RegexOptions.Compiled);
@@ -80,7 +111,8 @@ public sealed class WindowsTerminalSmokeTests : IDisposable
             {
                 FileName = startInfo.FileName,
                 Arguments = args,
-                UseShellExecute = false,
+                Verb = startInfo.Verb,
+                UseShellExecute = startInfo.UseShellExecute,
             });
         }
     }

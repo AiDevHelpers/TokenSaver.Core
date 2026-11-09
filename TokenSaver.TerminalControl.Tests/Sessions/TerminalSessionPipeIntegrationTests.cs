@@ -31,7 +31,7 @@ public sealed class TerminalSessionPipeIntegrationTests : IDisposable
     {
         // Arrange
         using var pipeManager = new NamedPipeManager(_loggerPipeManager);
-        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
+        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager, new RecordingTerminalLauncher());
         await session.InitializeAsync(new TerminalSessionConfig());
 
         // Act
@@ -70,7 +70,7 @@ public sealed class TerminalSessionPipeIntegrationTests : IDisposable
     {
         // Arrange
         using var pipeManager = new NamedPipeManager(_loggerPipeManager);
-        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
+        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager, new RecordingTerminalLauncher());
         await session.InitializeAsync(new TerminalSessionConfig());
 
         // Act
@@ -110,7 +110,7 @@ public sealed class TerminalSessionPipeIntegrationTests : IDisposable
     {
         // Arrange
         using var pipeManager = new NamedPipeManager(_loggerPipeManager);
-        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
+        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager, new RecordingTerminalLauncher());
         await session.InitializeAsync(new TerminalSessionConfig());
 
         // Act
@@ -150,7 +150,7 @@ public sealed class TerminalSessionPipeIntegrationTests : IDisposable
     {
         // Arrange
         using var pipeManager = new NamedPipeManager(_loggerPipeManager);
-        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
+        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager, new RecordingTerminalLauncher());
         await session.InitializeAsync(new TerminalSessionConfig());
         var tab = await session.CreateTabAsync("test");
 
@@ -214,7 +214,7 @@ public sealed class TerminalSessionPipeIntegrationTests : IDisposable
     {
         // Arrange
         using var pipeManager = new NamedPipeManager(_loggerPipeManager);
-        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager);
+        var session = new ElevatedTerminalSession(_loggerElevated, pipeManager, new RecordingTerminalLauncher());
         await session.InitializeAsync(new TerminalSessionConfig());
 
         // Act

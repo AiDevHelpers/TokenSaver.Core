@@ -8,7 +8,7 @@ using TokenSaver.TerminalControl.Contracts;
 using TokenSaver.TerminalControl.Models;
 using TokenSaver.TerminalControl.Output;
 
-public sealed class StandardTerminalSession : ITerminalSession, IDisposable
+public class StandardTerminalSession : ITerminalSession, IDisposable
 {
     private static readonly TimeSpan DefaultCommandTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan CommandConnectTimeout = TimeSpan.FromSeconds(10);
@@ -25,7 +25,7 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
     public string SessionId { get; } = $"standard_{Guid.NewGuid():N}".Substring(0, 20);
     private string WindowName => $"tokensaver-{SessionId}";
     private static string WrapperPath => Path.Combine(AppContext.BaseDirectory, "tokensaver-tab.ps1");
-    public bool IsElevated => false;
+    public bool IsElevated { get; }
     public int ProcessId => _process?.Id ?? -1;
     public TerminalSessionState State { get; private set; } = TerminalSessionState.Initializing;
     public TerminalConfiguration Configuration => _terminalConfig;
@@ -34,8 +34,21 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
         ILogger logger,
         NamedPipeManager? pipeManager = null,
         ITerminalProcessLauncher? launcher = null)
+        : this(logger, pipeManager, launcher, elevated: false)
+    {
+    }
+
+    /// <param name="elevated">When true, the session window is opened with UAC (runas).
+    /// Tabs are opened with the same command either way: a tab opened from a standard
+    /// process into an elevated window runs elevated.</param>
+    protected StandardTerminalSession(
+        ILogger logger,
+        NamedPipeManager? pipeManager,
+        ITerminalProcessLauncher? launcher,
+        bool elevated)
     {
         _logger = logger;
+        IsElevated = elevated;
         _launcher = launcher ?? new ProcessTerminalLauncher();
         // Create a logger for the pipe manager if not provided
         if (pipeManager is null)
@@ -85,12 +98,20 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
             _terminalConfig = await discovery.DiscoverConfigurationAsync(ct);
 
             // Open this session's own Windows Terminal window. Throws if wt.exe is missing.
-            _process = _launcher.Start(new ProcessStartInfo
-            {
-                FileName = "wt.exe",
-                Arguments = $"-w {WindowName}",
-                UseShellExecute = false,
-            });
+            _process = _launcher.Start(IsElevated
+                ? new ProcessStartInfo
+                {
+                    FileName = "wt.exe",
+                    Arguments = $"-w {WindowName}",
+                    Verb = "runas",
+                    UseShellExecute = true,
+                }
+                : new ProcessStartInfo
+                {
+                    FileName = "wt.exe",
+                    Arguments = $"-w {WindowName}",
+                    UseShellExecute = false,
+                });
 
             State = TerminalSessionState.Ready;
             if (_logger.IsEnabled(LogLevel.Information))
