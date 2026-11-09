@@ -66,10 +66,8 @@ public sealed class WindowsTerminalSmokeTests : IDisposable
             pipes,
             new WrapperPathRewritingLauncher(FindWrapperScript()));
 
-        // One UAC prompt for the window.
+        // No prompt yet; the tab prompts UAC when it is created.
         await session.InitializeAsync(new TerminalSessionConfig(IsElevated: true));
-        // Give the elevated window time to register its name before tabs are added to it.
-        await Task.Delay(TimeSpan.FromSeconds(3));
         var tab = await session.CreateTabAsync("elevated-smoke");
 
         var result = await session.ExecuteInTabAsync(tab.TabId, IsAdminCommand, timeout: TimeSpan.FromSeconds(90));

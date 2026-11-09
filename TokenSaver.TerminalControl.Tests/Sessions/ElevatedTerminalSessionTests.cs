@@ -13,7 +13,7 @@ public sealed class ElevatedTerminalSessionTests : IDisposable
     public void Dispose() => _loggerFactory.Dispose();
 
     [Fact]
-    public async Task InitializeAsync_LaunchesWindowElevatedWithRunAs()
+    public async Task InitializeAsync_DoesNotPromptUntilFirstTab()
     {
         var launcher = new RecordingTerminalLauncher();
         using var pipes = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
@@ -24,16 +24,14 @@ public sealed class ElevatedTerminalSessionTests : IDisposable
 
         await session.InitializeAsync(new TerminalSessionConfig(IsElevated: true));
 
-        var launch = Assert.Single(launcher.Started);
-        Assert.Equal("runas", launch.Verb);
-        Assert.True(launch.UseShellExecute);
+        Assert.Empty(launcher.Started);
         Assert.True(session.IsElevated);
     }
 
     [Fact]
-    public async Task CreateTabAsync_RunsTabWithoutRunAs()
+    public async Task CreateTabAsync_EachTabIsLaunchedWithRunAs()
     {
-        // The probe showed a plain wt -w new-tab from a standard session lands elevated in the elevated window.
+        // One UAC prompt per tab, by design.
         var launcher = new RecordingTerminalLauncher();
         using var pipes = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
         var session = new ElevatedTerminalSession(
@@ -44,9 +42,10 @@ public sealed class ElevatedTerminalSessionTests : IDisposable
 
         await session.CreateTabAsync("elevated-tab");
 
-        var tabLaunch = Assert.Single(launcher.Started.Skip(1));
+        var tabLaunch = Assert.Single(launcher.Started);
         Assert.Equal("wt.exe", tabLaunch.FileName);
         Assert.Contains("new-tab", tabLaunch.Arguments, StringComparison.Ordinal);
-        Assert.NotEqual("runas", tabLaunch.Verb);
+        Assert.Equal("runas", tabLaunch.Verb);
+        Assert.True(tabLaunch.UseShellExecute);
     }
 }

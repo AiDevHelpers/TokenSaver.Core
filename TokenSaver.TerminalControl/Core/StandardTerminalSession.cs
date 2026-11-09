@@ -11,7 +11,8 @@ using TokenSaver.TerminalControl.Output;
 public class StandardTerminalSession : ITerminalSession, IDisposable
 {
     private static readonly TimeSpan DefaultCommandTimeout = TimeSpan.FromSeconds(60);
-    private static readonly TimeSpan CommandConnectTimeout = TimeSpan.FromSeconds(10);
+    // Long enough for a UAC approval before the elevated wrapper connects.
+    private static readonly TimeSpan CommandConnectTimeout = TimeSpan.FromSeconds(60);
 
     private readonly ILogger _logger;
     private readonly NamedPipeManager _pipeManager;
@@ -98,20 +99,16 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             _terminalConfig = await discovery.DiscoverConfigurationAsync(ct);
 
             // Open this session's own Windows Terminal window. Throws if wt.exe is missing.
-            _process = _launcher.Start(IsElevated
-                ? new ProcessStartInfo
-                {
-                    FileName = "wt.exe",
-                    Arguments = $"-w {WindowName}",
-                    Verb = "runas",
-                    UseShellExecute = true,
-                }
-                : new ProcessStartInfo
+            // An elevated session opens no window here: each tab prompts UAC when it is created.
+            if (!IsElevated)
+            {
+                _process = _launcher.Start(new ProcessStartInfo
                 {
                     FileName = "wt.exe",
                     Arguments = $"-w {WindowName}",
                     UseShellExecute = false,
                 });
+            }
 
             State = TerminalSessionState.Ready;
             if (_logger.IsEnabled(LogLevel.Information))
@@ -173,7 +170,9 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
                 FileName = "wt.exe",
                 Arguments = $"-w {WindowName} new-tab --title \"{tabName}\" pwsh -NoProfile -File \"{WrapperPath}\" " +
                     $"-StdoutPipe \"{stdoutPipe.PipeName}\" -CommandPipe \"{commandPipeName}\"",
-                UseShellExecute = false,
+                // Elevated tabs: UAC prompt per tab. They join the same elevated window by name.
+                Verb = IsElevated ? "runas" : null,
+                UseShellExecute = IsElevated,
             });
         }
         catch

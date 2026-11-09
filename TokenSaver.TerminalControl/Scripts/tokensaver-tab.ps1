@@ -17,14 +17,14 @@ $closeCommand = '__TOKENSAVER_CLOSE__'
 
 # Output pipe is created by TokenSaver (server side); this tab connects as a client.
 $outClient = [System.IO.Pipes.NamedPipeClientStream]::new('.', $StdoutPipe, [System.IO.Pipes.PipeDirection]::Out)
-$outClient.Connect(10000)
+$outClient.Connect(60000)
 $outW = [System.IO.StreamWriter]::new($outClient)
 $outW.AutoFlush = $true
 $outW.NewLine = "`n"
 
 # Command pipe is created by TokenSaver (server side); this tab connects as a client.
 $cmdClient = [System.IO.Pipes.NamedPipeClientStream]::new('.', $CommandPipe, [System.IO.Pipes.PipeDirection]::In)
-$cmdClient.Connect(10000)
+$cmdClient.Connect(60000)
 $cmdReader = [System.IO.StreamReader]::new($cmdClient)
 
 while ($null -ne ($line = $cmdReader.ReadLine())) {
