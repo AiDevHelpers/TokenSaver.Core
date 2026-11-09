@@ -11,19 +11,27 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
     private readonly ILogger _logger;
     private readonly NamedPipeManager _pipeManager;
     private readonly bool _ownsPipeManager;
-    private readonly Process? _process = null;
+    private readonly ITerminalProcessLauncher _launcher;
+    private readonly Dictionary<string, TerminalTabInfo> _tabs = new();
+    private Process? _process;
     private TerminalSessionConfig? _config;
     private TerminalConfiguration _terminalConfig = null!;
 
     public string SessionId { get; } = $"standard_{Guid.NewGuid():N}".Substring(0, 20);
+    private string WindowName => $"tokensaver-{SessionId}";
+    private static string WrapperPath => Path.Combine(AppContext.BaseDirectory, "tokensaver-tab.ps1");
     public bool IsElevated => false;
     public int ProcessId => _process?.Id ?? -1;
     public TerminalSessionState State { get; private set; } = TerminalSessionState.Initializing;
     public TerminalConfiguration Configuration => _terminalConfig;
 
-    public StandardTerminalSession(ILogger logger, NamedPipeManager? pipeManager = null)
+    public StandardTerminalSession(
+        ILogger logger,
+        NamedPipeManager? pipeManager = null,
+        ITerminalProcessLauncher? launcher = null)
     {
         _logger = logger;
+        _launcher = launcher ?? new ProcessTerminalLauncher();
         // Create a logger for the pipe manager if not provided
         if (pipeManager is null)
         {
@@ -64,6 +72,14 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
             var discoveryLogger = loggerFactory.CreateLogger<Discovery.TerminalConfigurationDiscovery>();
             var discovery = new Discovery.TerminalConfigurationDiscovery(discoveryLogger);
             _terminalConfig = await discovery.DiscoverConfigurationAsync(ct);
+
+            // Open this session's own Windows Terminal window. Throws if wt.exe is missing.
+            _process = _launcher.Start(new ProcessStartInfo
+            {
+                FileName = "wt.exe",
+                Arguments = $"-w {WindowName}",
+                UseShellExecute = false,
+            });
 
             State = TerminalSessionState.Ready;
             if (_logger.IsEnabled(LogLevel.Information))
@@ -116,6 +132,24 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
                 stderrPipe.PipePath);
         }
 
+        // Open the tab in this session's window, running the output wrapper.
+        try
+        {
+            _launcher.Start(new ProcessStartInfo
+            {
+                FileName = "wt.exe",
+                Arguments = $"-w {WindowName} new-tab --title \"{tabName}\" pwsh -NoExit -File \"{WrapperPath}\" -StdoutPipe \"{stdoutPipe.PipePath}\" -StderrPipe \"{stderrPipe.PipePath}\"",
+                UseShellExecute = false,
+            });
+        }
+        catch
+        {
+            _pipeManager.ClosePipe(stdoutPipe.PipeName);
+            _pipeManager.ClosePipe(stderrPipe.PipeName);
+            throw;
+        }
+
+        _tabs[tabId] = tabInfo;
         return Task.FromResult(tabInfo);
     }
 
