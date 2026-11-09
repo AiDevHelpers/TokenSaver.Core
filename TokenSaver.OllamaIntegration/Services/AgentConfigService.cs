@@ -9,84 +9,74 @@ using System.Text.Json.Nodes;
 namespace TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
-///     Reads and writes agent configurations in the SimpleModelServer.config.json file
-///     that lives alongside SimpleModelServer.Server.exe in .tokensaver/ under the workspace.
-///     This lets the calling AI update system prompts and temperature settings based
-///     on accuracy test results, then save them back to the workspace for persistence.
+///     Reads and writes SimpleModelServer agent configs through the router's admin API
+///     (<c>GET /admin/config</c>, <c>POST /admin/config</c>), not the config file. The router is the
+///     source of truth for what it is running, so a file-path lookup is no longer needed.
+///     The router accepts <c>systemPrompt</c> and <c>temperature</c> per agent; <c>topP</c> is not
+///     part of its admin API and is rejected here.
+///     Proposed prompt changes still go to a side-file under <c>.tokensaver/</c> for review.
 /// </summary>
 public sealed partial class AgentConfigService
 {
-    [LoggerMessage(Level = LogLevel.Warning, Message = "SimpleModelServer config not found at {Path}")]
-    private static partial void LogConfigNotFound(ILogger logger, string path);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "SimpleModelServer admin config unavailable at {Url}: {Status}")]
+    private static partial void LogAdminUnavailable(ILogger logger, string url, string status);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "SIMPLEMODELSERVER_WORKSPACE is not set; cannot locate {Config}")]
-    private static partial void LogWorkspaceNotSet(ILogger logger, string config);
+    [LoggerMessage(Level = LogLevel.Error, Message = "SimpleModelServer admin config request failed at {Url}")]
+    private static partial void LogAdminRequestFailed(ILogger logger, Exception ex, string url);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to parse SimpleModelServer config")]
-    private static partial void LogParseFailed(ILogger logger, Exception ex);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Updated agent '{Type}' config in {Path}")]
-    private static partial void LogAgentUpdated(ILogger logger, string type, string path);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to update agent config")]
-    private static partial void LogAgentUpdateFailed(ILogger logger, Exception ex);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Updated '{Setting}' via {Url}")]
+    private static partial void LogAgentUpdated(ILogger logger, string setting, string url);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to save proposed prompts")]
     private static partial void LogSavePromptsFailed(ILogger logger, Exception ex);
 
-    private const string ConfigFileName = "SimpleModelServer.config.json";
+    private const string AdminConfigPath = "/admin/config";
     private const string TokenSaverDir = ".tokensaver";
 
     private static readonly JsonSerializerOptions PrettyJson = new() { WriteIndented = true };
 
+    private readonly HttpClient _http;
     private readonly TokenSaverConfig _config;
     private readonly ILogger<AgentConfigService> _logger;
 
-    public AgentConfigService(IOptions<TokenSaverConfig> config, ILogger<AgentConfigService> logger)
+    public AgentConfigService(HttpClient http, IOptions<TokenSaverConfig> config, ILogger<AgentConfigService> logger)
     {
+        _http = http;
         _config = config.Value;
         _logger = logger;
-    }
-
-    // ── Config path resolution ─────────────────────────────────────────────────
-
-    /// <summary>
-    ///     Resolves the SimpleModelServer.config.json path.
-    ///     Priority: SIMPLEMODELSERVER_WORKSPACE env var → TokenSaverConfig.WorkspaceRoot → null.
-    /// </summary>
-    public string? GetConfigPath()
-    {
-        string? workspace = Environment.GetEnvironmentVariable("SIMPLEMODELSERVER_WORKSPACE")
-                        ?? (string.IsNullOrWhiteSpace(_config.WorkspaceRoot) ? null : _config.WorkspaceRoot);
-
-        if (string.IsNullOrWhiteSpace(workspace))
-        {
-            LogWorkspaceNotSet(_logger, ConfigFileName);
-            return null;
-        }
-
-        return Path.Combine(workspace, TokenSaverDir, ConfigFileName);
     }
 
     // ── Read ───────────────────────────────────────────────────────────────────
 
     /// <summary>
-    ///     Returns the raw JSON content of SimpleModelServer.config.json, or null if not found.
+    ///     Returns the raw JSON from <c>GET /admin/config</c>, or null if the router is unreachable or
+    ///     refuses the request (it trusts localhost, and remote callers need a Bearer token).
     /// </summary>
     public async Task<string?> GetRawConfigAsync(CancellationToken ct = default)
     {
-        string? path = GetConfigPath();
-        if (path is null || !File.Exists(path))
+        string url = AdminUrl();
+        try
         {
-            LogConfigNotFound(_logger, path ?? "(unresolved)");
+            using HttpResponseMessage response = await _http.GetAsync(new Uri(AdminConfigPath, UriKind.Relative), ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                LogAdminUnavailable(_logger, url, ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                return null;
+            }
+
+            return await response.Content.ReadAsStringAsync(ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            LogAdminRequestFailed(_logger, ex, url);
             return null;
         }
-
-        return await File.ReadAllTextAsync(path, ct);
     }
 
     /// <summary>
-    ///     Returns all agent configs as a dictionary keyed by agent type.
+    ///     Returns the agent configs as a dictionary keyed by agent type, or null if the admin API is
+    ///     unavailable. <see cref="AgentConfigSnapshot.TopP" /> is always null: the router does not
+    ///     report <c>top_p</c> through its admin API.
     /// </summary>
     public async Task<Dictionary<string, AgentConfigSnapshot>?> GetAgentConfigsAsync(CancellationToken ct = default)
     {
@@ -96,13 +86,10 @@ public sealed partial class AgentConfigService
             return null;
         }
 
-        try
-        {
-            JsonObject? root = JsonNode.Parse(raw)?.AsObject();
-            JsonObject? agents = root?["agents"]?.AsObject();
-            return agents is null
-                ? []
-                : agents.ToDictionary(
+        JsonObject? agents = JsonNode.Parse(raw)?["agents"]?.AsObject();
+        return agents is null
+            ? []
+            : agents.ToDictionary(
                 pair => pair.Key,
                 pair =>
                 {
@@ -110,25 +97,20 @@ public sealed partial class AgentConfigService
                     return new AgentConfigSnapshot(
                         obj?["systemPrompt"]?.GetValue<string>() ?? "",
                         obj?["temperature"]?.GetValue<double>(),
-                        obj?["sampling"]?["top_p"]?.GetValue<double>());
+                        TopP: null);
                 },
                 StringComparer.OrdinalIgnoreCase);
-        }
-        catch (Exception ex)
-        {
-            LogParseFailed(_logger, ex);
-            return null;
-        }
     }
 
     // ── Write ──────────────────────────────────────────────────────────────────
 
     /// <summary>
-    ///     Updates one agent's config in SimpleModelServer.config.json.
-    ///     Only non-null parameters are changed; existing values are preserved.
+    ///     Updates one agent through <c>POST /admin/config</c>, one setting per request. Only non-null
+    ///     parameters are sent; the router keeps everything else. Stops at the first failure.
     /// </summary>
     /// <returns>
-    ///     (success, message) — success=false means the config file wasn't found or the write failed.
+    ///     (success, message). <paramref name="topP" /> is rejected because the admin API has no
+    ///     <c>top_p</c> setting.
     /// </returns>
     public async Task<(bool Success, string Message)> UpdateAgentAsync(
         string agentType,
@@ -137,77 +119,62 @@ public sealed partial class AgentConfigService
         double? topP = null,
         CancellationToken ct = default)
     {
-        string? path = GetConfigPath();
-        if (path is null)
+        if (topP is not null)
         {
-            return (false, "SIMPLEMODELSERVER_WORKSPACE is not set. Cannot locate SimpleModelServer.config.json.");
+            return (false, "topP is not supported by the SimpleModelServer admin API. Only systemPrompt and temperature can be set.");
         }
 
-        if (!File.Exists(path))
+        if (systemPrompt is not null)
         {
-            return (false, $"Config file not found: {path}");
+            (bool ok, string message) = await PostSettingAsync($"agents.{agentType}.systemPrompt", JsonValue.Create(systemPrompt), ct);
+            if (!ok)
+            {
+                return (false, message);
+            }
         }
+
+        if (temperature is not null)
+        {
+            (bool ok, string message) = await PostSettingAsync($"agents.{agentType}.temperature", JsonValue.Create(temperature.Value), ct);
+            if (!ok)
+            {
+                return (false, message);
+            }
+        }
+
+        return (true, $"Applied changes to '{agentType}' via {AdminUrl()}");
+    }
+
+    private async Task<(bool Ok, string Message)> PostSettingAsync(string setting, JsonNode? value, CancellationToken ct)
+    {
+        string url = AdminUrl();
+        JsonObject body = new() { ["setting"] = setting, ["value"] = value };
 
         try
         {
-            string raw = await File.ReadAllTextAsync(path, ct);
-            JsonObject root = JsonNode.Parse(raw)?.AsObject()
-                       ?? throw new InvalidOperationException("Config root must be a JSON object.");
+            using StringContent content = new(body.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
+            using HttpResponseMessage response = await _http.PostAsync(new Uri(AdminConfigPath, UriKind.Relative), content, ct);
+            string text = await response.Content.ReadAsStringAsync(ct);
 
-            // Ensure agents section exists
-            if (root["agents"] is not JsonObject agents)
+            if (!response.IsSuccessStatusCode)
             {
-                agents = [];
-                root["agents"] = agents;
+                return (false, $"Router rejected '{setting}' ({(int)response.StatusCode}): {text}");
             }
 
-            // Ensure the specific agent entry exists
-            if (agents[agentType] is not JsonObject agent)
-            {
-                agent = [];
-                agents[agentType] = agent;
-            }
-
-            // Apply non-null updates
-            if (systemPrompt is not null)
-            {
-                agent["systemPrompt"] = JsonValue.Create(systemPrompt);
-            }
-
-            if (temperature is not null)
-            {
-                agent["temperature"] = JsonValue.Create(temperature.Value);
-            }
-
-            if (topP is not null)
-            {
-                if (agent["sampling"] is not JsonObject sampling)
-                {
-                    sampling = [];
-                    agent["sampling"] = sampling;
-                }
-
-                sampling["top_p"] = JsonValue.Create(topP.Value);
-            }
-
-            string updated = root.ToJsonString(PrettyJson);
-            await File.WriteAllTextAsync(path, updated, ct);
-
-            LogAgentUpdated(_logger, agentType, path);
-            return (true, $"Saved changes to {agentType} agent in {path}");
+            LogAgentUpdated(_logger, setting, url);
+            return (true, text);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            LogAgentUpdateFailed(_logger, ex);
-            return (false, $"Write failed: {ex.Message}");
+            LogAdminRequestFailed(_logger, ex, url);
+            return (false, $"Could not reach the SimpleModelServer admin API at {url}: {ex.Message}");
         }
     }
 
     /// <summary>
     ///     Saves a complete agent config block to the workspace as a side-file
-    ///     (<c>.tokensaver/agent-prompts.json</c>), separate from the main config,
-    ///     so the AI's proposed prompt changes can be reviewed and diffed before
-    ///     being applied to SimpleModelServer.config.json.
+    ///     (<c>.tokensaver/agent-prompts.json</c>), so proposed prompt changes can be reviewed and
+    ///     diffed before being applied through the admin API.
     /// </summary>
     public async Task<(bool Success, string Path)> SaveProposedPromptsAsync(
         Dictionary<string, AgentConfigSnapshot> proposals,
@@ -236,6 +203,8 @@ public sealed partial class AgentConfigService
             return (false, "");
         }
     }
+
+    private string AdminUrl() => new Uri(new Uri(_config.OllamaUrl), AdminConfigPath).ToString();
 }
 
 /// <summary>
