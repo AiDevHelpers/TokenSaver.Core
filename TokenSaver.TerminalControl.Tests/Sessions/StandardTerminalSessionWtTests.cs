@@ -45,8 +45,9 @@ public sealed class StandardTerminalSessionWtTests : IDisposable
         var tabLaunch = Assert.Single(launcher.Started.Skip(1));
         Assert.Contains("new-tab", tabLaunch.Arguments);
         Assert.Contains("tokensaver-tab.ps1", tabLaunch.Arguments);
-        Assert.Contains(tab.StdoutPipe.PipePath, tabLaunch.Arguments);
-        Assert.Contains(tab.StderrPipe.PipePath, tabLaunch.Arguments);
+        Assert.Contains(tab.StdoutPipe.PipeName, tabLaunch.Arguments);
+        Assert.Contains(tab.StderrPipe.PipeName, tabLaunch.Arguments);
+        Assert.Contains("-CommandPipe", tabLaunch.Arguments);
     }
 
     [Fact]

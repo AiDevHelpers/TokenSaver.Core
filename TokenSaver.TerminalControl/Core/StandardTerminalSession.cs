@@ -1,6 +1,10 @@
 namespace TokenSaver.TerminalControl.Core;
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO.Pipes;
+using System.Text;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using TokenSaver.TerminalControl.Contracts;
 using TokenSaver.TerminalControl.Models;
@@ -8,11 +12,14 @@ using TokenSaver.TerminalControl.Output;
 
 public sealed class StandardTerminalSession : ITerminalSession, IDisposable
 {
+    private static readonly TimeSpan DefaultCommandTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan CommandConnectTimeout = TimeSpan.FromSeconds(10);
+
     private readonly ILogger _logger;
     private readonly NamedPipeManager _pipeManager;
     private readonly bool _ownsPipeManager;
     private readonly ITerminalProcessLauncher _launcher;
-    private readonly Dictionary<string, TerminalTabInfo> _tabs = new();
+    private readonly ConcurrentDictionary<string, TabRuntime> _tabs = new();
     private Process? _process;
     private TerminalSessionConfig? _config;
     private TerminalConfiguration _terminalConfig = null!;
@@ -48,6 +55,14 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
 
     public void Dispose()
     {
+        foreach (var tab in _tabs.Keys.ToList())
+        {
+            if (_tabs.TryRemove(tab, out var runtime))
+            {
+                runtime.Dispose();
+            }
+        }
+
         if (_ownsPipeManager)
         {
             _pipeManager.Dispose();
@@ -66,8 +81,6 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
                 _logger.LogInformation("Initializing standard terminal session {SessionId}", SessionId);
             }
 
-            // Placeholder: will implement Windows Terminal launching
-            // For now, create a dummy configuration
             using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddDebug());
             var discoveryLogger = loggerFactory.CreateLogger<Discovery.TerminalConfigurationDiscovery>();
             var discovery = new Discovery.TerminalConfigurationDiscovery(discoveryLogger);
@@ -112,6 +125,7 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
         // Create output pipes for this tab
         var stdoutPipe = _pipeManager.CreateOutputPipe(SessionId, tabId, NamedPipeStreamType.Stdout);
         var stderrPipe = _pipeManager.CreateOutputPipe(SessionId, tabId, NamedPipeStreamType.Stderr);
+        var commandPipeName = $"TokenSaver-{SessionId}-{tabId}-Cmd";
 
         var tabInfo = new TerminalTabInfo(
             TabId: tabId,
@@ -138,7 +152,8 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
             _launcher.Start(new ProcessStartInfo
             {
                 FileName = "wt.exe",
-                Arguments = $"-w {WindowName} new-tab --title \"{tabName}\" pwsh -NoExit -File \"{WrapperPath}\" -StdoutPipe \"{stdoutPipe.PipePath}\" -StderrPipe \"{stderrPipe.PipePath}\"",
+                Arguments = $"-w {WindowName} new-tab --title \"{tabName}\" pwsh -NoProfile -File \"{WrapperPath}\" " +
+                    $"-StdoutPipe \"{stdoutPipe.PipeName}\" -StderrPipe \"{stderrPipe.PipeName}\" -CommandPipe \"{commandPipeName}\"",
                 UseShellExecute = false,
             });
         }
@@ -149,7 +164,11 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
             throw;
         }
 
-        _tabs[tabId] = tabInfo;
+        var runtime = new TabRuntime(tabInfo, commandPipeName);
+        _tabs[tabId] = runtime;
+        StartPump(stdoutPipe.PipeName, runtime.StdoutLines);
+        StartPump(stderrPipe.PipeName, runtime.StderrLines);
+
         return Task.FromResult(tabInfo);
     }
 
@@ -162,19 +181,75 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
     {
         EnsureReady();
 
+        if (!_tabs.TryGetValue(tabId, out var runtime))
+        {
+            throw new InvalidOperationException($"Tab '{tabId}' does not exist in session {SessionId}.");
+        }
+
         if (_logger.IsEnabled(LogLevel.Debug))
         {
             _logger.LogDebug("Executing command in tab {TabId}: {Command}", tabId, command);
         }
 
-        // Placeholder implementation
-        await Task.Delay(100, ct);
+        var fullCommand = workingDirectory is null
+            ? command
+            : $"Set-Location -LiteralPath '{workingDirectory.Replace("'", "''")}'; {command}";
+        var requestId = Guid.NewGuid().ToString("N")[..8];
+        var line = TabProtocol.FormatCommand(requestId, fullCommand);
 
-        return new TerminalExecutionResult(
-            Success: true,
-            ExitCode: 0,
-            Stdout: $"Command executed in standard context: {command}",
-            ExecutionTimeMs: 100);
+        await EnsureCommandConnectionAsync(runtime, ct);
+        runtime.CommandWriter!.WriteLine(line);
+        runtime.Pending.Enqueue(requestId);
+
+        var stopwatch = Stopwatch.StartNew();
+        using var timeoutCts = new CancellationTokenSource(timeout ?? DefaultCommandTimeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+        var collected = new List<string>();
+        try
+        {
+            while (await runtime.StdoutLines.Reader.WaitToReadAsync(linked.Token))
+            {
+                while (runtime.StdoutLines.Reader.TryRead(out var outLine))
+                {
+                    if (TabProtocol.TryParseEnd(outLine, out var endId, out var exitCode))
+                    {
+                        // Markers arrive in order; only the head of the queue is ours to finish.
+                        if (runtime.Pending.TryPeek(out var head) && head == endId)
+                        {
+                            runtime.Pending.TryDequeue(out _);
+                        }
+
+                        if (endId == requestId)
+                        {
+                            return new TerminalExecutionResult(
+                                Success: exitCode == 0,
+                                ExitCode: exitCode,
+                                Stdout: string.Join("\n", collected),
+                                Stderr: DrainStderr(runtime),
+                                ExecutionTimeMs: stopwatch.ElapsedMilliseconds);
+                        }
+                    }
+                    else if (runtime.Pending.TryPeek(out var current) && current == requestId)
+                    {
+                        collected.Add(outLine);
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // Leave the request queued so its late output is discarded by the next call.
+            return new TerminalExecutionResult(
+                Success: false,
+                ExitCode: -1,
+                Stdout: string.Join("\n", collected),
+                Stderr: DrainStderr(runtime),
+                ExecutionTimeMs: stopwatch.ElapsedMilliseconds,
+                Errors: new[] { $"Command timed out after {stopwatch.Elapsed.TotalSeconds:F0}s." });
+        }
+
+        throw new InvalidOperationException($"Tab '{tabId}' closed before the command finished.");
     }
 
     public Task CloseTabAsync(string tabId, CancellationToken ct = default)
@@ -185,11 +260,27 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
             _logger.LogDebug("Closing tab {TabId} in standard session {SessionId}", tabId, SessionId);
         }
 
-        // Close associated pipes
-        var stdoutPipeName = $"TokenSaver-{SessionId}-{tabId}-Stdout";
-        var stderrPipeName = $"TokenSaver-{SessionId}-{tabId}-Stderr";
-        _pipeManager.ClosePipe(stdoutPipeName);
-        _pipeManager.ClosePipe(stderrPipeName);
+        if (!_tabs.TryRemove(tabId, out var runtime))
+        {
+            return Task.CompletedTask;
+        }
+
+        // Asking the wrapper to exit closes the wt tab; the wrapper then drops its pipes.
+        try
+        {
+            if (runtime.CommandWriter is not null)
+            {
+                runtime.CommandWriter.WriteLine(TabProtocol.FormatCommand("close", TabProtocol.CloseCommand));
+            }
+        }
+        catch (IOException ex)
+        {
+            _logger.LogDebug(ex, "Tab {TabId} command pipe already closed", tabId);
+        }
+
+        runtime.Dispose();
+        _pipeManager.ClosePipe(runtime.Info.StdoutPipe.PipeName);
+        _pipeManager.ClosePipe(runtime.Info.StderrPipe.PipeName);
 
         return Task.CompletedTask;
     }
@@ -209,6 +300,11 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
 
         try
         {
+            foreach (var tabId in _tabs.Keys.ToList())
+            {
+                await CloseTabAsync(tabId, ct);
+            }
+
             if (_process is not null && !_process.HasExited)
             {
                 if (graceful)
@@ -249,20 +345,23 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
         EnsureReady();
-        // Placeholder: yield empty list for now
         await Task.CompletedTask;
-        yield break;
+        foreach (var runtime in _tabs.Values)
+        {
+            ct.ThrowIfCancellationRequested();
+            yield return runtime.Info;
+        }
     }
 
     public Task<TerminalTabInfo?> GetTabAsync(string tabId, CancellationToken ct = default)
     {
         EnsureReady();
-        return Task.FromResult<TerminalTabInfo?>(null);
+        return Task.FromResult(_tabs.TryGetValue(tabId, out var runtime) ? runtime.Info : null);
     }
 
     public Task<bool> IsAliveAsync(CancellationToken ct = default)
     {
-        return Task.FromResult(State == TerminalSessionState.Ready && (_process?.HasExited == false));
+        return Task.FromResult(State == TerminalSessionState.Ready);
     }
 
     private void EnsureReady()
@@ -271,6 +370,80 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
         {
             throw new InvalidOperationException($"Session is not in Ready state. Current state: {State}");
         }
+    }
+
+    private async Task EnsureCommandConnectionAsync(TabRuntime runtime, CancellationToken ct)
+    {
+        if (runtime.CommandWriter is not null)
+        {
+            return;
+        }
+
+        // The wrapper creates the command pipe server once it starts; retry until it is up.
+        var deadline = DateTime.UtcNow + CommandConnectTimeout;
+        NamedPipeClientStream client;
+        while (true)
+        {
+            client = new NamedPipeClientStream(".", runtime.CommandPipeName, PipeDirection.Out);
+            try
+            {
+                await client.ConnectAsync(500, ct);
+                break;
+            }
+            catch (Exception ex) when (ex is IOException or TimeoutException && DateTime.UtcNow < deadline)
+            {
+                client.Dispose();
+                await Task.Delay(200, ct);
+            }
+            catch
+            {
+                client.Dispose();
+                throw;
+            }
+        }
+
+        runtime.CommandClient = client;
+        runtime.CommandWriter = new StreamWriter(client, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
+    }
+
+    private void StartPump(string pipeName, Channel<string> target)
+    {
+        var pipe = _pipeManager.GetPipe(pipeName);
+        if (pipe is null)
+        {
+            target.Writer.TryComplete();
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await foreach (var line in pipe.ReadLinesAsync())
+                {
+                    target.Writer.TryWrite(line);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Output pump for {PipeName} stopped", pipeName);
+            }
+            finally
+            {
+                target.Writer.TryComplete();
+            }
+        });
+    }
+
+    private static string? DrainStderr(TabRuntime runtime)
+    {
+        var lines = new List<string>();
+        while (runtime.StderrLines.Reader.TryRead(out var line))
+        {
+            lines.Add(line);
+        }
+
+        return lines.Count == 0 ? null : string.Join("\n", lines);
     }
 
     private static async Task<bool> WaitForExitAsync(Process process, TimeSpan timeout)
@@ -282,6 +455,39 @@ public sealed class StandardTerminalSession : ITerminalSession, IDisposable
         catch
         {
             return false;
+        }
+    }
+
+    private sealed class TabRuntime : IDisposable
+    {
+        public TabRuntime(TerminalTabInfo info, string commandPipeName)
+        {
+            Info = info;
+            CommandPipeName = commandPipeName;
+        }
+
+        public TerminalTabInfo Info { get; }
+        public string CommandPipeName { get; }
+        public Channel<string> StdoutLines { get; } = Channel.CreateUnbounded<string>();
+        public Channel<string> StderrLines { get; } = Channel.CreateUnbounded<string>();
+        public Queue<string> Pending { get; } = new();
+        public NamedPipeClientStream? CommandClient { get; set; }
+        public StreamWriter? CommandWriter { get; set; }
+
+        public void Dispose()
+        {
+            try
+            {
+                CommandWriter?.Dispose();
+            }
+            catch (IOException)
+            {
+                // Pipe already closed by the wrapper.
+            }
+
+            CommandClient?.Dispose();
+            CommandWriter = null;
+            CommandClient = null;
         }
     }
 }
