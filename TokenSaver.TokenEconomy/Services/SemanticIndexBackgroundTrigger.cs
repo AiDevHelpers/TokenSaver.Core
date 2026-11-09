@@ -43,6 +43,10 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     // entirely — the answer never goes back to "no chunks" once RepoIndexer has written any.
     private readonly ConcurrentDictionary<string, byte> _knownIndexed = new(StringComparer.OrdinalIgnoreCase);
 
+    // Last completed run's stats and last failure message per workspace, for IndexStatus.
+    private readonly ConcurrentDictionary<string, RepoIndexStats> _lastStats = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string> _lastError = new(StringComparer.OrdinalIgnoreCase);
+
     public async Task<SemanticIndexTriggerStatus> EnsureStartedAsync(string workspaceRoot, CancellationToken ct)
     {
         if (_knownIndexed.ContainsKey(workspaceRoot))
@@ -78,6 +82,62 @@ public sealed partial class SemanticIndexBackgroundTrigger(
         // it. See the class doc comment for why sharing `ct` here would be wrong.
         _ = RunInBackgroundAsync(workspaceRoot, CancellationToken.None);
         return SemanticIndexTriggerStatus.Started;
+    }
+
+    /// <summary>
+    ///     Explicit (manual) index run, detached from the calling request. Unlike
+    ///     <see cref="EnsureStartedAsync" />, this runs even when chunks already exist, so a caller
+    ///     can re-index after edits. Returns <see cref="SemanticIndexTriggerStatus.AlreadyRunning" />
+    ///     if a run for this root is already in flight.
+    /// </summary>
+    public SemanticIndexTriggerStatus StartManual(string workspaceRoot, string[]? extensions, int concurrency)
+    {
+        if (!_running.TryAdd(workspaceRoot, 0))
+        {
+            return SemanticIndexTriggerStatus.AlreadyRunning;
+        }
+
+        _ = _lastError.TryRemove(workspaceRoot, out _);
+        _ = RunManualInBackgroundAsync(workspaceRoot, extensions, concurrency);
+        return SemanticIndexTriggerStatus.Started;
+    }
+
+    /// <summary>True while a background run (manual or first-run) is in flight for this root.</summary>
+    public bool IsRunning(string workspaceRoot) => _running.ContainsKey(workspaceRoot);
+
+    /// <summary>Stats from the most recent completed run for this root, if any.</summary>
+    public bool TryGetLastStats(string workspaceRoot, out RepoIndexStats? stats)
+    {
+        bool found = _lastStats.TryGetValue(workspaceRoot, out RepoIndexStats? value);
+        stats = value;
+        return found;
+    }
+
+    /// <summary>Error message from the most recent failed run for this root, if any.</summary>
+    public string? GetLastError(string workspaceRoot) => _lastError.TryGetValue(workspaceRoot, out string? message) ? message : null;
+
+    private async Task RunManualInBackgroundAsync(string workspaceRoot, string[]? extensions, int concurrency)
+    {
+        try
+        {
+            RepoIndexStats stats = await indexer.IndexRepoAsync(workspaceRoot, extensions, concurrency, CancellationToken.None);
+            if (stats.ChunksIndexed > 0 || stats.ChunksSkipped > 0)
+            {
+                _knownIndexed[workspaceRoot] = 0;
+            }
+
+            _lastStats[workspaceRoot] = stats;
+            LogCompleted(logger, workspaceRoot, stats.FilesScanned, stats.ChunksIndexed);
+        }
+        catch (Exception ex)
+        {
+            _lastError[workspaceRoot] = ex.Message;
+            LogFailed(logger, workspaceRoot, ex);
+        }
+        finally
+        {
+            _ = _running.TryRemove(workspaceRoot, out _);
+        }
     }
 
     private async Task RunInBackgroundAsync(string workspaceRoot, CancellationToken ct)

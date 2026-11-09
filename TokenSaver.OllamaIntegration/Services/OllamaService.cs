@@ -153,30 +153,74 @@ public partial class OllamaService
             ? new { model, prompt, stream = false }
             : new { model, system, prompt, stream = false };
 
-        using HttpRequestMessage request = new(HttpMethod.Post, "/api/generate")
+        for (int attempt = 1; ; attempt++)
         {
-            Content = JsonContent.Create(payload)
-        };
-        if (!string.IsNullOrWhiteSpace(endpointName))
-        {
-            request.Options.Set(OllamaRequestOptions.EndpointName, endpointName);
-        }
+            using HttpRequestMessage request = new(HttpMethod.Post, "/api/generate")
+            {
+                Content = JsonContent.Create(payload)
+            };
+            if (!string.IsNullOrWhiteSpace(endpointName))
+            {
+                request.Options.Set(OllamaRequestOptions.EndpointName, endpointName);
+            }
 
-        HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            string body = await response.Content.ReadAsStringAsync(ct);
-            throw new HttpRequestException(
-                $"POST /api/generate returned {(int)response.StatusCode} {response.ReasonPhrase}: {body}",
-                null,
-                response.StatusCode);
-        }
+            HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                string body = await response.Content.ReadAsStringAsync(ct);
+                throw new HttpRequestException(
+                    $"POST /api/generate returned {(int)response.StatusCode} {response.ReasonPhrase}: {body}",
+                    null,
+                    response.StatusCode);
+            }
 
-        // Read the body once so a reply without a "response" field can be reported with its content.
-        string okBody = await response.Content.ReadAsStringAsync(ct);
-        OllamaGenerateResponse? result = JsonSerializer.Deserialize<OllamaGenerateResponse>(okBody, JsonSerializerOptions.Web);
-        return result?.Response
-            ?? throw new HttpRequestException($"POST /api/generate returned 200 without a 'response' field: {okBody}");
+            // Read the body once so a reply without a "response" field can be reported with its content.
+            string okBody = await response.Content.ReadAsStringAsync(ct);
+
+            // The SimpleModelServer router answers 200 with {"status":"warming_up","retry_after":N}
+            // while models load. That is transient, so wait and resend instead of failing.
+            if (attempt < MaxWarmupAttempts && TryGetWarmupDelay(okBody, out TimeSpan warmupDelay))
+            {
+                await Task.Delay(warmupDelay, ct);
+                continue;
+            }
+
+            OllamaGenerateResponse? result = JsonSerializer.Deserialize<OllamaGenerateResponse>(okBody, JsonSerializerOptions.Web);
+            return result?.Response
+                ?? throw new HttpRequestException($"POST /api/generate returned 200 without a 'response' field: {okBody}");
+        }
+    }
+
+    private const int MaxWarmupAttempts = 10;
+    private const int DefaultWarmupRetrySeconds = 3;
+
+    private static bool TryGetWarmupDelay(string body, out TimeSpan delay)
+    {
+        delay = TimeSpan.Zero;
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(body);
+            JsonElement root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("status", out JsonElement status)
+                || status.ValueKind != JsonValueKind.String
+                || status.GetString() != "warming_up")
+            {
+                return false;
+            }
+
+            int seconds = root.TryGetProperty("retry_after", out JsonElement retryAfter)
+                && retryAfter.ValueKind == JsonValueKind.Number
+                && retryAfter.TryGetInt32(out int parsed)
+                    ? parsed
+                    : DefaultWarmupRetrySeconds;
+            delay = TimeSpan.FromSeconds(Math.Max(1, seconds));
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
