@@ -1,40 +1,31 @@
 # Runs inside one Windows Terminal tab for a TokenSaver standard session.
-# Reads "<id> <command>" lines from the command pipe, runs each command,
-# streams stdout to the stdout pipe and error records to the stderr pipe,
-# then writes "__TOKENSAVER_END__ <id> <exitcode>" to the stdout pipe.
-# The reserved command "__TOKENSAVER_CLOSE__" ends the loop and the tab.
+# Reads "<id> <command>" lines from the command pipe (TokenSaver is the server), runs each command,
+# and writes to the stdout pipe (TokenSaver is the server):
+#   plain output lines                    -> stdout for the current command
+#   __TOKENSAVER_ERR__ <id> <text>        -> error records, in order with stdout
+#   __TOKENSAVER_END__ <id> <exitcode>    -> end of the command
+# The reserved command "__TOKENSAVER_CLOSE__" ends the loop, which closes the wt tab.
 param(
     [Parameter(Mandatory)][string]$StdoutPipe,
-    [Parameter(Mandatory)][string]$StderrPipe,
     [Parameter(Mandatory)][string]$CommandPipe
 )
 
 $ErrorActionPreference = 'Continue'
 $endMarker = '__TOKENSAVER_END__'
+$errorMarker = '__TOKENSAVER_ERR__'
 $closeCommand = '__TOKENSAVER_CLOSE__'
 
-# Output pipes are created by TokenSaver (server side); this tab connects as a client.
+# Output pipe is created by TokenSaver (server side); this tab connects as a client.
 $outClient = [System.IO.Pipes.NamedPipeClientStream]::new('.', $StdoutPipe, [System.IO.Pipes.PipeDirection]::Out)
-$errClient = [System.IO.Pipes.NamedPipeClientStream]::new('.', $StderrPipe, [System.IO.Pipes.PipeDirection]::Out)
 $outClient.Connect(10000)
-$errClient.Connect(10000)
-
 $outW = [System.IO.StreamWriter]::new($outClient)
 $outW.AutoFlush = $true
 $outW.NewLine = "`n"
-$errW = [System.IO.StreamWriter]::new($errClient)
-$errW.AutoFlush = $true
-$errW.NewLine = "`n"
 
-# The command pipe is created here (server side); TokenSaver connects to it as a client.
-$cmdServer = [System.IO.Pipes.NamedPipeServerStream]::new(
-    $CommandPipe,
-    [System.IO.Pipes.PipeDirection]::In,
-    1,
-    [System.IO.Pipes.PipeTransmissionMode]::Byte,
-    [System.IO.Pipes.PipeOptions]::None)
-$cmdServer.WaitForConnection()
-$cmdReader = [System.IO.StreamReader]::new($cmdServer)
+# Command pipe is created by TokenSaver (server side); this tab connects as a client.
+$cmdClient = [System.IO.Pipes.NamedPipeClientStream]::new('.', $CommandPipe, [System.IO.Pipes.PipeDirection]::In)
+$cmdClient.Connect(10000)
+$cmdReader = [System.IO.StreamReader]::new($cmdClient)
 
 while ($null -ne ($line = $cmdReader.ReadLine())) {
     $space = $line.IndexOf(' ')
@@ -53,7 +44,9 @@ while ($null -ne ($line = $cmdReader.ReadLine())) {
     try {
         & ([scriptblock]::Create($command)) 2>&1 | ForEach-Object {
             if ($_ -is [System.Management.Automation.ErrorRecord]) {
-                $errW.WriteLine($_.ToString())
+                # Error text must stay on one line so the protocol framing holds.
+                $text = ($_.ToString() -replace '[\r\n]+', ' | ')
+                $outW.WriteLine("$errorMarker $id $text")
             }
             else {
                 $outW.WriteLine([string]$_)
@@ -62,7 +55,8 @@ while ($null -ne ($line = $cmdReader.ReadLine())) {
     }
     catch {
         $failed = $true
-        $errW.WriteLine($_.ToString())
+        $text = ($_.ToString() -replace '[\r\n]+', ' | ')
+        $outW.WriteLine("$errorMarker $id $text")
     }
 
     if ($failed) { $code = 1 }
@@ -73,6 +67,6 @@ while ($null -ne ($line = $cmdReader.ReadLine())) {
 }
 
 $cmdReader.Dispose()
-$cmdServer.Dispose()
+$cmdClient.Dispose()
 $outW.Dispose()
-$errW.Dispose()
+$outClient.Dispose()

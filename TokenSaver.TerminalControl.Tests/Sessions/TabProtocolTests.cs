@@ -29,6 +29,23 @@ public sealed class TabProtocolTests
     }
 
     [Fact]
+    public void TryParseError_ParsesIdAndTextWithSpaces()
+    {
+        var parsed = TabProtocol.TryParseError("__TOKENSAVER_ERR__ req1 boom at line 3", out var id, out var text);
+
+        Assert.True(parsed);
+        Assert.Equal("req1", id);
+        Assert.Equal("boom at line 3", text);
+    }
+
+    [Fact]
+    public void TryParseError_IgnoresStdoutAndEndMarkers()
+    {
+        Assert.False(TabProtocol.TryParseError("plain output", out _, out _));
+        Assert.False(TabProtocol.TryParseEnd("__TOKENSAVER_ERR__ req1 boom", out _, out _));
+    }
+
+    [Fact]
     public void TryParseEnd_IgnoresOrdinaryOutput()
     {
         Assert.False(TabProtocol.TryParseEnd("hello world", out _, out _));

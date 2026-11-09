@@ -7,7 +7,31 @@ namespace TokenSaver.TerminalControl.Core;
 public static class TabProtocol
 {
     public const string EndMarker = "__TOKENSAVER_END__";
+    public const string ErrorMarker = "__TOKENSAVER_ERR__";
     public const string CloseCommand = "__TOKENSAVER_CLOSE__";
+
+    /// <summary>Parses "__TOKENSAVER_ERR__ &lt;id&gt; &lt;text&gt;" written in-band on the stdout pipe.</summary>
+    public static bool TryParseError(string line, out string requestId, out string text)
+    {
+        requestId = string.Empty;
+        text = string.Empty;
+
+        if (!line.StartsWith(ErrorMarker + " ", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var rest = line[(ErrorMarker.Length + 1)..];
+        var space = rest.IndexOf(' ');
+        if (space < 1)
+        {
+            return false;
+        }
+
+        requestId = rest[..space];
+        text = rest[(space + 1)..];
+        return true;
+    }
 
     public static string FormatCommand(string requestId, string command)
     {

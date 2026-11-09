@@ -61,6 +61,12 @@ public sealed class StandardTerminalSessionE2ETests : IDisposable
         var failed = await session.ExecuteInTabAsync(tab.TabId, "throw 'boom'", timeout: TimeSpan.FromSeconds(60));
         Assert.False(failed.Success);
         Assert.Equal(1, failed.ExitCode);
+        Assert.Contains("boom", failed.Stderr ?? string.Empty, StringComparison.Ordinal);
+
+        // Output after an error must still reach the next command, in order.
+        var after = await session.ExecuteInTabAsync(tab.TabId, "Write-Output 'after'", timeout: TimeSpan.FromSeconds(60));
+        Assert.True(after.Success);
+        Assert.Equal("after", after.Stdout);
 
         await session.CloseTabAsync(tab.TabId);
         Assert.Null(await session.GetTabAsync(tab.TabId));

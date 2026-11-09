@@ -46,7 +46,6 @@ public sealed class StandardTerminalSessionWtTests : IDisposable
         Assert.Contains("new-tab", tabLaunch.Arguments);
         Assert.Contains("tokensaver-tab.ps1", tabLaunch.Arguments);
         Assert.Contains(tab.StdoutPipe.PipeName, tabLaunch.Arguments);
-        Assert.Contains(tab.StderrPipe.PipeName, tabLaunch.Arguments);
         Assert.Contains("-CommandPipe", tabLaunch.Arguments);
     }
 
