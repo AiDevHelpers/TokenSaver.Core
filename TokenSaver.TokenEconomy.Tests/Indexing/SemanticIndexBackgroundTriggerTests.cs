@@ -1,9 +1,14 @@
+using TokenSaver.Common.Core.Configuration;
+using TokenSaver.Database.Context;
+using TokenSaver.OllamaIntegration.Services;
+using TokenSaver.OllamaIntegration.Tests;
 using TokenSaver.TokenEconomy.Contracts;
 using TokenSaver.TokenEconomy.Models.TokenEconomy;
 using TokenSaver.TokenEconomy.Services;
-using TokenSaver.Database.Context;
+using TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 using Xunit;
 
@@ -20,7 +25,21 @@ public sealed class SemanticIndexBackgroundTriggerTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "sibt-tests-" + Guid.NewGuid());
     private readonly TokenEconomyDbAccessor _db = new();
 
-    public void Dispose() => _db.Dispose();
+    public void Dispose()
+    {
+        _db.Dispose();
+        if (Directory.Exists(_root))
+        {
+            try
+            {
+                Directory.Delete(_root, recursive: true);
+            }
+            catch (IOException)
+            {
+                // best-effort cleanup; SQLite handles can linger briefly on Windows
+            }
+        }
+    }
 
     [Fact]
     public async Task EnsureStartedAsync_CompletedRun_ClearsRunningAndRecordsStats()
@@ -62,6 +81,32 @@ public sealed class SemanticIndexBackgroundTriggerTests : IDisposable
 
         Assert.Equal(SemanticIndexTriggerStatus.AlreadyIndexed, second);
         Assert.Equal(1, indexer.Calls);
+    }
+
+    [Fact]
+    public async Task EnsureStartedAsync_RealIndexer_MarksCompleteWithStatsMatchingStoredChunks()
+    {
+        _ = Directory.CreateDirectory(_root);
+        File.WriteAllText(Path.Combine(_root, "Widget.cs"),
+            "namespace Foo;\n\npublic sealed class Widget\n{\n    public void DoThing() { }\n}\n");
+        FakeOllamaHandler handler = new();
+        TokenSaverConfig config = new();
+        OllamaService ollama = new(
+            new HttpClient(handler) { BaseAddress = new Uri("http://fake-ollama.local") },
+            Options.Create(config),
+            NullLogger<OllamaService>.Instance);
+        RepoIndexer indexer = new(new ChunkExtractor(), ollama, new ModelRouteResolver(Options.Create(config)),
+            _db, Options.Create(config));
+        SemanticIndexBackgroundTrigger trigger = new(indexer, _db, NullLogger<SemanticIndexBackgroundTrigger>.Instance);
+
+        _ = await trigger.EnsureStartedAsync(_root, CancellationToken.None);
+        await WaitUntilIdleAsync(trigger);
+
+        Assert.Null(trigger.GetLastError(_root));
+        Assert.True(trigger.TryGetLastStats(_root, out RepoIndexStats? stats));
+        Assert.True(stats!.ChunksIndexed > 0);
+        WorkspaceIndexContext ctx = await _db.GetDbAsync(_root, CancellationToken.None);
+        Assert.Equal(stats.ChunksIndexed, ctx.Chunks.ToList().Count);
     }
 
     private async Task WaitUntilIdleAsync(SemanticIndexBackgroundTrigger trigger)
