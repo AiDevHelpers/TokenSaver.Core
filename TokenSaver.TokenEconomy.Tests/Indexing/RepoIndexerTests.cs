@@ -147,6 +147,31 @@ public sealed class RepoIndexerTests : IDisposable
     }
 
     [Fact]
+    public async Task IndexRepoAsync_ModelCallTimesOut_RetriesAndStillIndexesChunk()
+    {
+        // HttpClient request timeouts surface as TaskCanceledException, not HttpRequestException.
+        // The first generate call times out; the retry must succeed and the run must not abort.
+        int calls = 0;
+        _fakeHandler.GenerateResponder = _ =>
+        {
+            if (Interlocked.Increment(ref calls) == 1)
+            {
+                throw new TaskCanceledException("HttpClient request timed out");
+            }
+
+            return "summary";
+        };
+        WriteFile("Widget.cs", "namespace Foo;\n\npublic sealed class Widget\n{\n    public void DoThing() { }\n}\n");
+        RepoIndexer indexer = CreateIndexer();
+
+        RepoIndexStats stats = await indexer.IndexRepoAsync(_tempWorkspace);
+
+        Assert.Equal(0, stats.ChunksFailed);
+        Assert.True(stats.ChunksIndexed > 0);
+        Assert.True(calls > 1);
+    }
+
+    [Fact]
     public async Task IndexRepoAsync_MarkdownFile_ChunksBySection()
     {
         WriteFile("doc.md", "# Title\nintro\n## Section A\ncontent A\n");

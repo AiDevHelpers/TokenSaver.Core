@@ -173,8 +173,11 @@ public sealed class RepoIndexer(
     private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)];
 
     /// <summary>
-    ///     Retries a model call on HTTP failures (router 500 or transient unreachable) with short
-    ///     backoff. The final failure is rethrown for the caller to count and skip.
+    ///     Retries a model call on HTTP failures (router 500, transient unreachable, or the
+    ///     HttpClient request timeout) with short backoff. HttpClient timeouts surface as
+    ///     <see cref="TaskCanceledException" />, so they are mapped to <see cref="HttpRequestException" />
+    ///     to let the caller count and skip the chunk instead of aborting the run. Caller
+    ///     cancellation is not retried. The final failure is rethrown as <see cref="HttpRequestException" />.
     /// </summary>
     private static async Task<T> WithRetryAsync<T>(Func<Task<T>> call, CancellationToken ct)
     {
@@ -184,8 +187,13 @@ public sealed class RepoIndexer(
             {
                 return await call();
             }
-            catch (HttpRequestException) when (attempt < RetryDelays.Length)
+            catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
             {
+                if (attempt >= RetryDelays.Length)
+                {
+                    throw new HttpRequestException($"Model call failed after {attempt + 1} attempts: {ex.Message}", ex);
+                }
+
                 await Task.Delay(RetryDelays[attempt], ct);
             }
         }
