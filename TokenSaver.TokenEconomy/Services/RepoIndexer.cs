@@ -52,7 +52,7 @@ public sealed class RepoIndexer(
                 .ToDictionaryAsync(c => (c.RelativePath, c.StartLine, c.EndLine), c => c.ContentHash, ct),
             ct);
 
-        int indexed = 0, skipped = 0, deleted = 0;
+        int indexed = 0, skipped = 0, deleted = 0, failed = 0;
         using SemaphoreSlim ollamaLimit = new(Math.Max(1, concurrency));
         HashSet<string> seenPaths = new(StringComparer.OrdinalIgnoreCase);
 
@@ -90,9 +90,23 @@ public sealed class RepoIndexer(
                 await ollamaLimit.WaitAsync(ct);
                 try
                 {
-                    string summary = await SummarizeChunkAsync(chunk, ct);
-                    string embedInput = _config.EnableSummaryEmbedding ? summary : chunk.Text;
-                    float[] vector = await ollama.EmbedAsync(modelRoutes.Resolve("embed"), embedInput, ct: ct);
+                    // A chunk whose model call keeps failing (router 500, unreachable) is skipped
+                    // without writing its hash, so the next run retries only that chunk. Other
+                    // chunks keep indexing. Cancellation still propagates.
+                    string summary;
+                    float[] vector;
+                    try
+                    {
+                        summary = await WithRetryAsync(() => SummarizeChunkAsync(chunk, ct), ct);
+                        string embedInput = _config.EnableSummaryEmbedding ? summary : chunk.Text;
+                        vector = await WithRetryAsync(
+                            () => ollama.EmbedAsync(modelRoutes.Resolve("embed"), embedInput, ct: ct), ct);
+                    }
+                    catch (HttpRequestException)
+                    {
+                        _ = Interlocked.Increment(ref failed);
+                        return;
+                    }
 
                     await db.WithDbLockAsync(async () =>
                     {
@@ -153,7 +167,28 @@ public sealed class RepoIndexer(
         deleted += prunedMissingFiles;
 
         sw.Stop();
-        return new RepoIndexStats(files.Count, indexed, skipped, deleted, sw.Elapsed);
+        return new RepoIndexStats(files.Count, indexed, skipped, deleted, sw.Elapsed, failed);
+    }
+
+    private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)];
+
+    /// <summary>
+    ///     Retries a model call on HTTP failures (router 500 or transient unreachable) with short
+    ///     backoff. The final failure is rethrown for the caller to count and skip.
+    /// </summary>
+    private static async Task<T> WithRetryAsync<T>(Func<Task<T>> call, CancellationToken ct)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await call();
+            }
+            catch (HttpRequestException) when (attempt < RetryDelays.Length)
+            {
+                await Task.Delay(RetryDelays[attempt], ct);
+            }
+        }
     }
 
     private async Task<string> SummarizeChunkAsync(CodeChunk chunk, CancellationToken ct)

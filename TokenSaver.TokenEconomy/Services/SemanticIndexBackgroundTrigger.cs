@@ -102,6 +102,13 @@ public sealed partial class SemanticIndexBackgroundTrigger(
         return SemanticIndexTriggerStatus.Started;
     }
 
+    /// <summary>Number of chunk rows stored for this root; 0 means the index has never been built.</summary>
+    public async Task<int> CountChunksAsync(string workspaceRoot, CancellationToken ct)
+    {
+        WorkspaceIndexContext ctx = await db.GetDbAsync(workspaceRoot, ct);
+        return await db.WithDbLockAsync(() => ctx.Chunks.CountAsync(ct), ct);
+    }
+
     /// <summary>True while a background run (manual or first-run) is in flight for this root.</summary>
     public bool IsRunning(string workspaceRoot) => _running.ContainsKey(workspaceRoot);
 
@@ -118,6 +125,7 @@ public sealed partial class SemanticIndexBackgroundTrigger(
 
     private async Task RunManualInBackgroundAsync(string workspaceRoot, string[]? extensions, int concurrency)
     {
+        LogStarted(logger, workspaceRoot, "manual run");
         try
         {
             RepoIndexStats stats = await indexer.IndexRepoAsync(workspaceRoot, extensions, concurrency, CancellationToken.None);
@@ -126,13 +134,11 @@ public sealed partial class SemanticIndexBackgroundTrigger(
                 _knownIndexed[workspaceRoot] = 0;
             }
 
-            _lastStats[workspaceRoot] = stats;
-            LogCompleted(logger, workspaceRoot, stats.FilesScanned, stats.ChunksIndexed);
+            RecordCompleted(workspaceRoot, stats);
         }
         catch (Exception ex)
         {
-            _lastError[workspaceRoot] = ex.Message;
-            LogFailed(logger, workspaceRoot, ex);
+            RecordFailed(workspaceRoot, ex);
         }
         finally
         {
@@ -142,6 +148,7 @@ public sealed partial class SemanticIndexBackgroundTrigger(
 
     private async Task RunInBackgroundAsync(string workspaceRoot, CancellationToken ct)
     {
+        LogStarted(logger, workspaceRoot, "first run: no chunks stored");
         try
         {
             RepoIndexStats stats = await indexer.IndexRepoAsync(workspaceRoot, ct: ct);
@@ -150,11 +157,11 @@ public sealed partial class SemanticIndexBackgroundTrigger(
                 _knownIndexed[workspaceRoot] = 0;
             }
 
-            LogCompleted(logger, workspaceRoot, stats.FilesScanned, stats.ChunksIndexed);
+            RecordCompleted(workspaceRoot, stats);
         }
         catch (Exception ex)
         {
-            LogFailed(logger, workspaceRoot, ex);
+            RecordFailed(workspaceRoot, ex);
         }
         finally
         {
@@ -162,9 +169,30 @@ public sealed partial class SemanticIndexBackgroundTrigger(
         }
     }
 
+    /// <summary>Stores the run's stats for IndexStatus and writes the completion line.</summary>
+    private void RecordCompleted(string workspaceRoot, RepoIndexStats stats)
+    {
+        _lastStats[workspaceRoot] = stats;
+        _ = _lastError.TryRemove(workspaceRoot, out _);
+        LogCompleted(logger, workspaceRoot, stats.FilesScanned, stats.ChunksIndexed, stats.ChunksSkipped,
+            stats.ChunksDeleted, stats.ChunksFailed, stats.Elapsed.TotalSeconds);
+    }
+
+    /// <summary>Stores the failure for IndexStatus and writes the warning line.</summary>
+    private void RecordFailed(string workspaceRoot, Exception ex)
+    {
+        _lastError[workspaceRoot] = ex.Message;
+        LogFailed(logger, workspaceRoot, ex);
+    }
+
     [LoggerMessage(Level = LogLevel.Information,
-        Message = "Background semantic index for '{WorkspaceRoot}' complete: {Files} files, {Chunks} chunks.")]
-    private static partial void LogCompleted(ILogger logger, string workspaceRoot, int files, int chunks);
+        Message = "Background semantic index for '{WorkspaceRoot}' started ({Reason}).")]
+    private static partial void LogStarted(ILogger logger, string workspaceRoot, string reason);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Background semantic index for '{WorkspaceRoot}' complete: {Files} files, {Indexed} chunks embedded, {Skipped} unchanged, {Deleted} stale removed, {Failed} failed, {Seconds:F1}s.")]
+    private static partial void LogCompleted(ILogger logger, string workspaceRoot, int files, int indexed, int skipped,
+        int deleted, int failed, double seconds);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Background semantic index for '{WorkspaceRoot}' failed.")]
     private static partial void LogFailed(ILogger logger, string workspaceRoot, Exception ex);

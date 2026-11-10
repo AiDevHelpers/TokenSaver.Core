@@ -1,6 +1,7 @@
 using TokenSaver.Database.Context;
 using TokenSaver.Utilities.Services;
 
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
 using System.Collections.Concurrent;
@@ -36,10 +37,7 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
     [LoggerMessage(Level = LogLevel.Debug, Message = "Gitignore scan failed")]
     private static partial void LogGitignoreScanFailed(ILogger logger, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to open workspace index DB for '{Root}': {Msg}")]
-    private static partial void LogDbOpenFailed(ILogger logger, string root, string msg, Exception ex);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Detected corrupt/mismatched workspace index at '{Root}' — deleting and rebuilding")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Workspace index at '{Root}' is corrupt or unreadable — deleting and rebuilding")]
     private static partial void LogIndexRebuild(ILogger logger, string root);
 
     // Guards all WorkspaceIndexContext access — EF Core's DbContext isn't thread-safe.
@@ -87,25 +85,13 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
             {
                 ctx = await WorkspaceIndexContextFactory.CreateAsync(workspaceRoot, ct);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (SqliteException ex) when (IsCorruptDatabase(ex))
             {
-                // Attempt one auto-recovery: delete the corrupt index and rebuild.
-                // This handles stale schema, corruption, and WAL locks left by crashed processes.
+                // Only a corrupt or unreadable file is deleted and rebuilt. Any other open failure
+                // (locks, I/O) propagates unchanged so existing chunk embeddings are not discarded.
                 LogIndexRebuild(_logger, workspaceRoot);
-                try
-                {
-                    DeleteIndexFiles(workspaceRoot);
-                    ctx = await WorkspaceIndexContextFactory.CreateAsync(workspaceRoot, ct);
-                }
-                catch (Exception retryEx) when (retryEx is not OperationCanceledException)
-                {
-                    // Recovery failed — log both the original and retry exceptions and give up.
-                    LogDbOpenFailed(_logger, workspaceRoot, ex.Message, ex);
-                    LogDbOpenFailed(_logger, workspaceRoot, retryEx.Message, retryEx);
-                    throw new InvalidOperationException(
-                        $"Failed to open workspace index DB at '{WorkspaceIndexContextFactory.GetDbPath(workspaceRoot)}': {ex.Message}. " +
-                        "Auto-recovery (delete and rebuild) also failed: " + retryEx.Message, retryEx);
-                }
+                DeleteIndexFiles(workspaceRoot);
+                ctx = await WorkspaceIndexContextFactory.CreateAsync(workspaceRoot, ct);
             }
 
             _contexts[workspaceRoot] = ctx;
@@ -154,6 +140,9 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
     {
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     }
+
+    // SQLITE_CORRUPT (11) and SQLITE_NOTADB (26): the file exists but is not a valid database.
+    private static bool IsCorruptDatabase(SqliteException ex) => ex.SqliteErrorCode is 11 or 26;
 
     private static void DeleteIndexFiles(string workspaceRoot)
     {
