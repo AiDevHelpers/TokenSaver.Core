@@ -172,6 +172,45 @@ public sealed class RepoIndexerTests : IDisposable
     }
 
     [Fact]
+    public async Task IndexRepoAsync_MultipleFiles_ScansEverySupportedFileAndStoresEveryChunk()
+    {
+        WriteFile("A.cs", "namespace Foo;\n\npublic sealed class A\n{\n    public void One() { }\n}\n");
+        WriteFile("sub/B.cs", "namespace Foo;\n\npublic sealed class B\n{\n    public void Two() { }\n}\n");
+        WriteFile("doc.md", "# Title\nintro\n## Section A\ncontent A\n");
+        WriteFile("readme.txt", "not a supported extension");
+        WriteFile("node_modules/pkg/index.js", "module.exports = 1;");
+        RepoIndexer indexer = CreateIndexer();
+
+        RepoIndexStats stats = await indexer.IndexRepoAsync(_tempWorkspace);
+
+        Assert.Equal(3, stats.FilesScanned);
+        Assert.Equal(0, stats.ChunksFailed);
+        WorkspaceIndexContext ctx = await _db.GetDbAsync(_tempWorkspace, CancellationToken.None);
+        List<TokenSaver.Database.Context.Entities.ChunkEntity> rows = ctx.Chunks.ToList();
+        Assert.Equal(stats.ChunksIndexed, rows.Count);
+        Assert.Contains(rows, r => r.RelativePath == "A.cs");
+        Assert.Contains(rows, r => r.RelativePath.EndsWith("B.cs", StringComparison.Ordinal));
+        Assert.Contains(rows, r => r.RelativePath == "doc.md");
+        Assert.DoesNotContain(rows, r => r.RelativePath.EndsWith("readme.txt", StringComparison.Ordinal));
+        Assert.DoesNotContain(rows, r => r.RelativePath.Contains("node_modules", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task IndexRepoAsync_UnchangedRerunAcrossFiles_SkipsEveryKnownChunk()
+    {
+        WriteFile("A.cs", "namespace Foo;\n\npublic sealed class A\n{\n    public void One() { }\n}\n");
+        WriteFile("doc.md", "# Title\nintro\n## Section A\ncontent A\n");
+        RepoIndexer indexer = CreateIndexer();
+        RepoIndexStats first = await indexer.IndexRepoAsync(_tempWorkspace);
+
+        RepoIndexStats second = await indexer.IndexRepoAsync(_tempWorkspace);
+
+        Assert.Equal(0, second.ChunksIndexed);
+        Assert.Equal(first.ChunksIndexed, second.ChunksSkipped);
+        Assert.Equal(0, second.ChunksDeleted);
+    }
+
+    [Fact]
     public async Task IndexRepoAsync_MarkdownFile_ChunksBySection()
     {
         WriteFile("doc.md", "# Title\nintro\n## Section A\ncontent A\n");
