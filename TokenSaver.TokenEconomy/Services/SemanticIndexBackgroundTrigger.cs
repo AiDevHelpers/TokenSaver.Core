@@ -43,45 +43,34 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     // entirely — the answer never goes back to "no chunks" once RepoIndexer has written any.
     private readonly ConcurrentDictionary<string, byte> _knownIndexed = new(StringComparer.OrdinalIgnoreCase);
 
+    // Roots already given their once-per-process incremental run by EnsureStartedAsync.
+    private readonly ConcurrentDictionary<string, byte> _startedRoots = new(StringComparer.OrdinalIgnoreCase);
+
     // Last completed run's stats and last failure message per workspace, for IndexStatus.
     private readonly ConcurrentDictionary<string, RepoIndexStats> _lastStats = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, string> _lastError = new(StringComparer.OrdinalIgnoreCase);
 
-    public async Task<SemanticIndexTriggerStatus> EnsureStartedAsync(string workspaceRoot, CancellationToken ct)
+    /// <summary>
+    ///     Starts one incremental run for this root per process, on its first connect. The run
+    ///     never rebuilds: RepoIndexer skips chunks whose content hash is unchanged, so an
+    ///     up-to-date index costs only a file walk. A partially built index is completed the same way.
+    /// </summary>
+    public Task<SemanticIndexTriggerStatus> EnsureStartedAsync(string workspaceRoot, CancellationToken ct)
     {
-        if (_knownIndexed.ContainsKey(workspaceRoot))
+        if (!_startedRoots.TryAdd(workspaceRoot, 0))
         {
-            return SemanticIndexTriggerStatus.AlreadyIndexed;
+            return Task.FromResult(SemanticIndexTriggerStatus.AlreadyIndexed);
         }
 
         if (!_running.TryAdd(workspaceRoot, 0))
         {
-            return SemanticIndexTriggerStatus.AlreadyRunning;
-        }
-
-        bool hasChunks;
-        try
-        {
-            WorkspaceIndexContext ctx = await db.GetDbAsync(workspaceRoot, ct);
-            hasChunks = await db.WithDbLockAsync(() => ctx.Chunks.AnyAsync(ct), ct);
-        }
-        catch
-        {
-            _ = _running.TryRemove(workspaceRoot, out _);
-            throw;
-        }
-
-        if (hasChunks)
-        {
-            _knownIndexed[workspaceRoot] = 0;
-            _ = _running.TryRemove(workspaceRoot, out _);
-            return SemanticIndexTriggerStatus.AlreadyIndexed;
+            return Task.FromResult(SemanticIndexTriggerStatus.AlreadyRunning);
         }
 
         // CancellationToken.None, deliberately: this task must outlive the request that spawned
         // it. See the class doc comment for why sharing `ct` here would be wrong.
-        _ = RunInBackgroundAsync(workspaceRoot, CancellationToken.None);
-        return SemanticIndexTriggerStatus.Started;
+        _ = RunInBackgroundAsync(workspaceRoot, "incremental run on connect", CancellationToken.None);
+        return Task.FromResult(SemanticIndexTriggerStatus.Started);
     }
 
     /// <summary>
@@ -107,6 +96,21 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     {
         WorkspaceIndexContext ctx = await db.GetDbAsync(workspaceRoot, ct);
         return await db.WithDbLockAsync(() => ctx.Chunks.CountAsync(ct), ct);
+    }
+
+    /// <summary>
+    ///     Chunk count and the newest chunk write time (Unix ms, from the database so it survives a
+    ///     restart); both are null-valued when the index is empty.
+    /// </summary>
+    public async Task<(int Count, long? LastUpdatedMs)> ChunkSummaryAsync(string workspaceRoot, CancellationToken ct)
+    {
+        WorkspaceIndexContext ctx = await db.GetDbAsync(workspaceRoot, ct);
+        return await db.WithDbLockAsync(async () =>
+        {
+            int count = await ctx.Chunks.CountAsync(ct);
+            long? last = count == 0 ? null : await ctx.Chunks.MaxAsync(c => (long?)c.UpdatedAt, ct);
+            return (count, last);
+        }, ct);
     }
 
     /// <summary>True while a background run (manual or first-run) is in flight for this root.</summary>
@@ -146,9 +150,9 @@ public sealed partial class SemanticIndexBackgroundTrigger(
         }
     }
 
-    private async Task RunInBackgroundAsync(string workspaceRoot, CancellationToken ct)
+    private async Task RunInBackgroundAsync(string workspaceRoot, string reason, CancellationToken ct)
     {
-        LogStarted(logger, workspaceRoot, "first run: no chunks stored");
+        LogStarted(logger, workspaceRoot, reason);
         try
         {
             RepoIndexStats stats = await indexer.IndexRepoAsync(workspaceRoot, ct: ct);

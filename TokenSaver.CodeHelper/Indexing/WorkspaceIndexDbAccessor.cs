@@ -37,8 +37,8 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
     [LoggerMessage(Level = LogLevel.Debug, Message = "Gitignore scan failed")]
     private static partial void LogGitignoreScanFailed(ILogger logger, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Workspace index at '{Root}' is corrupt or unreadable — deleting and rebuilding")]
-    private static partial void LogIndexRebuild(ILogger logger, string root);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Workspace index at '{Root}' declared corrupt (SQLite error {SqliteCode}: {Message}) — deleting and rebuilding")]
+    private static partial void LogIndexRebuild(ILogger logger, string root, int sqliteCode, string message, Exception ex);
 
     // Guards all WorkspaceIndexContext access — EF Core's DbContext isn't thread-safe.
     // File I/O, parsing, and AI-summary calls happen OUTSIDE this lock (in parallel);
@@ -89,7 +89,7 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
             {
                 // Only a corrupt or unreadable file is deleted and rebuilt. Any other open failure
                 // (locks, I/O) propagates unchanged so existing chunk embeddings are not discarded.
-                LogIndexRebuild(_logger, workspaceRoot);
+                LogIndexRebuild(_logger, workspaceRoot, ex.SqliteErrorCode, ex.Message, ex);
                 DeleteIndexFiles(workspaceRoot);
                 ctx = await WorkspaceIndexContextFactory.CreateAsync(workspaceRoot, ct);
             }
@@ -144,8 +144,15 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
     // SQLITE_CORRUPT (11) and SQLITE_NOTADB (26): the file exists but is not a valid database.
     private static bool IsCorruptDatabase(SqliteException ex) => ex.SqliteErrorCode is 11 or 26;
 
-    private static void DeleteIndexFiles(string workspaceRoot)
+    [LoggerMessage(Level = LogLevel.Error, Message = "Could not delete index file '{Path}' while rebuilding a corrupt index")]
+    private static partial void LogIndexFileDeleteFailed(ILogger logger, string path, Exception ex);
+
+    private void DeleteIndexFiles(string workspaceRoot)
     {
+        // Microsoft.Data.Sqlite pools connections: a disposed context can still hold the file open
+        // through the pool, which blocks deletion on Windows. Release the pool before deleting.
+        SqliteConnection.ClearAllPools();
+
         string dbPath = WorkspaceIndexContextFactory.GetDbPath(workspaceRoot);
         string dir = Path.GetDirectoryName(dbPath) ?? ".tokensaver";
         string baseName = Path.GetFileName(dbPath);
@@ -161,10 +168,11 @@ public sealed partial class WorkspaceIndexDbAccessor : IDisposable
                     File.Delete(fullPath);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore deletion failures — the next CreateAsync will report
-                // if the file still can't be opened.
+                // Logged at Error so a stuck (locked) corrupt index is visible. The retry
+                // CreateAsync still runs and surfaces the SQLite error if the file remains.
+                LogIndexFileDeleteFailed(_logger, fullPath, ex);
             }
         }
     }
