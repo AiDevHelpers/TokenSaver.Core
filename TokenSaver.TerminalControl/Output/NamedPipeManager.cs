@@ -257,7 +257,9 @@ public sealed class NamedCommandPipe : IDisposable
             PipeDirection.Out,
             maxNumberOfServerInstances: 1,
             PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous);
+            PipeOptions.Asynchronous,
+            inBufferSize: 0,
+            outBufferSize: 64 * 1024);
     }
 
     /// <summary>
