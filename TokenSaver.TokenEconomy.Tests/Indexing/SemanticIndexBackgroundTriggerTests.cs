@@ -87,7 +87,7 @@ public sealed class SemanticIndexBackgroundTriggerTests : IDisposable
     public async Task EnsureStartedAsync_RealIndexer_MarksCompleteWithStatsMatchingStoredChunks()
     {
         _ = Directory.CreateDirectory(_root);
-        File.WriteAllText(Path.Combine(_root, "Widget.cs"),
+        await File.WriteAllTextAsync(Path.Combine(_root, "Widget.cs"),
             "namespace Foo;\n\npublic sealed class Widget\n{\n    public void DoThing() { }\n}\n");
         FakeOllamaHandler handler = new();
         TokenSaverConfig config = new();

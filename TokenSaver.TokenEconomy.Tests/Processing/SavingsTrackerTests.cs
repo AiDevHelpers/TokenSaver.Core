@@ -14,7 +14,7 @@ namespace TokenSaver.TokenEconomy.Tests;
 ///     GetOneAsync open a real SQLite file under a fresh temp directory per test — cheap and
 ///     fully deterministic, no Ollama dependency (SavingsTracker never calls Ollama itself).
 /// </summary>
-public class SavingsTrackerTests : IDisposable
+public sealed class SavingsTrackerTests : IDisposable
 {
     private readonly string _tempWorkspace = Path.Combine(Path.GetTempPath(), "lh-savings-tests-" + Guid.NewGuid());
 
