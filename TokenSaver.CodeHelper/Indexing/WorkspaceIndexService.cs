@@ -54,6 +54,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     private readonly ILogger<WorkspaceIndexService> _logger;
     private readonly IReadOnlyList<ISymbolParser> _parsers;
     private long _lastPruneAtMs;
+    private long _lastFullReferenceAtMs;
 
     // Pruning does a full Files-table scan (disk + gitignore check per row). IndexWorkspaceAsync
     // can be called on every interactive request (see BuildConciseContextAsync), so the sweep is
@@ -148,10 +149,21 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         (int indexed, int skipped, int symbolCount, int failed) =
             await IndexFilesAsync(ctx, root, files, prebuiltFolderIds, ct);
 
+        // Full reference rebuild on bootstrap and at most once per PruneInterval. Otherwise only the
+        // changed files and the sources that point at them are re-read (see RebuildReferencesAsync).
+        long nowMsForRefs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        bool fullRefs = isFullBootstrap
+            || nowMsForRefs - Interlocked.Read(ref _lastFullReferenceAtMs) >= PruneInterval.TotalMilliseconds;
+        int referenceFilesRead = 0;
         if (files.Count > 0)
         {
             await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, files, ct);
-            await RebuildReferencesAsync(ctx, root, ct);
+            if (fullRefs)
+            {
+                _ = Interlocked.Exchange(ref _lastFullReferenceAtMs, nowMsForRefs);
+            }
+
+            referenceFilesRead = await RebuildReferencesAsync(ctx, root, files, fullRefs, ct);
         }
 
         // Advance the git baseline only when every planned file indexed. A failed or cancelled
@@ -182,7 +194,8 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             FilesSkipped = skipped,
             Elapsed = sw.Elapsed,
             FilesPruned = prunedFiles,
-            SymbolsPruned = prunedSymbols
+            SymbolsPruned = prunedSymbols,
+            ReferenceFilesRead = referenceFilesRead
         };
     }
 
@@ -232,7 +245,16 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     ///     Full rebuild keeps edges correct across deletes and renames; cost is one read of each
     ///     indexed .cs file per call that changed something.
     /// </summary>
-    private async Task RebuildReferencesAsync(WorkspaceIndexContext ctx, string root, CancellationToken ct)
+    /// <summary>
+    ///     Rebuilds SymbolReferences edges. A full rebuild re-reads every C# type file. An incremental
+    ///     one re-reads only <paramref name="changedFiles" /> plus the dependents: sources whose edges
+    ///     point at a symbol that no longer exists. Returns the number of files re-read.
+    ///     Known gap: a brand-new reference from an unchanged file to a new type is picked up on the
+    ///     next full rebuild (bootstrap, or once per PruneInterval), not on the incremental pass.
+    /// </summary>
+    private async Task<int> RebuildReferencesAsync(
+        WorkspaceIndexContext ctx, string root, IReadOnlyCollection<string> changedFiles, bool fullRebuild,
+        CancellationToken ct)
     {
         var typeRows = await _accessor.WithDbLockAsync(() => ctx.Symbols
             .Include(s => s.File)
@@ -247,8 +269,57 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             .Select(r => new CSharpReferenceGraph.TypeNode(r.Id, r.Path, r.Name))
             .ToList();
 
+        HashSet<string> currentIds = types.Select(t => t.SymbolId).ToHashSet(StringComparer.Ordinal);
+        Dictionary<string, string> idToPath = new(StringComparer.Ordinal);
+        foreach (CSharpReferenceGraph.TypeNode t in types)
+        {
+            idToPath[t.SymbolId] = t.FilePath;
+        }
+
+        HashSet<string> csPaths = types.Select(t => t.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Targets no longer present: renamed, removed, or re-created with a new id by reparsing.
+        List<string> staleTargets = [];
+        HashSet<string> rebuildPaths = new(StringComparer.OrdinalIgnoreCase);
+        if (fullRebuild)
+        {
+            rebuildPaths = csPaths;
+        }
+        else
+        {
+            List<string> allTargets = await _accessor.WithDbLockAsync(
+                () => ctx.SymbolReferences.Select(e => e.TargetSymbolId).Distinct().ToListAsync(ct), ct);
+            staleTargets = allTargets.Where(t => !currentIds.Contains(t)).ToList();
+
+            foreach (string f in changedFiles)
+            {
+                if (csPaths.Contains(f))
+                {
+                    _ = rebuildPaths.Add(f);
+                }
+            }
+
+            if (staleTargets.Count > 0)
+            {
+                List<string> dependentSources = await _accessor.WithDbLockAsync(
+                    () => ctx.SymbolReferences.Where(e => staleTargets.Contains(e.TargetSymbolId))
+                        .Select(e => e.SourceSymbolId).Distinct().ToListAsync(ct), ct);
+                foreach (string src in dependentSources)
+                {
+                    if (idToPath.TryGetValue(src, out string? depPath))
+                    {
+                        _ = rebuildPaths.Add(depPath);
+                    }
+                }
+            }
+        }
+
+        // Edges owned by the files being rebuilt are replaced; edges to stale targets are dropped.
+        List<string> rebuildSourceIds = types.Where(t => rebuildPaths.Contains(t.FilePath))
+            .Select(t => t.SymbolId).ToList();
+
         Dictionary<string, string> contents = new(StringComparer.OrdinalIgnoreCase);
-        foreach (string path in types.Select(t => t.FilePath).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (string path in rebuildPaths)
         {
             try
             {
@@ -269,7 +340,17 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         {
             try
             {
-                _ = await ctx.SymbolReferences.ExecuteDeleteAsync(ct);
+                if (fullRebuild)
+                {
+                    _ = await ctx.SymbolReferences.ExecuteDeleteAsync(ct);
+                }
+                else
+                {
+                    _ = await ctx.SymbolReferences.Where(e => rebuildSourceIds.Contains(e.SourceSymbolId))
+                        .ExecuteDeleteAsync(ct);
+                    _ = await ctx.SymbolReferences.Where(e => staleTargets.Contains(e.TargetSymbolId))
+                        .ExecuteDeleteAsync(ct);
+                }
                 for (int i = 0; i < edges.Count; i += ReferenceInsertChunk)
                 {
                     int count = Math.Min(ReferenceInsertChunk, edges.Count - i);
@@ -283,6 +364,8 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
                 ctx.ChangeTracker.Clear();
             }
         }, ct);
+
+        return rebuildPaths.Count;
     }
 
     private async Task<(int Indexed, int Skipped, int SymbolCount, int Failed)> IndexFilesAsync(

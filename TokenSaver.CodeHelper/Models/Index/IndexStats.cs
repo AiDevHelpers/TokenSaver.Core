@@ -9,6 +9,9 @@ public record IndexStats
     public int FilesPruned { get; init; }
     public int SymbolsPruned { get; init; }
 
+    /// <summary>C# files whose reference edges were rebuilt (changed files plus dependents).</summary>
+    public int ReferenceFilesRead { get; init; }
+
     public override string ToString()
     {
         string prunedSuffix = FilesPruned > 0 ? $", pruned {FilesPruned} files/{SymbolsPruned} symbols" : "";
