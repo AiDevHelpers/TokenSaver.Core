@@ -47,7 +47,7 @@ public sealed class WindowsTerminalProviderTests : IDisposable
         if (!availability.IsInstalled)
         {
             Assert.NotNull(availability.InstallUrl);
-            Assert.Contains("microsoft.com/store", availability.InstallUrl, StringComparison.Ordinal);
+            Assert.Contains("microsoft.com/store", availability.InstallUrl.ToString(), StringComparison.Ordinal);
         }
     }
 
@@ -286,7 +286,7 @@ public sealed class TerminalProviderSelectorTests : IDisposable
         if (wtInstalled == false)
         {
             Assert.NotNull(result.ActionUrl);
-            Assert.Contains("microsoft.com/store", result.ActionUrl, StringComparison.Ordinal);
+            Assert.Contains("microsoft.com/store", result.ActionUrl.ToString(), StringComparison.Ordinal);
             Assert.NotNull(result.ActionText);
             Assert.Contains("Microsoft Store", result.ActionText, StringComparison.Ordinal);
         }
@@ -309,7 +309,7 @@ public sealed class TerminalProviderSelectorTests : IDisposable
         {
             Assert.True(result.HasInstallAction);
             Assert.NotNull(result.ActionUrl);
-            Assert.StartsWith("http", result.ActionUrl, StringComparison.Ordinal);
+            Assert.StartsWith("http", result.ActionUrl.ToString(), StringComparison.Ordinal);
         }
     }
 

@@ -81,7 +81,7 @@ public interface IExtensionSimpleModelServerSettings
     string? ExePath { get; }
 
     /// <summary>Health check URL for SimpleModelServer.</summary>
-    string? HealthUrl { get; }
+    Uri? HealthUrl { get; }
 
     /// <summary>Seconds to wait for SimpleModelServer to become reachable after launch.</summary>
     int? StartTimeout { get; }

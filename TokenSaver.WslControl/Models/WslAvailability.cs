@@ -13,10 +13,10 @@ public sealed record WslAvailability(
     string? Reason = null,
     string? DefaultDistro = null,
     int DistroCount = 0,
-    string? InstallUrl = null)
+    Uri? InstallUrl = null)
 {
     /// <summary>True when WSL is installed and at least one distribution is registered.</summary>
     public bool IsUsable => IsInstalled && DistroCount > 0;
 
-    public const string DefaultInstallUrl = "https://learn.microsoft.com/windows/wsl/install";
+    public static readonly Uri DefaultInstallUrl = new("https://learn.microsoft.com/windows/wsl/install");
 }

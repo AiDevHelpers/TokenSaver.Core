@@ -1061,7 +1061,7 @@ public sealed record ExtensionSimpleModelServerConfig : IExtensionSimpleModelSer
     public string? ExePath { get; init; }
 
     [JsonPropertyName("healthUrl")]
-    public string? HealthUrl { get; init; }
+    public Uri? HealthUrl { get; init; }
 
     [JsonPropertyName("startTimeout")]
     public int? StartTimeout { get; init; }
@@ -1084,7 +1084,7 @@ public sealed record ExtensionSimpleModelServerConfig : IExtensionSimpleModelSer
     public static ExtensionSimpleModelServerConfig Defaults() => new()
     {
         ExePath = "",
-        HealthUrl = "http://localhost:11435/health",
+        HealthUrl = new Uri("http://localhost:11435/health"),
         StartTimeout = 600,
     };
 }
