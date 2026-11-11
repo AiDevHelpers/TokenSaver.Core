@@ -53,7 +53,21 @@ public sealed partial class RepoIndexer(
                 .ToDictionaryAsync(c => (c.RelativePath, c.StartLine, c.EndLine), c => c.ContentHash, ct),
             ct);
 
-        int indexed = 0, skipped = 0, deleted = 0, failed = 0;
+        // Per-file stamps (mtime, size, raw-byte hash), one per file that has chunk rows. A file
+        // whose mtime and size still match is not read at all on the next run.
+        // Count is the file's chunk rows, so a file skipped whole still reports its chunks as skipped.
+        Dictionary<string, (long Mtime, long Size, string Hash, int Count)> fileStamps = await db.WithDbLockAsync(
+            async () =>
+            {
+                var rows = (await ctx.Chunks
+                    .Select(c => new { c.RelativePath, c.FileLastModified, c.FileSize, c.FileHash })
+                    .ToListAsync(ct))
+                    .Select(c => (Path: c.RelativePath, Mtime: c.FileLastModified, Size: c.FileSize, Hash: c.FileHash));
+                return rows.GroupBy(r => r.Path).ToDictionary(
+                    g => g.Key, g => (g.First().Mtime, g.First().Size, g.First().Hash, g.Count()));
+            }, ct);
+
+        int indexed = 0, skipped = 0, deleted = 0, failed = 0, filesRead = 0;
         using SemaphoreSlim ollamaLimit = new(Math.Max(1, concurrency));
         HashSet<string> seenPaths = new(StringComparer.OrdinalIgnoreCase);
 
@@ -63,15 +77,38 @@ public sealed partial class RepoIndexer(
             string relativePath = Path.GetRelativePath(workspaceRoot, filePath).Replace('\\', '/');
             seenPaths.Add(relativePath);
 
-            string content;
+            FileInfo info = new(filePath);
+            long fileMtime = new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeMilliseconds();
+            long fileSize = info.Length;
+            if (fileStamps.TryGetValue(relativePath, out (long Mtime, long Size, string Hash, int Count) stamp)
+                && stamp.Mtime == fileMtime && stamp.Size == fileSize)
+            {
+                _ = Interlocked.Add(ref skipped, stamp.Count); // unchanged since the last run: not read, not chunked
+                continue;
+            }
+
+            byte[] bytes;
             try
             {
-                content = await File.ReadAllTextAsync(filePath, ct);
+                bytes = await File.ReadAllBytesAsync(filePath, ct);
             }
             catch (IOException)
             {
                 continue; // locked/transient — skip this pass, next run picks it up
             }
+
+            filesRead++;
+            string fileHash = Convert.ToHexString(SHA256.HashData(bytes));
+            if (fileStamps.TryGetValue(relativePath, out stamp) && stamp.Hash == fileHash)
+            {
+                // Bytes unchanged, only the mtime moved (touch, checkout): refresh stamps, skip chunks.
+                _ = Interlocked.Add(ref skipped, stamp.Count);
+                await StampChunksAsync(ctx, db, relativePath, fileMtime, fileSize, fileHash, ct);
+                continue;
+            }
+
+            // Same as File.ReadAllText: UTF-8 with the BOM dropped.
+            string content = Encoding.UTF8.GetString(bytes).TrimStart('﻿');
 
             IReadOnlyList<CodeChunk> chunks = chunkExtractor.ExtractChunks(filePath, content);
             HashSet<(int Start, int End)> seenSpans = new();
@@ -148,6 +185,7 @@ public sealed partial class RepoIndexer(
                 return stale.Count;
             }, ct);
             deleted += prunedForFile;
+            await StampChunksAsync(ctx, db, relativePath, fileMtime, fileSize, fileHash, ct);
         }
 
         // Prune chunks for files that no longer exist on disk at all.
@@ -168,7 +206,22 @@ public sealed partial class RepoIndexer(
         deleted += prunedMissingFiles;
 
         sw.Stop();
-        return new RepoIndexStats(files.Count, indexed, skipped, deleted, sw.Elapsed, failed);
+        return new RepoIndexStats(files.Count, indexed, skipped, deleted, sw.Elapsed, failed, filesRead);
+    }
+
+    /// <summary>Copies a file's stamp onto all of its chunk rows (see <see cref="ChunkEntity.FileHash" />).</summary>
+    private static async Task StampChunksAsync(
+        WorkspaceIndexContext ctx, TokenEconomyDbAccessor db, string relativePath,
+        long mtime, long size, string hash, CancellationToken ct)
+    {
+        await db.WithDbLockAsync(async () =>
+        {
+            _ = await ctx.Chunks.Where(c => c.RelativePath == relativePath)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.FileLastModified, mtime)
+                    .SetProperty(c => c.FileSize, size)
+                    .SetProperty(c => c.FileHash, hash), ct);
+        }, ct);
     }
 
     private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)];

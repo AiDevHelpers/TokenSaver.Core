@@ -222,4 +222,18 @@ public sealed class RepoIndexerTests : IDisposable
         WorkspaceIndexContext ctx = await _db.GetDbAsync(_tempWorkspace, CancellationToken.None);
         Assert.Contains(ctx.Chunks, r => r.RelativePath == "doc.md" && r.ChunkType == "md_section");
     }
+
+    [Fact]
+    public async Task IndexRepoAsync_UnchangedSecondRun_ReadsNoFiles()
+    {
+        WriteFile("Widget.cs", "namespace Foo;\n\npublic sealed class Widget\n{\n    public void DoThing() { }\n}\n");
+        RepoIndexer indexer = CreateIndexer();
+        RepoIndexStats first = await indexer.IndexRepoAsync(_tempWorkspace);
+        Assert.Equal(1, first.FilesRead);
+
+        RepoIndexStats second = await indexer.IndexRepoAsync(_tempWorkspace);
+
+        Assert.Equal(0, second.FilesRead);
+        Assert.Equal(0, second.ChunksIndexed);
+    }
 }
