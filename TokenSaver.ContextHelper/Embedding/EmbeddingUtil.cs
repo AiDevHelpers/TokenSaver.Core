@@ -37,5 +37,6 @@ internal static class EmbeddingUtil
         return denom == 0 ? 0 : dot / denom;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by System.Text.Json deserialization.")]
     private sealed record EmbedResponse(float[][]? Embeddings);
 }

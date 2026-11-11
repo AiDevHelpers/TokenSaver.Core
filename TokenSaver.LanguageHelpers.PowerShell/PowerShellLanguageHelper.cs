@@ -317,6 +317,7 @@ public sealed class PowerShellLanguageHelper : LanguageHelperBase
         """;
 
     /// <summary>One finding as emitted by the pwsh scripts (parse errors and analyzer records share this shape).</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by System.Text.Json deserialization.")]
     private sealed record PsIssue
     {
         [JsonPropertyName("File")] public string? File { get; init; }

@@ -265,6 +265,7 @@ public sealed class DotnetFormatRunner(IProcessRunner processRunner, ILogger log
         PropertyNameCaseInsensitive = true
     };
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by System.Text.Json deserialization.")]
     private sealed record FormattedFileReport
     {
         [JsonPropertyName("FilePath")]
@@ -274,6 +275,7 @@ public sealed class DotnetFormatRunner(IProcessRunner processRunner, ILogger log
         public List<FileChangeReport>? FileChanges { get; init; }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by System.Text.Json deserialization.")]
     private sealed record FileChangeReport
     {
         [JsonPropertyName("LineNumber")]
