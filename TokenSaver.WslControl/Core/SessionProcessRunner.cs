@@ -218,12 +218,15 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
         }
     }
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern bool WTSEnumerateSessionsW(IntPtr server, int reserved, int version, out IntPtr sessionInfo, out int count);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern bool WTSQuerySessionInformationW(IntPtr server, uint sessionId, int infoClass, out IntPtr buffer, out uint bytesReturned);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("wtsapi32.dll")]
     private static extern void WTSFreeMemory(IntPtr memory);
 
@@ -235,48 +238,61 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
         public int State;
     }
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("wtsapi32.dll", SetLastError = true)]
     private static extern bool WTSQueryUserToken(uint sessionId, out IntPtr token);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("advapi32.dll", SetLastError = true)]
     private static extern bool DuplicateTokenEx(
         IntPtr existingToken, uint desiredAccess, IntPtr tokenAttributes,
         int impersonationLevel, int tokenType, out IntPtr newToken);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("advapi32.dll", SetLastError = true)]
     private static extern bool SetTokenInformation(IntPtr token, int infoClass, ref uint info, int length);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("userenv.dll", SetLastError = true)]
     private static extern bool CreateEnvironmentBlock(out IntPtr environment, IntPtr token, bool inherit);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("userenv.dll", SetLastError = true)]
     private static extern bool DestroyEnvironmentBlock(IntPtr environment);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CreatePipe(out IntPtr read, out IntPtr write, ref SECURITY_ATTRIBUTES sa, uint size);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool SetHandleInformation(IntPtr handle, uint mask, uint flags);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern IntPtr CreateFileW(
         string name, uint access, uint share, ref SECURITY_ATTRIBUTES sa, uint disposition, uint flags, IntPtr template);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern bool CreateProcessAsUserW(
         IntPtr token, string? application, StringBuilder commandLine, IntPtr processAttributes, IntPtr threadAttributes,
         bool inheritHandles, uint creationFlags, IntPtr environment, string? currentDirectory,
         ref STARTUPINFO startupInfo, out PROCESS_INFORMATION processInformation);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll")]
     private static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GetExitCodeProcess(IntPtr process, out uint exitCode);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool TerminateProcess(IntPtr process, uint exitCode);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr handle);
 

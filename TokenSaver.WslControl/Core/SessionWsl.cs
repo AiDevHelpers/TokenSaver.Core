@@ -23,7 +23,7 @@ public static class WslCommandLine
             return arg;
         }
 
-        return "\"" + arg.Replace("\"", "\\\"") + "\"";
+        return "\"" + arg.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
     }
 
     public static string ForExec(string distro, string fileName, IEnumerable<string> args)
@@ -87,7 +87,7 @@ public sealed partial class SessionWslApi(ISessionProcessRunner runner) : IWslAp
     internal static IReadOnlyList<DistroInfo> ParseDistroList(string text)
     {
         List<DistroInfo> list = [];
-        foreach (string raw in text.Replace("\0", string.Empty).Replace("﻿", string.Empty)
+        foreach (string raw in text.Replace("\0", string.Empty, StringComparison.Ordinal).Replace("﻿", string.Empty, StringComparison.Ordinal)
                      .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
         {
             Match m = ListLine().Match(raw);
