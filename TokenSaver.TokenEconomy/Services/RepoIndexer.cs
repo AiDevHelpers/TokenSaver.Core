@@ -1,3 +1,4 @@
+#pragma warning disable CA1506 // IndexRepoAsync orchestrates the full index pipeline; the coupling is the pipeline itself and is kept in one place on purpose.
 using TokenSaver.Common.Core.Configuration;
 using TokenSaver.OllamaIntegration.Services;
 using TokenSaver.TokenEconomy.Contracts;

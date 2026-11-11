@@ -247,7 +247,7 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
 
             return new TerminalProfile(
                 Name: name,
-                Guid: guid,
+                ProfileGuid: guid,
                 CommandLine: commandLine,
                 StartingDirectory: startingDirectory,
                 TabTitle: tabTitle,

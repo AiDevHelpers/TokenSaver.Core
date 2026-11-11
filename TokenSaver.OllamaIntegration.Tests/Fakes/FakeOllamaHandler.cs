@@ -14,8 +14,8 @@ namespace TokenSaver.OllamaIntegration.Tests;
 #pragma warning disable CA1515 // Shared test fake used by sibling test projects; must stay public.
 public sealed class FakeOllamaHandler : HttpMessageHandler
 {
-    public List<string> GeneratePrompts { get; } = [];
-    public List<string> EmbedInputs { get; } = [];
+    public IList<string> GeneratePrompts { get; } = [];
+    public IList<string> EmbedInputs { get; } = [];
 
     /// <summary>Maps a /api/generate prompt to the summary text returned. Falls back to echoing a fixed string.</summary>
     public Func<string, string> GenerateResponder { get; set; } = _ => "summary";

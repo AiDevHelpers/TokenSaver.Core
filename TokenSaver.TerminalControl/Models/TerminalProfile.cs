@@ -2,7 +2,7 @@ namespace TokenSaver.TerminalControl.Models;
 
 public sealed record TerminalProfile(
     string Name,
-    string Guid,
+    [property: System.Text.Json.Serialization.JsonPropertyName("guid")] string ProfileGuid,
     string? CommandLine = null,
     string? StartingDirectory = null,
     string? TabTitle = null,
