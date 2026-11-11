@@ -112,7 +112,9 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
 
         string headSha = headShaRaw.Trim();
 
-        string statusOutput = await RunGitAsync(repoDir, "status --porcelain", ct) ?? "";
+        // --no-optional-locks: a status check must not rewrite .git/index, or the git watcher would
+        // retrigger on its own output.
+        string statusOutput = await RunGitAsync(repoDir, "--no-optional-locks status --porcelain", ct) ?? "";
         bool isDirty = statusOutput.Trim().Length > 0;
 
         RepoStalenessEntity? existing = await ctx.RepoStaleness.FindAsync([repoRelPath], ct);
@@ -129,10 +131,10 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
             }
             else if (existing.LastHeadSha != headSha)
             {
-                string? diffOutput = await RunGitAsync(repoDir, $"diff --name-only {existing.LastHeadSha} {headSha}", ct);
+                string? diffOutput = await RunGitAsync(repoDir, $"diff --name-status -M {existing.LastHeadSha} {headSha}", ct);
                 if (diffOutput != null)
                 {
-                    AddRepoRelativePaths(changedFiles, SplitLines(diffOutput), repoRelPath);
+                    AddRepoRelativePaths(changedFiles, ParseNameStatusPaths(diffOutput), repoRelPath);
                 }
                 else
                 {
@@ -191,6 +193,35 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
         }
 
         _ = await ctx.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    ///     Parses `git diff --name-status -M` lines. A rename ("R100 old new") contributes both paths,
+    ///     so the old path is dropped from the index; a copy contributes both; everything else its path.
+    /// </summary>
+    private static string[] ParseNameStatusPaths(string output)
+    {
+        List<string> paths = [];
+        foreach (string line in SplitLines(output))
+        {
+            string[] parts = line.Split('\t');
+            if (parts.Length < 2)
+            {
+                continue;
+            }
+
+            if ((parts[0].StartsWith('R') || parts[0].StartsWith('C')) && parts.Length >= 3)
+            {
+                paths.Add(parts[1]);
+                paths.Add(parts[2]);
+            }
+            else
+            {
+                paths.Add(parts[1]);
+            }
+        }
+
+        return paths.ToArray();
     }
 
     private static string[] SplitLines(string text)
