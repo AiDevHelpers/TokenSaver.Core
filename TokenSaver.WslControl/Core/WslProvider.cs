@@ -55,10 +55,9 @@ public sealed partial class WslProvider(
         try
         {
             List<DistroInfo> distros = _wslApi.GetDistributionList().ToList();
-            DistroInfo? def = distros.FirstOrDefault(d => d.IsDefault);
             return Task.FromResult(new WslAvailability(
                 IsInstalled: true,
-                DefaultDistro: def?.DistroName,
+                DefaultDistro: distros.Where(d => d.IsDefault).Select(d => d.DistroName).FirstOrDefault(),
                 DistroCount: distros.Count,
                 InstallUrl: WslAvailability.DefaultInstallUrl));
         }
