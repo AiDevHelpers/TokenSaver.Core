@@ -22,7 +22,7 @@ public static class TabProtocol
         }
 
         var rest = line[(ErrorMarker.Length + 1)..];
-        var space = rest.IndexOf(' ');
+        var space = rest.IndexOf(' ', StringComparison.Ordinal);
         if (space < 1)
         {
             return false;
@@ -35,7 +35,7 @@ public static class TabProtocol
 
     public static string FormatCommand(string requestId, string command)
     {
-        if (command.Contains('\n') || command.Contains('\r'))
+        if (command.Contains('\n', StringComparison.Ordinal) || command.Contains('\r', StringComparison.Ordinal))
         {
             throw new ArgumentException("Commands must be a single line.", nameof(command));
         }

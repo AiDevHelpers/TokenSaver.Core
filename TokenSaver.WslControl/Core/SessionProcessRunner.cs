@@ -7,7 +7,7 @@ using System.Text;
 using Microsoft.Win32.SafeHandles;
 
 /// <summary>Result of one process run in the active user's session.</summary>
-public sealed record SessionProcessResult(int ExitCode, byte[] Stdout, byte[] Stderr, bool TimedOut);
+public sealed record SessionProcessResult(int ExitCode, ReadOnlyMemory<byte> Stdout, ReadOnlyMemory<byte> Stderr, bool TimedOut);
 
 /// <summary>
 ///     Runs a process as the user logged on to the console session. Needed when TokenSaver runs as
@@ -114,12 +114,16 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
             CloseHandle(errWrite);
             errWrite = IntPtr.Zero;
 
-            using FileStream outStream = new(new SafeFileHandle(outRead, ownsHandle: false), FileAccess.Read);
-            using FileStream errStream = new(new SafeFileHandle(errRead, ownsHandle: false), FileAccess.Read);
+            using SafeFileHandle outHandle = new(outRead, ownsHandle: false);
+            using SafeFileHandle errHandle = new(errRead, ownsHandle: false);
+            using FileStream outStream = new(outHandle, FileAccess.Read);
+            using FileStream errStream = new(errHandle, FileAccess.Read);
             using MemoryStream outBuf = new();
             using MemoryStream errBuf = new();
+#pragma warning disable CA2025 // Both copy tasks are awaited (Task.WaitAll) before this scope disposes the streams.
             Task outCopy = outStream.CopyToAsync(outBuf);
             Task errCopy = errStream.CopyToAsync(errBuf);
+#pragma warning restore CA2025
 
             uint wait = WaitForSingleObject(pi.hProcess, (uint)Math.Min(timeout.TotalMilliseconds, uint.MaxValue - 1));
             bool timedOut = wait == WaitTimeout;

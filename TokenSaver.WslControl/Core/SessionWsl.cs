@@ -75,7 +75,7 @@ public sealed partial class SessionWslApi(ISessionProcessRunner runner) : IWslAp
                 $"wsl -l -v failed (exit {result.ExitCode}, timedOut={result.TimedOut}).");
         }
 
-        return ParseDistroList(Encoding.Unicode.GetString(result.Stdout));
+        return ParseDistroList(Encoding.Unicode.GetString(result.Stdout.Span));
     }
 
     public DistroInfo? GetDefaultDistribution() => GetDistributionList().FirstOrDefault(d => d.IsDefault);
@@ -139,8 +139,8 @@ public sealed class SessionWslCommandExecutor(ISessionProcessRunner runner) : IW
                 distro,
                 display,
                 result.ExitCode,
-                Stdout: Encoding.UTF8.GetString(result.Stdout).TrimEnd('\n', '\r'),
-                Stderr: Encoding.UTF8.GetString(result.Stderr).TrimEnd('\n', '\r'));
+                Stdout: Encoding.UTF8.GetString(result.Stdout.Span).TrimEnd('\n', '\r'),
+                Stderr: Encoding.UTF8.GetString(result.Stderr.Span).TrimEnd('\n', '\r'));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

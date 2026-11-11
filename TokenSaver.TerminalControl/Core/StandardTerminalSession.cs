@@ -67,6 +67,17 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
 
     public void Dispose()
     {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing)
+        {
+            return;
+        }
+
         foreach (var tab in _tabs.Keys.ToList())
         {
             if (_tabs.TryRemove(tab, out var runtime))
@@ -79,6 +90,9 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
         {
             _pipeManager.Dispose();
         }
+
+        _process?.Dispose();
+        _process = null;
     }
 
     public async Task InitializeAsync(TerminalSessionConfig config, CancellationToken ct = default)
@@ -312,8 +326,16 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
         }
 
         runtime.Dispose();
-        _pipeManager.ClosePipe(runtime.Info.StdoutPipe.PipeName);
-        _pipeManager.ClosePipe(runtime.Info.StderrPipe.PipeName);
+        if (runtime.Info.StdoutPipe is { } stdoutPipe)
+        {
+            _pipeManager.ClosePipe(stdoutPipe.PipeName);
+        }
+
+        if (runtime.Info.StderrPipe is { } stderrPipe)
+        {
+            _pipeManager.ClosePipe(stderrPipe.PipeName);
+        }
+
         _pipeManager.ClosePipe(runtime.CommandPipeName);
     }
 
