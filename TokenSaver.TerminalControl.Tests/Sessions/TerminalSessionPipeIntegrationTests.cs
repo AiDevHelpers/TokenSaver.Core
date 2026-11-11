@@ -1,3 +1,4 @@
+#pragma warning disable CA2000 // Test helpers hand disposables to the session under test; each test is short-lived.
 namespace TokenSaver.TerminalControl.Tests;
 
 using Microsoft.Extensions.Logging;

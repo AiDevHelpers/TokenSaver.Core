@@ -1,3 +1,4 @@
+#pragma warning disable CA2000 // Test helpers hand disposables to the session under test; each test is short-lived.
 namespace TokenSaver.TerminalControl.Tests;
 
 using System.Diagnostics;
@@ -28,7 +29,7 @@ public sealed class StandardTerminalSessionWtTests : IDisposable
 
         var launch = Assert.Single(launcher.Started);
         Assert.EndsWith("wt.exe", launch.FileName, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("-w", launch.Arguments);
+        Assert.Contains("-w", launch.Arguments, StringComparison.Ordinal);
         Assert.Equal(TerminalSessionState.Ready, session.State);
     }
 
@@ -43,10 +44,10 @@ public sealed class StandardTerminalSessionWtTests : IDisposable
         var tab = await session.CreateTabAsync("build");
 
         var tabLaunch = Assert.Single(launcher.Started.Skip(1));
-        Assert.Contains("new-tab", tabLaunch.Arguments);
-        Assert.Contains("tokensaver-tab.ps1", tabLaunch.Arguments);
-        Assert.Contains(tab.StdoutPipe.PipeName, tabLaunch.Arguments);
-        Assert.Contains("-CommandPipe", tabLaunch.Arguments);
+        Assert.Contains("new-tab", tabLaunch.Arguments, StringComparison.Ordinal);
+        Assert.Contains("tokensaver-tab.ps1", tabLaunch.Arguments, StringComparison.Ordinal);
+        Assert.Contains(tab.StdoutPipe.PipeName, tabLaunch.Arguments, StringComparison.Ordinal);
+        Assert.Contains("-CommandPipe", tabLaunch.Arguments, StringComparison.Ordinal);
     }
 
     [Fact]

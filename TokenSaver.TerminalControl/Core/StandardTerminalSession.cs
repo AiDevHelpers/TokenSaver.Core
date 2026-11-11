@@ -211,7 +211,7 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
 
         var fullCommand = workingDirectory is null
             ? command
-            : $"Set-Location -LiteralPath '{workingDirectory.Replace("'", "''")}'; {command}";
+            : $"Set-Location -LiteralPath '{workingDirectory.Replace("'", "''", StringComparison.Ordinal)}'; {command}";
         var requestId = Guid.NewGuid().ToString("N")[..8];
         var line = TabProtocol.FormatCommand(requestId, fullCommand);
 
