@@ -21,34 +21,34 @@ public sealed class TabProtocolTests
     [Fact]
     public void TryParseEnd_ParsesIdAndExitCode()
     {
-        var parsed = TabProtocol.TryParseEnd("__TOKENSAVER_END__ req1 3", out var id, out var exitCode);
+        var parsed = TabProtocol.ParseEnd("__TOKENSAVER_END__ req1 3");
 
-        Assert.True(parsed);
-        Assert.Equal("req1", id);
-        Assert.Equal(3, exitCode);
+        Assert.NotNull(parsed);
+        Assert.Equal("req1", parsed!.Value.RequestId);
+        Assert.Equal(3, parsed!.Value.ExitCode);
     }
 
     [Fact]
     public void TryParseError_ParsesIdAndTextWithSpaces()
     {
-        var parsed = TabProtocol.TryParseError("__TOKENSAVER_ERR__ req1 boom at line 3", out var id, out var text);
+        var parsed = TabProtocol.ParseError("__TOKENSAVER_ERR__ req1 boom at line 3");
 
-        Assert.True(parsed);
-        Assert.Equal("req1", id);
-        Assert.Equal("boom at line 3", text);
+        Assert.NotNull(parsed);
+        Assert.Equal("req1", parsed!.Value.RequestId);
+        Assert.Equal("boom at line 3", parsed!.Value.Text);
     }
 
     [Fact]
     public void TryParseError_IgnoresStdoutAndEndMarkers()
     {
-        Assert.False(TabProtocol.TryParseError("plain output", out _, out _));
-        Assert.False(TabProtocol.TryParseEnd("__TOKENSAVER_ERR__ req1 boom", out _, out _));
+        Assert.Null(TabProtocol.ParseError("plain output"));
+        Assert.Null(TabProtocol.ParseEnd("__TOKENSAVER_ERR__ req1 boom"));
     }
 
     [Fact]
     public void TryParseEnd_IgnoresOrdinaryOutput()
     {
-        Assert.False(TabProtocol.TryParseEnd("hello world", out _, out _));
-        Assert.False(TabProtocol.TryParseEnd("__TOKENSAVER_END__ only-id", out _, out _));
+        Assert.Null(TabProtocol.ParseEnd("hello world"));
+        Assert.Null(TabProtocol.ParseEnd("__TOKENSAVER_END__ only-id"));
     }
 }

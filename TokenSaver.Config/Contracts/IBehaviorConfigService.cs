@@ -15,7 +15,7 @@ public interface IBehaviorConfigService
     /// <summary>
     /// Updates the behavior configuration in a specific scope.
     /// </summary>
-    void Set(string workspaceRoot, ConfigScope scope, Func<TokenSaverBehaviorConfig, TokenSaverBehaviorConfig> mutate);
+    void Update(string workspaceRoot, ConfigScope scope, Func<TokenSaverBehaviorConfig, TokenSaverBehaviorConfig> mutate);
 }
 
 /// <summary>

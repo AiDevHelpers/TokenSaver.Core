@@ -250,7 +250,7 @@ public sealed class NamedServerPipeTests : IDisposable
         _pipe = new NamedServerPipe(_pipeName, _logger);
 
         // Act
-        var size = _pipe.GetSize();
+        var size = _pipe.Size;
 
         // Assert
         Assert.Equal(0, size);

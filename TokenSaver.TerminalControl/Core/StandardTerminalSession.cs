@@ -245,8 +245,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             {
                 while (runtime.StdoutLines.Reader.TryRead(out var outLine))
                 {
-                    if (TabProtocol.TryParseEnd(outLine, out var endId, out var exitCode))
+                    if (TabProtocol.ParseEnd(outLine) is { } endLine)
                     {
+                        var endId = endLine.RequestId;
+                        var exitCode = endLine.ExitCode;
                         // Requests finish in order; only the head of the queue is ours to finish.
                         if (runtime.Pending.TryPeek(out var head) && head == endId)
                         {
@@ -263,8 +265,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
                                 ExecutionTimeMs: stopwatch.ElapsedMilliseconds);
                         }
                     }
-                    else if (TabProtocol.TryParseError(outLine, out var errId, out var errText))
+                    else if (TabProtocol.ParseError(outLine) is { } errLine)
                     {
+                        var errId = errLine.RequestId;
+                        var errText = errLine.Text;
                         if (runtime.Pending.TryPeek(out var current) && current == requestId && errId == requestId)
                         {
                             errors.Add(errText);

@@ -10,27 +10,22 @@ public static class TabProtocol
     public const string ErrorMarker = "__TOKENSAVER_ERR__";
     public const string CloseCommand = "__TOKENSAVER_CLOSE__";
 
-    /// <summary>Parses "__TOKENSAVER_ERR__ &lt;id&gt; &lt;text&gt;" written in-band on the stdout pipe.</summary>
-    public static bool TryParseError(string line, out string requestId, out string text)
+    /// <summary>Parses "__TOKENSAVER_ERR__ &lt;id&gt; &lt;text&gt;" written in-band on the stdout pipe; null when the line is not an error line.</summary>
+    public static TabErrorLine? ParseError(string line)
     {
-        requestId = string.Empty;
-        text = string.Empty;
-
         if (!line.StartsWith(ErrorMarker + " ", StringComparison.Ordinal))
         {
-            return false;
+            return null;
         }
 
         var rest = line[(ErrorMarker.Length + 1)..];
         var space = rest.IndexOf(' ', StringComparison.Ordinal);
         if (space < 1)
         {
-            return false;
+            return null;
         }
 
-        requestId = rest[..space];
-        text = rest[(space + 1)..];
-        return true;
+        return new TabErrorLine(rest[..space], rest[(space + 1)..]);
     }
 
     public static string FormatCommand(string requestId, string command)
@@ -43,23 +38,26 @@ public static class TabProtocol
         return $"{requestId} {command}";
     }
 
-    public static bool TryParseEnd(string line, out string requestId, out int exitCode)
+    /// <summary>Parses "__TOKENSAVER_END__ &lt;id&gt; &lt;exitcode&gt;"; null when the line is not an end line.</summary>
+    public static TabEndLine? ParseEnd(string line)
     {
-        requestId = string.Empty;
-        exitCode = 0;
-
         var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 3 || parts[0] != EndMarker)
         {
-            return false;
+            return null;
         }
 
-        if (!int.TryParse(parts[2], out exitCode))
+        if (!int.TryParse(parts[2], out var exitCode))
         {
-            return false;
+            return null;
         }
 
-        requestId = parts[1];
-        return true;
+        return new TabEndLine(parts[1], exitCode);
     }
 }
+
+/// <summary>A parsed "__TOKENSAVER_END__ &lt;id&gt; &lt;exitcode&gt;" line.</summary>
+public readonly record struct TabEndLine(string RequestId, int ExitCode);
+
+/// <summary>A parsed "__TOKENSAVER_ERR__ &lt;id&gt; &lt;text&gt;" line.</summary>
+public readonly record struct TabErrorLine(string RequestId, string Text);

@@ -38,7 +38,7 @@ public abstract class BehaviorConfigServiceContractTests
         bool mutateWasCalled = false;
 
         // Act
-        service.Set(testRoot, ConfigScope.Local, cfg =>
+        service.Update(testRoot, ConfigScope.Local, cfg =>
         {
             mutateWasCalled = true;
             return cfg;

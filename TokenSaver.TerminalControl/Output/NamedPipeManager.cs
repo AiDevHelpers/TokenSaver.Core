@@ -195,7 +195,7 @@ public sealed class NamedPipeManager : IDisposable
     public long GetPipeSize(string pipeName)
     {
         var pipe = GetPipe(pipeName);
-        return pipe?.GetSize() ?? 0;
+        return pipe?.Size ?? 0;
     }
 
     public void Dispose()
@@ -397,11 +397,14 @@ public sealed class NamedServerPipe : IDisposable
     /// <summary>
     /// Gets the current size of the buffer.
     /// </summary>
-    public long GetSize()
+    public long Size
     {
-        lock (_syncLock)
+        get
         {
-            return _buffer.Length;
+            lock (_syncLock)
+            {
+                return _buffer.Length;
+            }
         }
     }
 
