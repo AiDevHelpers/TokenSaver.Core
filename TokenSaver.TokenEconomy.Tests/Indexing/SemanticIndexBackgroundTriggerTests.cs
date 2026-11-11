@@ -1,3 +1,4 @@
+#pragma warning disable CA2000 // Test factories hand disposables to the code under test; each test is short-lived.
 using TokenSaver.Common.Core.Configuration;
 using TokenSaver.Database.Context;
 using TokenSaver.OllamaIntegration.Services;

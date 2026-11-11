@@ -141,7 +141,7 @@ public partial class OllamaService
         }
 
         OllamaEmbeddingResponse? result = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(ct);
-        return result?.Embeddings?.FirstOrDefault() ?? [];
+        return result?.Embeddings is { Count: > 0 } embeddings ? embeddings[0] : [];
     }
 
     private async Task<string> PostGenerateAsync(

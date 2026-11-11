@@ -304,7 +304,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             }
             catch (IOException ex)
             {
-                _logger.LogDebug(ex, "Tab {TabId} command pipe already closed", tabId);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug(ex, "Tab {TabId} command pipe already closed", tabId);
+                }
             }
         }
 
@@ -436,7 +439,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Output pump for {PipeName} stopped", pipeName);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug(ex, "Output pump for {PipeName} stopped", pipeName);
+                }
             }
             finally
             {

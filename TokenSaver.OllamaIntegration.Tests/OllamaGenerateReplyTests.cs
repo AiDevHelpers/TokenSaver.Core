@@ -1,3 +1,4 @@
+#pragma warning disable CA2000 // Test factories hand disposables to the code under test; each test is short-lived.
 using System.Net;
 using System.Net.Http;
 using System.Text;

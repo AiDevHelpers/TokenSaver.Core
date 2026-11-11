@@ -289,7 +289,10 @@ public sealed class NamedCommandPipe : IDisposable
         }
         catch (IOException ex)
         {
-            _logger.LogDebug(ex, "Command pipe {PipeName} already closed", _pipeName);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug(ex, "Command pipe {PipeName} already closed", _pipeName);
+            }
         }
 
         _stream.Dispose();
