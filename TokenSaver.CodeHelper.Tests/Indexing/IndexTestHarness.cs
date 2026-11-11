@@ -1,4 +1,5 @@
 using TokenSaver.CodeHelper.Configuration;
+using TokenSaver.Common.Contracts;
 using TokenSaver.CodeHelper.Indexing;
 using TokenSaver.Common.Core.Configuration;
 using TokenSaver.Config;
@@ -19,7 +20,7 @@ internal sealed class IndexTestHarness : IDisposable
     private readonly HttpClient _http;
     private readonly Func<WorkspaceIndexService> _newIndex;
 
-    public IndexTestHarness()
+    public IndexTestHarness(ICodeSummarizer? summarizer = null)
     {
         Root = Directory.CreateTempSubdirectory("tsidx_").FullName;
         Accessor = new WorkspaceIndexDbAccessor(NullLogger<WorkspaceIndexDbAccessor>.Instance);
@@ -34,7 +35,7 @@ internal sealed class IndexTestHarness : IDisposable
             NullLogger<GitStalenessService>.Instance);
 
         FolderTreeManager folderTree = new(Accessor, configManager, NullLogger<FolderTreeManager>.Instance);
-        AiSummarizationService aiSummarization = new(NullLogger<AiSummarizationService>.Instance);
+        AiSummarizationService aiSummarization = new(NullLogger<AiSummarizationService>.Instance, summarizer);
 
         _http = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:1") };
         SimpleModelServerCapacityClient capacity = new(_http, NullLogger<SimpleModelServerCapacityClient>.Instance);

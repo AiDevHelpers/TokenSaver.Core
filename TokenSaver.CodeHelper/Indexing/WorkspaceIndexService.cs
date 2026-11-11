@@ -11,6 +11,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace TokenSaver.CodeHelper.Indexing;
 
@@ -388,6 +390,18 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, [relPath], ct);
     }
 
+    /// <summary>UTF-8 decode that drops a leading BOM, matching File.ReadAllText's text output.</summary>
+    private static string DecodeUtf8(byte[] bytes)
+    {
+        ReadOnlySpan<byte> span = bytes;
+        if (span.Length >= 3 && span[0] == 0xEF && span[1] == 0xBB && span[2] == 0xBF)
+        {
+            span = span[3..];
+        }
+
+        return Encoding.UTF8.GetString(span);
+    }
+
     /// <summary>
     ///     Reads, describes, and (if a parser matches) parses symbols for one file, then upserts
     ///     File + Symbol rows. Everything before the DB section runs outside the DB lock
@@ -402,20 +416,38 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         string ext = Path.GetExtension(relPath);
         ISymbolParser? parser = _parsers.FirstOrDefault(p => p.SupportedExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase));
 
-        string content;
+        // Read the raw bytes once and hash them before any model call. A file whose bytes match
+        // the stored hash (touch, checkout, formatter no-op) only gets its mtime refreshed — no
+        // summary, no parse. Unreadable/binary files hash their relative path, as before.
+        byte[]? bytes;
         try
         {
-            content = await File.ReadAllTextAsync(abs, ct);
+            bytes = await File.ReadAllBytesAsync(abs, ct);
         }
         catch
         {
-            content = "";
-        } // binary or unreadable — description falls back to static/filename
+            bytes = null;
+        }
 
+        string hash = bytes is null
+            ? WorkspaceIndexDbAccessor.ComputeHash(relPath)
+            : Convert.ToHexString(SHA256.HashData(bytes));
+
+        FileEntity? stored = await GetFileRowAsync(ctx, relPath, ct);
+        if (stored != null && stored.ContentHash == hash && !await NeedsReindexAsync(ctx, stored, ct))
+        {
+            await _accessor.WithDbLockAsync(async () =>
+            {
+                _ = await ctx.Files.Where(f => f.Id == stored.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(f => f.LastModified, lastMod), ct);
+            }, ct);
+            return 0;
+        }
+
+        string content = bytes is null ? "" : DecodeUtf8(bytes);
         string description = await _aiSummarization.GetFileDescriptionAsync(abs, relPath, ext, aiThrottle, preferBackupEndpoint, ct);
         string fileType = ext.TrimStart('.') is { Length: > 0 } e ? e : "none";
-        string hash = WorkspaceIndexDbAccessor.ComputeHash(content.Length > 0 ? content : relPath);
-        long size = new FileInfo(abs).Length;
+        long size = bytes?.LongLength ?? 0;
 
         string folderRel = FolderTreeManager.GetParentFolderRelPath(relPath);
         int folderId = await _folderTree.GetOrCreateFolderIdAsync(ctx, folderRel, prebuiltFolderIds, ct);
