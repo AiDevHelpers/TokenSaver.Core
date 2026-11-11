@@ -39,9 +39,6 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
     [LoggerMessage(Level = LogLevel.Debug, Message = "Staleness check for repo '{Repo}': firstRun={FirstRun} unchanged={Unchanged} changedFiles={Count}")]
     private static partial void LogStalenessCheckResult(ILogger logger, string repo, bool firstRun, bool unchanged, int count);
 
-    private static readonly HashSet<string> SkipWalk =
-        new(StringComparer.OrdinalIgnoreCase) { "node_modules", "bin", "obj", "dist", "out", ".git" };
-
     /// <summary>
     ///     Finds every git repo root under the workspace: the workspace root itself (if it is one)
     ///     plus any nested/vendored repos (monorepo submodules, etc.). Returns workspace-relative
@@ -72,7 +69,7 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
             foreach (string sub in subdirs)
             {
                 string name = Path.GetFileName(sub);
-                if (SkipWalk.Contains(name))
+                if (AlwaysSkipDirectories.Contains(name))
                 {
                     continue;
                 }

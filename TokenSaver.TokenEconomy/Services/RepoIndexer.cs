@@ -28,9 +28,6 @@ public sealed partial class RepoIndexer(
 {
     private static readonly string[] DefaultExtensions = [".cs", ".js", ".ts", ".py", ".md"];
 
-    private static readonly string[] IgnoredSegments =
-        ["node_modules", ".git", "dist", "build", "venv", ".venv", "__pycache__", "bin", "obj", ".tokensaver", ".vs"];
-
     private readonly TokenEconomyConfig _config = config.Value.TokenEconomy;
 
     public async Task<RepoIndexStats> IndexRepoAsync(
@@ -318,8 +315,7 @@ public sealed partial class RepoIndexer(
     private static bool IsIgnored(string workspaceRoot, string filePath)
     {
         string relative = Path.GetRelativePath(workspaceRoot, filePath);
-        string[] segments = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return segments.Any(s => IgnoredSegments.Contains(s, StringComparer.OrdinalIgnoreCase));
+        return AlwaysSkipDirectories.IsUnderSkippedDirectory(relative, isDirectory: false);
     }
 
     private static string ComputeHash(string text)

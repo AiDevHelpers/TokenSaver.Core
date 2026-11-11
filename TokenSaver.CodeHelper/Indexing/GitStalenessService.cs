@@ -15,8 +15,6 @@ namespace TokenSaver.CodeHelper.Indexing;
 /// </summary>
 public sealed class GitStalenessService
 {
-    private static readonly HashSet<string> AlwaysSkipDirs =
-        new(StringComparer.OrdinalIgnoreCase) { ".git", ".tokensaver", "node_modules", "bin", "obj", "dist", "out" };
 
     private readonly WorkspaceIndexDbAccessor _accessor;
     private readonly GitStalenessChecker _gitStaleness;
@@ -137,7 +135,7 @@ public sealed class GitStalenessService
             foreach (string entry in entries)
             {
                 string name = Path.GetFileName(entry);
-                if (AlwaysSkipDirs.Contains(name))
+                if (AlwaysSkipDirectories.Contains(name))
                 {
                     continue;
                 }
