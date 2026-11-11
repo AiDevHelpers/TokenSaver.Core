@@ -36,7 +36,7 @@ public sealed class WorkspaceIndexDbAccessorCorruptionTests : IDisposable
     {
         string dbPath = WorkspaceIndexContextFactory.GetDbPath(_root);
         _ = Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-        File.WriteAllText(dbPath, new string('x', 4096));
+        await File.WriteAllTextAsync(dbPath, new string('x', 4096));
         ListLogger<WorkspaceIndexDbAccessor> logger = new();
 
         using WorkspaceIndexDbAccessor accessor = new(logger);

@@ -388,6 +388,7 @@ public sealed partial class SimpleModelServerInterceptorService(
 
     // ── Raw JSON parsing types ────────────────────────────────────────────────
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by System.Text.Json deserialization.")]
     private sealed class RawPatchOp
     {
         public string? FilePath { get; set; }

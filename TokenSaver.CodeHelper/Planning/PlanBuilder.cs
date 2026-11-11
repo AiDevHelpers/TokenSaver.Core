@@ -287,6 +287,7 @@ public sealed partial class PlanBuilder
                "\nPlease provide the replacement content or instructions, then call ExecutePlanStep again.";
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by System.Text.Json deserialization.")]
     private sealed class RawStep
     {
         public string? Description { get; set; }

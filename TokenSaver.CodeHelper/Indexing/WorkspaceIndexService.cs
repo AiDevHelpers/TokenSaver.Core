@@ -100,8 +100,9 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     ///     Cheap to call on every BuildConciseContext request: when nothing changed, this is just
     ///     one or two `git` subprocess calls per repo root.
     /// </summary>
-    public async Task<IndexStats> IndexWorkspaceAsync(string root, CancellationToken ct = default)
+    public async Task<IndexStats> IndexWorkspaceAsync(string workspaceRoot, CancellationToken ct = default)
     {
+        string root = workspaceRoot;
         Stopwatch sw = Stopwatch.StartNew();
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
 
