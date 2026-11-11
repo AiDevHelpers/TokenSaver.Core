@@ -107,7 +107,8 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         Stopwatch sw = Stopwatch.StartNew();
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
 
-        List<string>? targets = await _gitStaleness.ResolveTargetFilesAsync(ctx, root, ct);
+        GitStalenessService.StalenessPlan plan = await _gitStaleness.PlanTargetFilesAsync(ctx, root, ct);
+        List<string>? targets = plan.Targets;
         bool isFullBootstrap = targets == null;
 
         Dictionary<string, int>? prebuiltFolderIds = null;
@@ -123,13 +124,20 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             files = targets!;
         }
 
-        (int indexed, int skipped, int symbolCount) =
+        (int indexed, int skipped, int symbolCount, int failed) =
             await IndexFilesAsync(ctx, root, files, prebuiltFolderIds, ct);
 
         if (files.Count > 0)
         {
             await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, files, ct);
             await RebuildReferencesAsync(ctx, root, ct);
+        }
+
+        // Advance the git baseline only when every planned file indexed. A failed or cancelled
+        // file leaves the old baseline, so the next run diffs from it and retries the change.
+        if (failed == 0)
+        {
+            await _gitStaleness.CommitBaselinesAsync(ctx, plan, ct);
         }
 
         // Low-priority maintenance pass: sweep the whole Files table for rows that no longer
@@ -174,7 +182,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             .Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
             .ToList();
 
-        (int indexed, int skipped, int symbolCount) =
+        (int indexed, int skipped, int symbolCount, _) =
             await IndexFilesAsync(ctx, root, files, prebuiltFolderIds, ct);
 
         if (files.Count > 0)
@@ -256,13 +264,14 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         }, ct);
     }
 
-    private async Task<(int Indexed, int Skipped, int SymbolCount)> IndexFilesAsync(
+    private async Task<(int Indexed, int Skipped, int SymbolCount, int Failed)> IndexFilesAsync(
         WorkspaceIndexContext ctx, string root, List<string> files,
         Dictionary<string, int>? prebuiltFolderIds, CancellationToken ct)
     {
         int indexed = 0;
         int skipped = 0;
         int symbolCount = 0;
+        int failed = 0;
         SimpleModelServerCapacity capacity = await _capacityClient.GetCapacityAsync(ct);
         using SemaphoreSlim aiThrottle = new(capacity.MaxConcurrentSummaryRequests);
 
@@ -297,11 +306,12 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
                 }
                 catch (Exception ex)
                 {
+                    _ = Interlocked.Increment(ref failed);
                     LogFileSkipped(_logger, relPath, ex.Message);
                 }
             });
 
-        return (indexed, skipped, symbolCount);
+        return (indexed, skipped, symbolCount, failed);
     }
 
     /// <summary>

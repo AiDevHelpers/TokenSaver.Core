@@ -1,5 +1,7 @@
 using TokenSaver.Common.Contracts;
+using TokenSaver.Database.Context;
 
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace TokenSaver.CodeHelper.Tests.Indexing;
@@ -9,10 +11,14 @@ internal sealed class CountingSummarizer : ICodeSummarizer
 {
     public int Calls;
 
+    /// <summary>Optional hook run on every call (tests use it to cancel mid-index).</summary>
+    public Action? OnCall;
+
     public Task<string?> SummarizeAsync(string fileContent, string fileName, string fileHash,
         bool preferBackupEndpoint = false, CancellationToken ct = default)
     {
         _ = Interlocked.Increment(ref Calls);
+        OnCall?.Invoke();
         return Task.FromResult<string?>("summary");
     }
 }
@@ -58,5 +64,21 @@ public sealed class ContentHashGateTests : IDisposable
         _ = await _h.NewIndexService().IndexWorkspaceAsync(_h.Root);
 
         Assert.True(_summarizer.Calls > afterFirst);
+    }
+
+    [Fact]
+    public async Task MatchingHash_ZeroSymbols_IsReparsed()
+    {
+        await _h.WriteAsync("src/Alpha.cs", "public sealed class Alpha\n{\n}\n");
+        _ = await _h.NewIndexService().IndexWorkspaceAsync(_h.Root);
+        Assert.Equal(1, await _h.Search.CountAllSymbolsAsync(_h.Root, CancellationToken.None));
+
+        // Drop the symbol rows but keep the File row and its hash: the heal path must reparse.
+        WorkspaceIndexContext ctx = await _h.Accessor.GetDbAsync(_h.Root, CancellationToken.None);
+        _ = await ctx.Symbols.ExecuteDeleteAsync();
+
+        _ = await _h.NewIndexService().IndexWorkspaceAsync(_h.Root);
+
+        Assert.Equal(1, await _h.Search.CountAllSymbolsAsync(_h.Root, CancellationToken.None));
     }
 }

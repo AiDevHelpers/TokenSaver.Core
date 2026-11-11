@@ -40,18 +40,36 @@ public sealed class GitStalenessService
     public async Task<List<string>?> ResolveTargetFilesAsync(WorkspaceIndexContext ctx, string root,
         CancellationToken ct)
     {
+        StalenessPlan plan = await PlanTargetFilesAsync(ctx, root, ct);
+        await CommitBaselinesAsync(ctx, plan, ct);
+        return plan.Targets;
+    }
+
+    /// <summary>The files to index plus the per-repo baselines to persist once indexing succeeds.</summary>
+    public sealed record StalenessPlan(List<string>? Targets, IReadOnlyList<RepoStalenessResult> Checked);
+
+    /// <summary>
+    ///     Plans the reindex without persisting any git baseline. Pair with
+    ///     <see cref="CommitBaselinesAsync" /> after the planned files are indexed; a run that fails
+    ///     or is cancelled then leaves the baseline behind, so the same changes are retried.
+    /// </summary>
+    public async Task<StalenessPlan> PlanTargetFilesAsync(WorkspaceIndexContext ctx, string root,
+        CancellationToken ct)
+    {
         List<string> repoRoots = _gitStaleness.DiscoverRepoRoots(root).ToList();
         if (repoRoots.Count == 0)
         {
-            return null;
+            return new StalenessPlan(null, []);
         }
 
         HashSet<string> toReindex = new(StringComparer.OrdinalIgnoreCase);
         List<string> fullRescanRoots = [];
+        List<RepoStalenessResult> checkedRoots = [];
 
         foreach (string repoRelPath in repoRoots)
         {
-            RepoStalenessResult result = await _gitStaleness.CheckAsync(ctx, root, repoRelPath, ct);
+            RepoStalenessResult result = await _gitStaleness.CheckAsync(ctx, root, repoRelPath, ct, commitBaseline: false);
+            checkedRoots.Add(result);
             if (result.Unchanged)
             {
                 continue;
@@ -78,7 +96,19 @@ public sealed class GitStalenessService
             }
         }
 
-        return toReindex.Count > 0 ? toReindex.ToList() : [];
+        return new StalenessPlan(toReindex.Count > 0 ? toReindex.ToList() : [], checkedRoots);
+    }
+
+    /// <summary>Persists each checked repo's baseline. Call only after the planned files are indexed.</summary>
+    public async Task CommitBaselinesAsync(WorkspaceIndexContext ctx, StalenessPlan plan, CancellationToken ct)
+    {
+        foreach (RepoStalenessResult r in plan.Checked)
+        {
+            if (r.HeadSha != null)
+            {
+                await _gitStaleness.CommitBaselineAsync(ctx, r.RepoRelPath, r.HeadSha, r.IsDirty, ct);
+            }
+        }
     }
 
     /// <summary>

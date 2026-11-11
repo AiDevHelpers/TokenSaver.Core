@@ -19,6 +19,12 @@ public sealed record RepoStalenessResult
     public required bool IsFirstRun { get; init; }
     public required bool Unchanged { get; init; }
     public required IReadOnlyList<string> ChangedFiles { get; init; }
+
+    /// <summary>HEAD sha observed by the check; null when git could not resolve HEAD.</summary>
+    public string? HeadSha { get; init; }
+
+    /// <summary>Working tree had uncommitted changes at check time.</summary>
+    public bool IsDirty { get; init; }
 }
 
 /// <summary>
@@ -88,11 +94,14 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
 
     /// <summary>
     ///     Compares the repo's current HEAD sha + dirty state against the stored
-    ///     <see cref="RepoStalenessEntity" /> row, computes the exact changed-file set when
-    ///     something differs, and persists the new sha/dirty/CheckedAt as a side effect.
+    ///     <see cref="RepoStalenessEntity" /> row and computes the exact changed-file set when
+    ///     something differs. Persists the new baseline only when <paramref name="commitBaseline" />
+    ///     is true; callers that index the changed files should pass false and call
+    ///     <see cref="CommitBaselineAsync" /> after indexing succeeds, so a failed run is retried.
     /// </summary>
     public async Task<RepoStalenessResult> CheckAsync(
-        WorkspaceIndexContext ctx, string workspaceRoot, string repoRelPath, CancellationToken ct = default)
+        WorkspaceIndexContext ctx, string workspaceRoot, string repoRelPath, CancellationToken ct = default,
+        bool commitBaseline = true)
     {
         string repoDir = repoRelPath == "." ? workspaceRoot : Path.Combine(workspaceRoot, repoRelPath);
 
@@ -141,6 +150,32 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
             AddRepoRelativePaths(changedFiles, ParsePorcelainPaths(statusOutput), repoRelPath);
         }
 
+        if (commitBaseline)
+        {
+            await CommitBaselineAsync(ctx, repoRelPath, headSha, isDirty, ct);
+        }
+
+        LogStalenessCheckResult(logger, repoRelPath, isFirstRun, unchanged, changedFiles.Count);
+
+        return new RepoStalenessResult
+        {
+            RepoRelPath = repoRelPath,
+            IsFirstRun = isFirstRun,
+            Unchanged = unchanged,
+            ChangedFiles = changedFiles.ToArray(),
+            HeadSha = headSha,
+            IsDirty = isDirty
+        };
+    }
+
+    /// <summary>
+    ///     Persists HEAD sha + dirty state as the repo's baseline. Call only after every file the
+    ///     baseline covers has been indexed successfully, otherwise a failed run loses its changes.
+    /// </summary>
+    public async Task CommitBaselineAsync(
+        WorkspaceIndexContext ctx, string repoRelPath, string headSha, bool isDirty, CancellationToken ct)
+    {
+        RepoStalenessEntity? existing = await ctx.RepoStaleness.FindAsync([repoRelPath], ct);
         if (existing == null)
         {
             _ = ctx.RepoStaleness.Add(new RepoStalenessEntity
@@ -159,16 +194,6 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
         }
 
         _ = await ctx.SaveChangesAsync(ct);
-
-        LogStalenessCheckResult(logger, repoRelPath, isFirstRun, unchanged, changedFiles.Count);
-
-        return new RepoStalenessResult
-        {
-            RepoRelPath = repoRelPath,
-            IsFirstRun = isFirstRun,
-            Unchanged = unchanged,
-            ChangedFiles = changedFiles.ToArray()
-        };
     }
 
     private static string[] SplitLines(string text)
