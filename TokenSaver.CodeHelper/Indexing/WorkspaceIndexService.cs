@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -62,6 +63,10 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
 
     private const int ReferenceInsertChunk = 5000;
 
+    // Per-root gates shared by every WorkspaceIndexService instance in the process.
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> RootGates =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public WorkspaceIndexService(
         IOptions<CodeHelperConfig> codeConfig,
         IEnumerable<ISymbolParser> parsers,
@@ -103,6 +108,22 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     ///     one or two `git` subprocess calls per repo root.
     /// </summary>
     public async Task<IndexStats> IndexWorkspaceAsync(string root, CancellationToken ct = default)
+    {
+        // One pass per root at a time: concurrent callers (interactive request, background
+        // trigger, codegen push) queue behind it instead of each summarizing the same files.
+        SemaphoreSlim gate = RootGates.GetOrAdd(Path.GetFullPath(root), _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
+        {
+            return await IndexWorkspaceCoreAsync(root, ct);
+        }
+        finally
+        {
+            _ = gate.Release();
+        }
+    }
+
+    private async Task<IndexStats> IndexWorkspaceCoreAsync(string root, CancellationToken ct)
     {
         Stopwatch sw = Stopwatch.StartNew();
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
