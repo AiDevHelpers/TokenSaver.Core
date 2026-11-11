@@ -13,11 +13,12 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace TokenSaver.TokenEconomy.Services;
 
 /// <summary>Default <see cref="IRepoIndexer" /> — see that interface's doc comment.</summary>
-public sealed class RepoIndexer(
+public sealed partial class RepoIndexer(
     IChunkExtractor chunkExtractor,
     OllamaService ollama,
     ModelRouteResolver modelRoutes,
@@ -203,11 +204,63 @@ public sealed class RepoIndexer(
     {
         string text = chunk.Text.Length > 2000 ? chunk.Text[..2000] : chunk.Text;
         string prompt = chunk.ChunkType == "md_section"
-            ? $"One line only. Describe what this documentation section covers. Section heading: \"{chunk.Name}\".\n\n{text}"
-            : $"One line only, no preamble. Describe what this function/class does and its key inputs/outputs.\n\nCODE ({chunk.Name}):\n{text}";
+            ? $"DOCUMENT SECTION \"{chunk.Name}\":\n{text}\n\nIn one plain sentence, what does this documentation section cover?"
+            : $"CODE ({chunk.Name}):\n{text}\n\nIn one plain sentence, what does this code do? Do not rewrite it.";
 
-        return await ollama.CallModelAsync(modelRoutes.Resolve("summarize"), prompt, ct);
+        // A system prompt, because the small coder chat models treat a lone user instruction as an
+        // edit request ("Here's the revised code…"). The reply is also cleaned: even with the
+        // system prompt a model may add a preamble or a code block.
+        string raw = await ollama.CallModelAsync(modelRoutes.Resolve("summarize"), prompt, SummarySystemPrompt, ct);
+        return CleanSummary(raw);
     }
+
+    private const string SummarySystemPrompt =
+        "You write search-index descriptions of source code. Reply with exactly one plain-text sentence " +
+        "(under 40 words) saying what the code does. Never rewrite, fix or repeat the code. No markdown, " +
+        "no code blocks, no lists, no headings, no preamble. " +
+        "Example: for a function that doubles a number, reply: Returns the input number multiplied by two.";
+
+    private const int MaxSummaryLength = 300;
+
+    /// <summary>
+    ///     Reduces a model reply to one short description: drops fenced code blocks, preamble lines
+    ///     that end in a colon, and blank lines, keeps the first remaining line, and caps its length.
+    /// </summary>
+    public static string CleanSummary(string raw)
+    {
+        string withoutFences = FencedBlock().Replace(raw, "");
+        string[] lines = withoutFences.Split('\n');
+
+        // Prefer the first line that reads like a sentence; list items, headings, "`name`: ..."
+        // parameter notes and short titles are model scaffolding, not a description.
+        string? sentence = lines.Select(l => l.Trim())
+            .FirstOrDefault(t => t.Length > 0 && !t.EndsWith(':') && !ScaffoldLine().IsMatch(t)
+                                 && t.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 5);
+        if (sentence is not null)
+        {
+            return sentence.Length <= MaxSummaryLength ? sentence : sentence[..(MaxSummaryLength - 1)].TrimEnd() + "…";
+        }
+
+        foreach (string line in lines)
+        {
+            string t = line.Trim().TrimStart('-', '*', '#', ' ').Trim();
+            if (t.Length == 0 || t.EndsWith(':'))
+            {
+                continue;
+            }
+
+            return t.Length <= MaxSummaryLength ? t : t[..(MaxSummaryLength - 1)].TrimEnd() + "…";
+        }
+
+        return raw.Trim().Length <= MaxSummaryLength ? raw.Trim() : raw.Trim()[..MaxSummaryLength];
+    }
+
+    // Bullets, numbered items, headings, and "`name`:" parameter notes.
+    [GeneratedRegex(@"^(?:[-*#]|\d+[.)]|`[^`]+`\s*:)")]
+    private static partial Regex ScaffoldLine();
+
+    [GeneratedRegex("```.*?```", RegexOptions.Singleline)]
+    private static partial Regex FencedBlock();
 
     private static bool IsIgnored(string workspaceRoot, string filePath)
     {

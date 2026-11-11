@@ -109,6 +109,49 @@ public sealed class SemanticIndexBackgroundTriggerTests : IDisposable
         Assert.Equal(stats.ChunksIndexed, ctx.Chunks.ToList().Count);
     }
 
+    [Fact]
+    public async Task ForceRestartAsync_CancelsRunningRun_DeletesChunks_AndStartsFreshRun()
+    {
+        _ = Directory.CreateDirectory(_root);
+        WorkspaceIndexContext ctx = await _db.GetDbAsync(_root, CancellationToken.None);
+        _ = ctx.Chunks.Add(new TokenSaver.Database.Context.Entities.ChunkEntity
+        {
+            RelativePath = "Old.cs", StartLine = 1, EndLine = 2, ContentHash = "x", Summary = "s", EmbeddingVector = "[]"
+        });
+        _ = await ctx.SaveChangesAsync();
+
+        int calls = 0;
+        BlockingIndexer indexer = new(() => Interlocked.Increment(ref calls));
+        SemanticIndexBackgroundTrigger trigger = new(indexer, _db, NullLogger<SemanticIndexBackgroundTrigger>.Instance);
+
+        Assert.Equal(SemanticIndexTriggerStatus.Started, trigger.StartManual(_root, null, 1));
+
+        SemanticIndexTriggerStatus status = await trigger.ForceRestartAsync(_root, null, 1, CancellationToken.None);
+
+        Assert.Equal(SemanticIndexTriggerStatus.Started, status);
+        Assert.Equal(0, await trigger.CountChunksAsync(_root, CancellationToken.None));
+        Assert.Null(trigger.GetLastError(_root));
+        Assert.Equal(2, calls);
+        Assert.True(trigger.IsRunning(_root));
+        indexer.Release();
+        await WaitUntilIdleAsync(trigger);
+    }
+
+    private sealed class BlockingIndexer(Action onCall) : IRepoIndexer
+    {
+        private readonly TaskCompletionSource _gate = new();
+
+        public void Release() => _gate.TrySetResult();
+
+        public async Task<RepoIndexStats> IndexRepoAsync(
+            string workspaceRoot, string[]? extensions = null, int concurrency = 4, CancellationToken ct = default)
+        {
+            onCall();
+            await _gate.Task.WaitAsync(ct);
+            return new RepoIndexStats(0, 0, 0, 0, TimeSpan.Zero, 0);
+        }
+    }
+
     private async Task WaitUntilIdleAsync(SemanticIndexBackgroundTrigger trigger)
     {
         DateTime until = DateTime.UtcNow + Deadline;
