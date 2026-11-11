@@ -5,6 +5,7 @@ using TokenSaver.Config;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
 using TokenSaver.OllamaIntegration.Services;
+using TokenSaver.Utilities.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -68,6 +69,10 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> RootGates =
         new(StringComparer.OrdinalIgnoreCase);
 
+    // Per-root set of paths whose last index attempt threw (see GetFailedPaths).
+    private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> FailedPathsByRoot =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public WorkspaceIndexService(
         IOptions<CodeHelperConfig> codeConfig,
         IEnumerable<ISymbolParser> parsers,
@@ -95,9 +100,71 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     /// </summary>
     public async Task<IndexStats> IndexFileAsync(string root, string relPath, CancellationToken ct = default)
     {
+        return await IndexPathsAsync(root, [relPath], ct);
+    }
+
+    /// <summary>
+    ///     Indexes exactly the listed workspace-relative paths; a listed path that no longer exists
+    ///     is removed from the index. The single entry point for targeted work: the change queue
+    ///     (<see cref="IndexChangeQueue" />) and single-file edits (<see cref="IndexFileAsync" />) both
+    ///     land here. Shares the per-root gate with <see cref="IndexWorkspaceAsync" />.
+    /// </summary>
+    public async Task<IndexStats> IndexPathsAsync(string root, IEnumerable<string> relPaths, CancellationToken ct = default)
+    {
         Stopwatch sw = Stopwatch.StartNew();
-        await EnsureFileIndexedAsync(root, relPath, ct);
-        return new IndexStats { FilesIndexed = 1, Elapsed = sw.Elapsed };
+        List<string> paths = relPaths
+            .Select(p => p.Replace('\\', '/').TrimStart('/'))
+            .Where(p => p.Length > 0 && !AlwaysSkipDirectories.IsUnderSkippedDirectory(p, isDirectory: false))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (paths.Count == 0)
+        {
+            return new IndexStats { Elapsed = sw.Elapsed };
+        }
+
+        SemaphoreSlim gate = RootGates.GetOrAdd(Path.GetFullPath(root), _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
+        {
+            WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
+            (int indexed, int skipped, int symbolCount, _) = await IndexFilesAsync(ctx, root, paths, null, ct);
+            await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, paths, ct);
+            int refs = await RebuildReferencesAsync(ctx, root, paths, false, ct);
+
+            return new IndexStats
+            {
+                FilesIndexed = indexed,
+                SymbolsIndexed = symbolCount,
+                FilesSkipped = skipped,
+                ReferenceFilesRead = refs,
+                Elapsed = sw.Elapsed
+            };
+        }
+        finally
+        {
+            _ = gate.Release();
+        }
+    }
+
+    /// <summary>
+    ///     Paths whose last index attempt failed (exception while reading, summarizing or writing).
+    ///     Replaces the old full-scan "stale files" report: the failed set is what a context build
+    ///     needs to surface, and it is kept by the index pass itself.
+    /// </summary>
+    public string[] GetFailedPaths(string root) =>
+        FailedPathsByRoot.TryGetValue(Path.GetFullPath(root), out ConcurrentDictionary<string, byte>? set)
+            ? set.Keys.ToArray()
+            : [];
+
+    private static void RecordFailure(string root, string relPath) =>
+        FailedPathsByRoot.GetOrAdd(Path.GetFullPath(root), _ => new(StringComparer.OrdinalIgnoreCase))[relPath] = 0;
+
+    private static void ClearFailure(string root, string relPath)
+    {
+        if (FailedPathsByRoot.TryGetValue(Path.GetFullPath(root), out ConcurrentDictionary<string, byte>? set))
+        {
+            _ = set.TryRemove(relPath, out _);
+        }
     }
 
     // ── Public: workspace indexing ────────────────────────────────────────────
@@ -407,10 +474,12 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
                         innerCt, preferBackupEndpoint: true);
                     _ = Interlocked.Increment(ref indexed);
                     _ = Interlocked.Add(ref symbolCount, symbols);
+                    ClearFailure(root, relPath);
                 }
                 catch (Exception ex)
                 {
                     _ = Interlocked.Increment(ref failed);
+                    RecordFailure(root, relPath);
                     LogFileSkipped(_logger, relPath, ex.Message);
                 }
             });

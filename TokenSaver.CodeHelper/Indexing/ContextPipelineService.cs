@@ -37,7 +37,6 @@ public sealed class ContextPipelineService : IContextPipelineService
     private readonly ContextCleanerService _cleaner;
     private readonly TokenSaverConfig _config;
     private readonly ConcurrentDictionary<string, ConversationIndex> _conversationIndexes = new();
-    private readonly GitStalenessService _gitStaleness;
     private readonly WorkspaceIndexService _orchestrator;
     private readonly ISavingsTracker _savings;
     private readonly SemanticIndexBackgroundTrigger _semanticIndexTrigger;
@@ -50,7 +49,6 @@ public sealed class ContextPipelineService : IContextPipelineService
     public ContextPipelineService(
         WorkspaceIndexDbAccessor accessor,
         ContextCleanerService cleaner,
-        GitStalenessService gitStaleness,
         WorkspaceConfigManager workspaceConfig,
         WorkspaceIndexService orchestrator,
         SemanticIndexBackgroundTrigger semanticIndexTrigger,
@@ -62,7 +60,6 @@ public sealed class ContextPipelineService : IContextPipelineService
     {
         _accessor = accessor;
         _cleaner = cleaner;
-        _gitStaleness = gitStaleness;
         _workspaceConfig = workspaceConfig;
         _orchestrator = orchestrator;
         _semanticIndexTrigger = semanticIndexTrigger;
@@ -236,7 +233,7 @@ public sealed class ContextPipelineService : IContextPipelineService
             hygieneReport = await BuildContextHygieneReportAsync(sessionId, root, ct);
         }
 
-        string[] staleFiles = await _gitStaleness.GetStaleFilesAsync(root, ct);
+        string[] staleFiles = _orchestrator.GetFailedPaths(root);
 
         return new BuildContextResult
         {

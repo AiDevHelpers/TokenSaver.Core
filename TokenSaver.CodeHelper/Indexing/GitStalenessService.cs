@@ -163,36 +163,4 @@ public sealed class GitStalenessService
             }
         }
     }
-
-    public async Task<string[]> GetStaleFilesAsync(string root, CancellationToken ct)
-    {
-        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
-        List<FileEntity> rows = await _accessor.WithDbLockAsync(
-            () => ctx.Files.AsNoTracking().ToListAsync(ct), ct);
-
-        List<string> stale = [];
-        foreach (FileEntity row in rows)
-        {
-            string abs = Path.Combine(root, row.RelativePath);
-            if (!File.Exists(abs))
-            {
-                continue;
-            }
-
-            try
-            {
-                long writeMs = new DateTimeOffset(File.GetLastWriteTimeUtc(abs)).ToUnixTimeMilliseconds();
-                if (writeMs > row.LastModified)
-                {
-                    stale.Add(row.RelativePath);
-                }
-            }
-            catch
-            {
-                /* transient FS error — skip */
-            }
-        }
-
-        return stale.ToArray();
-    }
 }
