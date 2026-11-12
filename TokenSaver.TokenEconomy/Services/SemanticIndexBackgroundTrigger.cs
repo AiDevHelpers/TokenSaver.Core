@@ -35,9 +35,11 @@ public enum SemanticIndexTriggerStatus
 ///     nothing here needs to cancel or join the first run.
 /// </summary>
 public sealed partial class SemanticIndexBackgroundTrigger(
-    IRepoIndexer indexer, TokenEconomyDbAccessor db, ILogger<SemanticIndexBackgroundTrigger> logger)
+    IRepoIndexer indexer, TokenEconomyDbAccessor db, ILogger<SemanticIndexBackgroundTrigger> logger,
+    IndexPauseGate? pauseGate = null)
 {
     private readonly ConcurrentDictionary<string, byte> _running = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IndexPauseGate _pauseGate = pauseGate ?? new IndexPauseGate();
 
     // Once a workspace is known to have chunks, every later call can skip the DB round-trip
     // entirely — the answer never goes back to "no chunks" once RepoIndexer has written any.
@@ -174,6 +176,14 @@ public sealed partial class SemanticIndexBackgroundTrigger(
 
     /// <summary>True while a background run (manual or first-run) is in flight for this root.</summary>
     public bool IsRunning(string workspaceRoot) => _running.ContainsKey(workspaceRoot);
+
+    /// <summary>Pauses the run for this root at the next file boundary; chunks already stored are kept.</summary>
+    public void Pause(string workspaceRoot) => _pauseGate.Pause(workspaceRoot);
+
+    /// <summary>Resumes a paused run for this root.</summary>
+    public void Resume(string workspaceRoot) => _pauseGate.Resume(workspaceRoot);
+
+    public bool IsPaused(string workspaceRoot) => _pauseGate.IsPaused(workspaceRoot);
 
     /// <summary>Stats from the most recent completed run for this root, if any.</summary>
     public bool TryGetLastStats(string workspaceRoot, out RepoIndexStats? stats)

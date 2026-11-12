@@ -24,12 +24,14 @@ public sealed partial class RepoIndexer(
     OllamaService ollama,
     ModelRouteResolver modelRoutes,
     TokenEconomyDbAccessor db,
-    IOptions<TokenSaverConfig> config)
+    IOptions<TokenSaverConfig> config,
+    IndexPauseGate? pauseGate = null)
     : IRepoIndexer
 {
     private static readonly string[] DefaultExtensions = [".cs", ".js", ".ts", ".py", ".md"];
 
     private readonly TokenEconomyConfig _config = config.Value.TokenEconomy;
+    private readonly IndexPauseGate _pauseGate = pauseGate ?? new IndexPauseGate();
 
     public async Task<RepoIndexStats> IndexRepoAsync(
         string workspaceRoot, string[]? extensions = null, int concurrency = 4, CancellationToken ct = default)
@@ -71,6 +73,7 @@ public sealed partial class RepoIndexer(
 
         foreach (string filePath in files)
         {
+            await _pauseGate.WaitIfPausedAsync(workspaceRoot, ct);
             ct.ThrowIfCancellationRequested();
             string relativePath = Path.GetRelativePath(workspaceRoot, filePath).Replace('\\', '/');
             seenPaths.Add(relativePath);
