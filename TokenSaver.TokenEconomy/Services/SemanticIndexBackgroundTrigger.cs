@@ -49,6 +49,7 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     // Last completed run's stats and last failure message per workspace, for IndexStatus.
     private readonly ConcurrentDictionary<string, RepoIndexStats> _lastStats = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, string> _lastError = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _needsRebuild = new(StringComparer.OrdinalIgnoreCase);
 
     // Cancellation source of the in-flight run per root, so a forced reset can stop it.
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _cts = new(StringComparer.OrdinalIgnoreCase);
@@ -179,6 +180,9 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     /// <summary>Error message from the most recent failed run for this root, if any.</summary>
     public string? GetLastError(string workspaceRoot) => _lastError.TryGetValue(workspaceRoot, out string? message) ? message : null;
 
+    /// <summary>True when the last run failed because the stored index schema is older than the code (a rebuild is needed).</summary>
+    public bool NeedsRebuild(string workspaceRoot) => _needsRebuild.ContainsKey(workspaceRoot);
+
     private async Task RunManualInBackgroundAsync(
         string workspaceRoot, string[]? extensions, int concurrency, CancellationToken ct)
     {
@@ -250,6 +254,7 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     {
         _lastStats[workspaceRoot] = stats;
         _ = _lastError.TryRemove(workspaceRoot, out _);
+        _ = _needsRebuild.TryRemove(workspaceRoot, out _);
         LogCompleted(logger, workspaceRoot, stats.FilesScanned, stats.ChunksIndexed, stats.ChunksSkipped,
             stats.ChunksDeleted, stats.ChunksFailed, stats.Elapsed.TotalSeconds);
     }
@@ -258,6 +263,10 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     private void RecordFailed(string workspaceRoot, Exception ex)
     {
         _lastError[workspaceRoot] = ex.Message;
+        if (ex.Message.Contains("no such column", StringComparison.OrdinalIgnoreCase))
+        {
+            _needsRebuild[workspaceRoot] = 0;
+        }
         LogFailed(logger, workspaceRoot, ex);
     }
 
