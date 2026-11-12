@@ -114,6 +114,12 @@ public sealed partial class SemanticIndexBackgroundTrigger(
         }
 
         WorkspaceIndexContext ctx = await db.GetDbAsync(workspaceRoot, ct);
+        if (!await ChunkSchemaRecovery.HasCurrentChunkSchemaAsync(ctx, ct))
+        {
+            // Stored Chunks table predates the current columns: back up, then recreate it so the rebuild can run.
+            _ = await ChunkSchemaRecovery.BackupAndRecreateChunksAsync(ctx, ct);
+        }
+
         _ = await db.WithDbLockAsync(() => ctx.Chunks.ExecuteDeleteAsync(ct), ct);
 
         _ = _knownIndexed.TryRemove(workspaceRoot, out _);
