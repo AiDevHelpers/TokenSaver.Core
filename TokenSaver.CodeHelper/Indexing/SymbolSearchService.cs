@@ -77,6 +77,17 @@ public sealed class SymbolSearchService
     }
 
     /// <summary>Returns the total number of indexed symbols for the workspace (0 when never scanned).</summary>
+    /// <summary>File and folder row counts in the workspace index (for code_index status).</summary>
+    public async Task<(int Files, int Folders)> CountFilesAndFoldersAsync(string workspaceRoot = "", CancellationToken ct = default)
+    {
+        string requested = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
+        (string indexRoot, _) = IndexRootResolver.Resolve(requested);
+        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(indexRoot, ct);
+
+        return await _accessor.WithDbLockAsync(async () =>
+            (await ctx.Files.CountAsync(ct), await ctx.Folders.CountAsync(ct)), ct);
+    }
+
     public async Task<int> CountAllSymbolsAsync(string workspaceRoot = "", CancellationToken ct = default)
     {
         string requested = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
