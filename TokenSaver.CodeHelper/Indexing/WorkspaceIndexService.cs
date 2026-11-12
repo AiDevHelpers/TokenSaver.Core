@@ -5,12 +5,16 @@ using TokenSaver.Config;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
 using TokenSaver.OllamaIntegration.Services;
+using TokenSaver.Utilities.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace TokenSaver.CodeHelper.Indexing;
 
@@ -51,6 +55,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     private readonly ILogger<WorkspaceIndexService> _logger;
     private readonly IReadOnlyList<ISymbolParser> _parsers;
     private long _lastPruneAtMs;
+    private long _lastFullReferenceAtMs;
 
     // Pruning does a full Files-table scan (disk + gitignore check per row). IndexWorkspaceAsync
     // can be called on every interactive request (see BuildConciseContextAsync), so the sweep is
@@ -59,6 +64,14 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     private static readonly TimeSpan PruneInterval = TimeSpan.FromMinutes(10);
 
     private const int ReferenceInsertChunk = 5000;
+
+    // Per-root gates shared by every WorkspaceIndexService instance in the process.
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> RootGates =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    // Per-root set of paths whose last index attempt threw (see GetFailedPaths).
+    private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> FailedPathsByRoot =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public WorkspaceIndexService(
         IOptions<CodeHelperConfig> codeConfig,
@@ -87,9 +100,71 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     /// </summary>
     public async Task<IndexStats> IndexFileAsync(string root, string relPath, CancellationToken ct = default)
     {
+        return await IndexPathsAsync(root, [relPath], ct);
+    }
+
+    /// <summary>
+    ///     Indexes exactly the listed workspace-relative paths; a listed path that no longer exists
+    ///     is removed from the index. The single entry point for targeted work: the change queue
+    ///     (<see cref="IndexChangeBuffer" />) and single-file edits (<see cref="IndexFileAsync" />) both
+    ///     land here. Shares the per-root gate with <see cref="IndexWorkspaceAsync" />.
+    /// </summary>
+    public async Task<IndexStats> IndexPathsAsync(string root, IEnumerable<string> relPaths, CancellationToken ct = default)
+    {
         Stopwatch sw = Stopwatch.StartNew();
-        await EnsureFileIndexedAsync(root, relPath, ct);
-        return new IndexStats { FilesIndexed = 1, Elapsed = sw.Elapsed };
+        List<string> paths = relPaths
+            .Select(p => p.Replace('\\', '/').TrimStart('/'))
+            .Where(p => p.Length > 0 && !AlwaysSkipDirectories.IsUnderSkippedDirectory(p, isDirectory: false))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (paths.Count == 0)
+        {
+            return new IndexStats { Elapsed = sw.Elapsed };
+        }
+
+        SemaphoreSlim gate = RootGates.GetOrAdd(Path.GetFullPath(root), _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
+        {
+            WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
+            (int indexed, int skipped, int symbolCount, _) = await IndexFilesAsync(ctx, root, paths, null, ct);
+            await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, paths, ct);
+            int refs = await RebuildReferencesAsync(ctx, root, paths, false, ct);
+
+            return new IndexStats
+            {
+                FilesIndexed = indexed,
+                SymbolsIndexed = symbolCount,
+                FilesSkipped = skipped,
+                ReferenceFilesRead = refs,
+                Elapsed = sw.Elapsed
+            };
+        }
+        finally
+        {
+            _ = gate.Release();
+        }
+    }
+
+    /// <summary>
+    ///     Paths whose last index attempt failed (exception while reading, summarizing or writing).
+    ///     Replaces the old full-scan "stale files" report: the failed set is what a context build
+    ///     needs to surface, and it is kept by the index pass itself.
+    /// </summary>
+    public string[] GetFailedPaths(string root) =>
+        FailedPathsByRoot.TryGetValue(Path.GetFullPath(root), out ConcurrentDictionary<string, byte>? set)
+            ? set.Keys.ToArray()
+            : [];
+
+    private static void RecordFailure(string root, string relPath) =>
+        FailedPathsByRoot.GetOrAdd(Path.GetFullPath(root), _ => new(StringComparer.OrdinalIgnoreCase))[relPath] = 0;
+
+    private static void ClearFailure(string root, string relPath)
+    {
+        if (FailedPathsByRoot.TryGetValue(Path.GetFullPath(root), out ConcurrentDictionary<string, byte>? set))
+        {
+            _ = set.TryRemove(relPath, out _);
+        }
     }
 
     // ── Public: workspace indexing ────────────────────────────────────────────
@@ -102,11 +177,27 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     /// </summary>
     public async Task<IndexStats> IndexWorkspaceAsync(string workspaceRoot, CancellationToken ct = default)
     {
-        string root = workspaceRoot;
+        // One pass per root at a time: concurrent callers (interactive request, background
+        // trigger, codegen push) queue behind it instead of each summarizing the same files.
+        SemaphoreSlim gate = RootGates.GetOrAdd(Path.GetFullPath(workspaceRoot), _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct);
+        try
+        {
+            return await IndexWorkspaceCoreAsync(workspaceRoot, ct);
+        }
+        finally
+        {
+            _ = gate.Release();
+        }
+    }
+
+    private async Task<IndexStats> IndexWorkspaceCoreAsync(string root, CancellationToken ct)
+    {
         Stopwatch sw = Stopwatch.StartNew();
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
 
-        List<string>? targets = await _gitStaleness.ResolveTargetFilesAsync(ctx, root, ct);
+        GitStalenessService.StalenessPlan plan = await _gitStaleness.PlanTargetFilesAsync(ctx, root, ct);
+        List<string>? targets = plan.Targets;
         bool isFullBootstrap = targets == null;
 
         Dictionary<string, int>? prebuiltFolderIds = null;
@@ -122,13 +213,31 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             files = targets!;
         }
 
-        (int indexed, int skipped, int symbolCount) =
+        (int indexed, int skipped, int symbolCount, int failed) =
             await IndexFilesAsync(ctx, root, files, prebuiltFolderIds, ct);
 
+        // Full reference rebuild on bootstrap and at most once per PruneInterval. Otherwise only the
+        // changed files and the sources that point at them are re-read (see RebuildReferencesAsync).
+        long nowMsForRefs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        bool fullRefs = isFullBootstrap
+            || nowMsForRefs - Interlocked.Read(ref _lastFullReferenceAtMs) >= PruneInterval.TotalMilliseconds;
+        int referenceFilesRead = 0;
         if (files.Count > 0)
         {
             await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, files, ct);
-            await RebuildReferencesAsync(ctx, root, ct);
+            if (fullRefs)
+            {
+                _ = Interlocked.Exchange(ref _lastFullReferenceAtMs, nowMsForRefs);
+            }
+
+            referenceFilesRead = await RebuildReferencesAsync(ctx, root, files, fullRefs, ct);
+        }
+
+        // Advance the git baseline only when every planned file indexed. A failed or cancelled
+        // file leaves the old baseline, so the next run diffs from it and retries the change.
+        if (failed == 0)
+        {
+            await _gitStaleness.CommitBaselinesAsync(ctx, plan, ct);
         }
 
         // Low-priority maintenance pass: sweep the whole Files table for rows that no longer
@@ -152,7 +261,8 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             FilesSkipped = skipped,
             Elapsed = sw.Elapsed,
             FilesPruned = prunedFiles,
-            SymbolsPruned = prunedSymbols
+            SymbolsPruned = prunedSymbols,
+            ReferenceFilesRead = referenceFilesRead
         };
     }
 
@@ -173,7 +283,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             .Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
             .ToList();
 
-        (int indexed, int skipped, int symbolCount) =
+        (int indexed, int skipped, int symbolCount, _) =
             await IndexFilesAsync(ctx, root, files, prebuiltFolderIds, ct);
 
         if (files.Count > 0)
@@ -202,7 +312,16 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     ///     Full rebuild keeps edges correct across deletes and renames; cost is one read of each
     ///     indexed .cs file per call that changed something.
     /// </summary>
-    private async Task RebuildReferencesAsync(WorkspaceIndexContext ctx, string root, CancellationToken ct)
+    /// <summary>
+    ///     Rebuilds SymbolReferences edges. A full rebuild re-reads every C# type file. An incremental
+    ///     one re-reads only <paramref name="changedFiles" /> plus the dependents: sources whose edges
+    ///     point at a symbol that no longer exists. Returns the number of files re-read.
+    ///     Known gap: a brand-new reference from an unchanged file to a new type is picked up on the
+    ///     next full rebuild (bootstrap, or once per PruneInterval), not on the incremental pass.
+    /// </summary>
+    private async Task<int> RebuildReferencesAsync(
+        WorkspaceIndexContext ctx, string root, IReadOnlyCollection<string> changedFiles, bool fullRebuild,
+        CancellationToken ct)
     {
         var typeRows = await _accessor.WithDbLockAsync(() => ctx.Symbols
             .Include(s => s.File)
@@ -217,8 +336,57 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
             .Select(r => new CSharpReferenceGraph.TypeNode(r.Id, r.Path, r.Name))
             .ToList();
 
+        HashSet<string> currentIds = types.Select(t => t.SymbolId).ToHashSet(StringComparer.Ordinal);
+        Dictionary<string, string> idToPath = new(StringComparer.Ordinal);
+        foreach (CSharpReferenceGraph.TypeNode t in types)
+        {
+            idToPath[t.SymbolId] = t.FilePath;
+        }
+
+        HashSet<string> csPaths = types.Select(t => t.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Targets no longer present: renamed, removed, or re-created with a new id by reparsing.
+        List<string> staleTargets = [];
+        HashSet<string> rebuildPaths = new(StringComparer.OrdinalIgnoreCase);
+        if (fullRebuild)
+        {
+            rebuildPaths = csPaths;
+        }
+        else
+        {
+            List<string> allTargets = await _accessor.WithDbLockAsync(
+                () => ctx.SymbolReferences.Select(e => e.TargetSymbolId).Distinct().ToListAsync(ct), ct);
+            staleTargets = allTargets.Where(t => !currentIds.Contains(t)).ToList();
+
+            foreach (string f in changedFiles)
+            {
+                if (csPaths.Contains(f))
+                {
+                    _ = rebuildPaths.Add(f);
+                }
+            }
+
+            if (staleTargets.Count > 0)
+            {
+                List<string> dependentSources = await _accessor.WithDbLockAsync(
+                    () => ctx.SymbolReferences.Where(e => staleTargets.Contains(e.TargetSymbolId))
+                        .Select(e => e.SourceSymbolId).Distinct().ToListAsync(ct), ct);
+                foreach (string src in dependentSources)
+                {
+                    if (idToPath.TryGetValue(src, out string? depPath))
+                    {
+                        _ = rebuildPaths.Add(depPath);
+                    }
+                }
+            }
+        }
+
+        // Edges owned by the files being rebuilt are replaced; edges to stale targets are dropped.
+        List<string> rebuildSourceIds = types.Where(t => rebuildPaths.Contains(t.FilePath))
+            .Select(t => t.SymbolId).ToList();
+
         Dictionary<string, string> contents = new(StringComparer.OrdinalIgnoreCase);
-        foreach (string path in types.Select(t => t.FilePath).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (string path in rebuildPaths)
         {
             try
             {
@@ -239,7 +407,17 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         {
             try
             {
-                _ = await ctx.SymbolReferences.ExecuteDeleteAsync(ct);
+                if (fullRebuild)
+                {
+                    _ = await ctx.SymbolReferences.ExecuteDeleteAsync(ct);
+                }
+                else
+                {
+                    _ = await ctx.SymbolReferences.Where(e => rebuildSourceIds.Contains(e.SourceSymbolId))
+                        .ExecuteDeleteAsync(ct);
+                    _ = await ctx.SymbolReferences.Where(e => staleTargets.Contains(e.TargetSymbolId))
+                        .ExecuteDeleteAsync(ct);
+                }
                 for (int i = 0; i < edges.Count; i += ReferenceInsertChunk)
                 {
                     int count = Math.Min(ReferenceInsertChunk, edges.Count - i);
@@ -253,15 +431,18 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
                 ctx.ChangeTracker.Clear();
             }
         }, ct);
+
+        return rebuildPaths.Count;
     }
 
-    private async Task<(int Indexed, int Skipped, int SymbolCount)> IndexFilesAsync(
+    private async Task<(int Indexed, int Skipped, int SymbolCount, int Failed)> IndexFilesAsync(
         WorkspaceIndexContext ctx, string root, List<string> files,
         Dictionary<string, int>? prebuiltFolderIds, CancellationToken ct)
     {
         int indexed = 0;
         int skipped = 0;
         int symbolCount = 0;
+        int failed = 0;
         SimpleModelServerCapacity capacity = await _capacityClient.GetCapacityAsync(ct);
         using SemaphoreSlim aiThrottle = new(capacity.MaxConcurrentSummaryRequests);
 
@@ -293,14 +474,17 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
                         innerCt, preferBackupEndpoint: true);
                     _ = Interlocked.Increment(ref indexed);
                     _ = Interlocked.Add(ref symbolCount, symbols);
+                    ClearFailure(root, relPath);
                 }
                 catch (Exception ex)
                 {
+                    _ = Interlocked.Increment(ref failed);
+                    RecordFailure(root, relPath);
                     LogFileSkipped(_logger, relPath, ex.Message);
                 }
             });
 
-        return (indexed, skipped, symbolCount);
+        return (indexed, skipped, symbolCount, failed);
     }
 
     /// <summary>
@@ -389,6 +573,18 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         await _folderTree.RefreshTouchedFolderDescriptionsAsync(ctx, [relPath], ct);
     }
 
+    /// <summary>UTF-8 decode that drops a leading BOM, matching File.ReadAllText's text output.</summary>
+    private static string DecodeUtf8(byte[] bytes)
+    {
+        ReadOnlySpan<byte> span = bytes;
+        if (span.Length >= 3 && span[0] == 0xEF && span[1] == 0xBB && span[2] == 0xBF)
+        {
+            span = span[3..];
+        }
+
+        return Encoding.UTF8.GetString(span);
+    }
+
     /// <summary>
     ///     Reads, describes, and (if a parser matches) parses symbols for one file, then upserts
     ///     File + Symbol rows. Everything before the DB section runs outside the DB lock
@@ -403,20 +599,38 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         string ext = Path.GetExtension(relPath);
         ISymbolParser? parser = _parsers.FirstOrDefault(p => p.SupportedExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase));
 
-        string content;
+        // Read the raw bytes once and hash them before any model call. A file whose bytes match
+        // the stored hash (touch, checkout, formatter no-op) only gets its mtime refreshed — no
+        // summary, no parse. Unreadable/binary files hash their relative path, as before.
+        byte[]? bytes;
         try
         {
-            content = await File.ReadAllTextAsync(abs, ct);
+            bytes = await File.ReadAllBytesAsync(abs, ct);
         }
         catch
         {
-            content = "";
-        } // binary or unreadable — description falls back to static/filename
+            bytes = null;
+        }
 
+        string hash = bytes is null
+            ? WorkspaceIndexDbAccessor.ComputeHash(relPath)
+            : Convert.ToHexString(SHA256.HashData(bytes));
+
+        FileEntity? stored = await GetFileRowAsync(ctx, relPath, ct);
+        if (stored != null && stored.ContentHash == hash && !await NeedsReindexAsync(ctx, stored, ct))
+        {
+            await _accessor.WithDbLockAsync(async () =>
+            {
+                _ = await ctx.Files.Where(f => f.Id == stored.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(f => f.LastModified, lastMod), ct);
+            }, ct);
+            return 0;
+        }
+
+        string content = bytes is null ? "" : DecodeUtf8(bytes);
         string description = await _aiSummarization.GetFileDescriptionAsync(abs, relPath, ext, aiThrottle, preferBackupEndpoint, ct);
         string fileType = ext.TrimStart('.') is { Length: > 0 } e ? e : "none";
-        string hash = WorkspaceIndexDbAccessor.ComputeHash(content.Length > 0 ? content : relPath);
-        long size = new FileInfo(abs).Length;
+        long size = bytes?.LongLength ?? 0;
 
         string folderRel = FolderTreeManager.GetParentFolderRelPath(relPath);
         int folderId = await _folderTree.GetOrCreateFolderIdAsync(ctx, folderRel, prebuiltFolderIds, ct);

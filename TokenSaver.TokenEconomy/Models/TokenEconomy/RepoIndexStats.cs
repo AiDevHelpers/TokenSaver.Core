@@ -6,4 +6,5 @@ public sealed record RepoIndexStats(
     int ChunksSkipped,
     int ChunksDeleted,
     TimeSpan Elapsed,
-    int ChunksFailed = 0);
+    int ChunksFailed = 0,
+    int FilesRead = 0);

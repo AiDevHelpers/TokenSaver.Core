@@ -19,6 +19,12 @@ public sealed record RepoStalenessResult
     public required bool IsFirstRun { get; init; }
     public required bool Unchanged { get; init; }
     public required IReadOnlyList<string> ChangedFiles { get; init; }
+
+    /// <summary>HEAD sha observed by the check; null when git could not resolve HEAD.</summary>
+    public string? HeadSha { get; init; }
+
+    /// <summary>Working tree had uncommitted changes at check time.</summary>
+    public bool IsDirty { get; init; }
 }
 
 /// <summary>
@@ -32,9 +38,6 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
 {
     [LoggerMessage(Level = LogLevel.Debug, Message = "Staleness check for repo '{Repo}': firstRun={FirstRun} unchanged={Unchanged} changedFiles={Count}")]
     private static partial void LogStalenessCheckResult(ILogger logger, string repo, bool firstRun, bool unchanged, int count);
-
-    private static readonly HashSet<string> SkipWalk =
-        new(StringComparer.OrdinalIgnoreCase) { "node_modules", "bin", "obj", "dist", "out", ".git" };
 
     /// <summary>
     ///     Finds every git repo root under the workspace: the workspace root itself (if it is one)
@@ -66,7 +69,7 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
             foreach (string sub in subdirs)
             {
                 string name = Path.GetFileName(sub);
-                if (SkipWalk.Contains(name))
+                if (AlwaysSkipDirectories.Contains(name))
                 {
                     continue;
                 }
@@ -88,11 +91,14 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
 
     /// <summary>
     ///     Compares the repo's current HEAD sha + dirty state against the stored
-    ///     <see cref="RepoStalenessEntity" /> row, computes the exact changed-file set when
-    ///     something differs, and persists the new sha/dirty/CheckedAt as a side effect.
+    ///     <see cref="RepoStalenessEntity" /> row and computes the exact changed-file set when
+    ///     something differs. Persists the new baseline only when <paramref name="commitBaseline" />
+    ///     is true; callers that index the changed files should pass false and call
+    ///     <see cref="CommitBaselineAsync" /> after indexing succeeds, so a failed run is retried.
     /// </summary>
     public async Task<RepoStalenessResult> CheckAsync(
-        WorkspaceIndexContext ctx, string workspaceRoot, string repoRelPath, CancellationToken ct = default)
+        WorkspaceIndexContext ctx, string workspaceRoot, string repoRelPath,
+        bool commitBaseline = true, CancellationToken ct = default)
     {
         string repoDir = repoRelPath == "." ? workspaceRoot : Path.Combine(workspaceRoot, repoRelPath);
 
@@ -106,7 +112,9 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
 
         string headSha = headShaRaw.Trim();
 
-        string statusOutput = await RunGitAsync(repoDir, "status --porcelain", ct) ?? "";
+        // --no-optional-locks: a status check must not rewrite .git/index, or the git watcher would
+        // retrigger on its own output.
+        string statusOutput = await RunGitAsync(repoDir, "--no-optional-locks status --porcelain", ct) ?? "";
         bool isDirty = statusOutput.Trim().Length > 0;
 
         RepoStalenessEntity? existing = await ctx.RepoStaleness.FindAsync([repoRelPath], ct);
@@ -123,10 +131,10 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
             }
             else if (existing.LastHeadSha != headSha)
             {
-                string? diffOutput = await RunGitAsync(repoDir, $"diff --name-only {existing.LastHeadSha} {headSha}", ct);
+                string? diffOutput = await RunGitAsync(repoDir, $"diff --name-status -M {existing.LastHeadSha} {headSha}", ct);
                 if (diffOutput != null)
                 {
-                    AddRepoRelativePaths(changedFiles, SplitLines(diffOutput), repoRelPath);
+                    AddRepoRelativePaths(changedFiles, ParseNameStatusPaths(diffOutput), repoRelPath);
                 }
                 else
                 {
@@ -141,6 +149,32 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
             AddRepoRelativePaths(changedFiles, ParsePorcelainPaths(statusOutput), repoRelPath);
         }
 
+        if (commitBaseline)
+        {
+            await CommitBaselineAsync(ctx, repoRelPath, headSha, isDirty, ct);
+        }
+
+        LogStalenessCheckResult(logger, repoRelPath, isFirstRun, unchanged, changedFiles.Count);
+
+        return new RepoStalenessResult
+        {
+            RepoRelPath = repoRelPath,
+            IsFirstRun = isFirstRun,
+            Unchanged = unchanged,
+            ChangedFiles = changedFiles.ToArray(),
+            HeadSha = headSha,
+            IsDirty = isDirty
+        };
+    }
+
+    /// <summary>
+    ///     Persists HEAD sha + dirty state as the repo's baseline. Call only after every file the
+    ///     baseline covers has been indexed successfully, otherwise a failed run loses its changes.
+    /// </summary>
+    public async Task CommitBaselineAsync(
+        WorkspaceIndexContext ctx, string repoRelPath, string headSha, bool isDirty, CancellationToken ct)
+    {
+        RepoStalenessEntity? existing = await ctx.RepoStaleness.FindAsync([repoRelPath], ct);
         if (existing == null)
         {
             _ = ctx.RepoStaleness.Add(new RepoStalenessEntity
@@ -159,16 +193,35 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
         }
 
         _ = await ctx.SaveChangesAsync(ct);
+    }
 
-        LogStalenessCheckResult(logger, repoRelPath, isFirstRun, unchanged, changedFiles.Count);
-
-        return new RepoStalenessResult
+    /// <summary>
+    ///     Parses `git diff --name-status -M` lines. A rename ("R100 old new") contributes both paths,
+    ///     so the old path is dropped from the index; a copy contributes both; everything else its path.
+    /// </summary>
+    private static string[] ParseNameStatusPaths(string output)
+    {
+        List<string> paths = [];
+        foreach (string line in SplitLines(output))
         {
-            RepoRelPath = repoRelPath,
-            IsFirstRun = isFirstRun,
-            Unchanged = unchanged,
-            ChangedFiles = changedFiles.ToArray()
-        };
+            string[] parts = line.Split('\t');
+            if (parts.Length < 2)
+            {
+                continue;
+            }
+
+            if ((parts[0].StartsWith('R') || parts[0].StartsWith('C')) && parts.Length >= 3)
+            {
+                paths.Add(parts[1]);
+                paths.Add(parts[2]);
+            }
+            else
+            {
+                paths.Add(parts[1]);
+            }
+        }
+
+        return paths.ToArray();
     }
 
     private static string[] SplitLines(string text)

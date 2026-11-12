@@ -14,11 +14,12 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace TokenSaver.TokenEconomy.Services;
 
 /// <summary>Default <see cref="IRepoIndexer" /> — see that interface's doc comment.</summary>
-public sealed class RepoIndexer(
+public sealed partial class RepoIndexer(
     IChunkExtractor chunkExtractor,
     OllamaService ollama,
     ModelRouteResolver modelRoutes,
@@ -27,9 +28,6 @@ public sealed class RepoIndexer(
     : IRepoIndexer
 {
     private static readonly string[] DefaultExtensions = [".cs", ".js", ".ts", ".py", ".md"];
-
-    private static readonly string[] IgnoredSegments =
-        ["node_modules", ".git", "dist", "build", "venv", ".venv", "__pycache__", "bin", "obj", ".tokensaver", ".vs"];
 
     private readonly TokenEconomyConfig _config = config.Value.TokenEconomy;
 
@@ -53,7 +51,21 @@ public sealed class RepoIndexer(
                 .ToDictionaryAsync(c => (c.RelativePath, c.StartLine, c.EndLine), c => c.ContentHash, ct),
             ct);
 
-        int indexed = 0, skipped = 0, deleted = 0, failed = 0;
+        // Per-file stamps (mtime, size, raw-byte hash), one per file that has chunk rows. A file
+        // whose mtime and size still match is not read at all on the next run.
+        // Count is the file's chunk rows, so a file skipped whole still reports its chunks as skipped.
+        Dictionary<string, (long Mtime, long Size, string Hash, int Count)> fileStamps = await db.WithDbLockAsync(
+            async () =>
+            {
+                var rows = (await ctx.Chunks
+                    .Select(c => new { c.RelativePath, c.FileLastModified, c.FileSize, c.FileHash })
+                    .ToListAsync(ct))
+                    .Select(c => (Path: c.RelativePath, Mtime: c.FileLastModified, Size: c.FileSize, Hash: c.FileHash));
+                return rows.GroupBy(r => r.Path).ToDictionary(
+                    g => g.Key, g => (g.First().Mtime, g.First().Size, g.First().Hash, g.Count()));
+            }, ct);
+
+        int indexed = 0, skipped = 0, deleted = 0, failed = 0, filesRead = 0;
         using SemaphoreSlim ollamaLimit = new(Math.Max(1, concurrency));
         HashSet<string> seenPaths = new(StringComparer.OrdinalIgnoreCase);
 
@@ -63,15 +75,38 @@ public sealed class RepoIndexer(
             string relativePath = Path.GetRelativePath(workspaceRoot, filePath).Replace('\\', '/');
             seenPaths.Add(relativePath);
 
-            string content;
+            FileInfo info = new(filePath);
+            long fileMtime = new DateTimeOffset(info.LastWriteTimeUtc).ToUnixTimeMilliseconds();
+            long fileSize = info.Length;
+            if (fileStamps.TryGetValue(relativePath, out (long Mtime, long Size, string Hash, int Count) stamp)
+                && stamp.Mtime == fileMtime && stamp.Size == fileSize)
+            {
+                _ = Interlocked.Add(ref skipped, stamp.Count); // unchanged since the last run: not read, not chunked
+                continue;
+            }
+
+            byte[] bytes;
             try
             {
-                content = await File.ReadAllTextAsync(filePath, ct);
+                bytes = await File.ReadAllBytesAsync(filePath, ct);
             }
             catch (IOException)
             {
                 continue; // locked/transient — skip this pass, next run picks it up
             }
+
+            filesRead++;
+            string fileHash = Convert.ToHexString(SHA256.HashData(bytes));
+            if (fileStamps.TryGetValue(relativePath, out stamp) && stamp.Hash == fileHash)
+            {
+                // Bytes unchanged, only the mtime moved (touch, checkout): refresh stamps, skip chunks.
+                _ = Interlocked.Add(ref skipped, stamp.Count);
+                await StampChunksAsync(ctx, db, relativePath, fileMtime, fileSize, fileHash, ct);
+                continue;
+            }
+
+            // Same as File.ReadAllText: UTF-8 with the BOM dropped.
+            string content = Encoding.UTF8.GetString(bytes).TrimStart('﻿');
 
             IReadOnlyList<CodeChunk> chunks = chunkExtractor.ExtractChunks(filePath, content);
             HashSet<(int Start, int End)> seenSpans = new();
@@ -148,6 +183,7 @@ public sealed class RepoIndexer(
                 return stale.Count;
             }, ct);
             deleted += prunedForFile;
+            await StampChunksAsync(ctx, db, relativePath, fileMtime, fileSize, fileHash, ct);
         }
 
         // Prune chunks for files that no longer exist on disk at all.
@@ -168,7 +204,22 @@ public sealed class RepoIndexer(
         deleted += prunedMissingFiles;
 
         sw.Stop();
-        return new RepoIndexStats(files.Count, indexed, skipped, deleted, sw.Elapsed, failed);
+        return new RepoIndexStats(files.Count, indexed, skipped, deleted, sw.Elapsed, failed, filesRead);
+    }
+
+    /// <summary>Copies a file's stamp onto all of its chunk rows (see <see cref="ChunkEntity.FileHash" />).</summary>
+    private static async Task StampChunksAsync(
+        WorkspaceIndexContext ctx, TokenEconomyDbAccessor db, string relativePath,
+        long mtime, long size, string hash, CancellationToken ct)
+    {
+        await db.WithDbLockAsync(async () =>
+        {
+            _ = await ctx.Chunks.Where(c => c.RelativePath == relativePath)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.FileLastModified, mtime)
+                    .SetProperty(c => c.FileSize, size)
+                    .SetProperty(c => c.FileHash, hash), ct);
+        }, ct);
     }
 
     private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)];
@@ -204,17 +255,68 @@ public sealed class RepoIndexer(
     {
         string text = chunk.Text.Length > 2000 ? chunk.Text[..2000] : chunk.Text;
         string prompt = chunk.ChunkType == "md_section"
-            ? $"One line only. Describe what this documentation section covers. Section heading: \"{chunk.Name}\".\n\n{text}"
-            : $"One line only, no preamble. Describe what this function/class does and its key inputs/outputs.\n\nCODE ({chunk.Name}):\n{text}";
+            ? $"DOCUMENT SECTION \"{chunk.Name}\":\n{text}\n\nIn one plain sentence, what does this documentation section cover?"
+            : $"CODE ({chunk.Name}):\n{text}\n\nIn one plain sentence, what does this code do? Do not rewrite it.";
 
-        return await ollama.CallModelAsync(modelRoutes.Resolve("summarize"), prompt, ct);
+        // A system prompt, because the small coder chat models treat a lone user instruction as an
+        // edit request ("Here's the revised code…"). The reply is also cleaned: even with the
+        // system prompt a model may add a preamble or a code block.
+        string raw = await ollama.CallModelAsync(modelRoutes.Resolve("summarize"), prompt, SummarySystemPrompt, ct);
+        return CleanSummary(raw);
     }
+
+    private const string SummarySystemPrompt =
+        "You write search-index descriptions of source code. Reply with exactly one plain-text sentence " +
+        "(under 40 words) saying what the code does. Never rewrite, fix or repeat the code. No markdown, " +
+        "no code blocks, no lists, no headings, no preamble. " +
+        "Example: for a function that doubles a number, reply: Returns the input number multiplied by two.";
+
+    private const int MaxSummaryLength = 300;
+
+    /// <summary>
+    ///     Reduces a model reply to one short description: drops fenced code blocks, preamble lines
+    ///     that end in a colon, and blank lines, keeps the first remaining line, and caps its length.
+    /// </summary>
+    public static string CleanSummary(string raw)
+    {
+        string withoutFences = FencedBlock().Replace(raw, "");
+        string[] lines = withoutFences.Split('\n');
+
+        // Prefer the first line that reads like a sentence; list items, headings, "`name`: ..."
+        // parameter notes and short titles are model scaffolding, not a description.
+        string? sentence = lines.Select(l => l.Trim())
+            .FirstOrDefault(t => t.Length > 0 && !t.EndsWith(':') && !ScaffoldLine().IsMatch(t)
+                                 && t.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length >= 5);
+        if (sentence is not null)
+        {
+            return sentence.Length <= MaxSummaryLength ? sentence : sentence[..(MaxSummaryLength - 1)].TrimEnd() + "…";
+        }
+
+        foreach (string line in lines)
+        {
+            string t = line.Trim().TrimStart('-', '*', '#', ' ').Trim();
+            if (t.Length == 0 || t.EndsWith(':'))
+            {
+                continue;
+            }
+
+            return t.Length <= MaxSummaryLength ? t : t[..(MaxSummaryLength - 1)].TrimEnd() + "…";
+        }
+
+        return raw.Trim().Length <= MaxSummaryLength ? raw.Trim() : raw.Trim()[..MaxSummaryLength];
+    }
+
+    // Bullets, numbered items, headings, and "`name`:" parameter notes.
+    [GeneratedRegex(@"^(?:[-*#]|\d+[.)]|`[^`]+`\s*:)")]
+    private static partial Regex ScaffoldLine();
+
+    [GeneratedRegex("```.*?```", RegexOptions.Singleline)]
+    private static partial Regex FencedBlock();
 
     private static bool IsIgnored(string workspaceRoot, string filePath)
     {
         string relative = Path.GetRelativePath(workspaceRoot, filePath);
-        string[] segments = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return segments.Any(s => IgnoredSegments.Contains(s, StringComparer.OrdinalIgnoreCase));
+        return AlwaysSkipDirectories.IsUnderSkippedDirectory(relative, isDirectory: false);
     }
 
     private static string ComputeHash(string text)

@@ -1,3 +1,4 @@
+#pragma warning disable CA1034, CA1002 // StalenessPlan is the public result record of PlanTargetFilesAsync; its list is owned by the plan.
 using TokenSaver.Config;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
@@ -15,8 +16,6 @@ namespace TokenSaver.CodeHelper.Indexing;
 /// </summary>
 public sealed class GitStalenessService
 {
-    private static readonly HashSet<string> AlwaysSkipDirs =
-        new(StringComparer.OrdinalIgnoreCase) { ".git", ".tokensaver", "node_modules", "bin", "obj", "dist", "out" };
 
     private readonly WorkspaceIndexDbAccessor _accessor;
     private readonly GitStalenessChecker _gitStaleness;
@@ -40,18 +39,36 @@ public sealed class GitStalenessService
     public async Task<List<string>?> ResolveTargetFilesAsync(WorkspaceIndexContext ctx, string root,
         CancellationToken ct)
     {
+        StalenessPlan plan = await PlanTargetFilesAsync(ctx, root, ct);
+        await CommitBaselinesAsync(ctx, plan, ct);
+        return plan.Targets;
+    }
+
+    /// <summary>The files to index plus the per-repo baselines to persist once indexing succeeds.</summary>
+    public sealed record StalenessPlan(List<string>? Targets, IReadOnlyList<RepoStalenessResult> Checked);
+
+    /// <summary>
+    ///     Plans the reindex without persisting any git baseline. Pair with
+    ///     <see cref="CommitBaselinesAsync" /> after the planned files are indexed; a run that fails
+    ///     or is cancelled then leaves the baseline behind, so the same changes are retried.
+    /// </summary>
+    public async Task<StalenessPlan> PlanTargetFilesAsync(WorkspaceIndexContext ctx, string root,
+        CancellationToken ct)
+    {
         List<string> repoRoots = _gitStaleness.DiscoverRepoRoots(root).ToList();
         if (repoRoots.Count == 0)
         {
-            return null;
+            return new StalenessPlan(null, []);
         }
 
         HashSet<string> toReindex = new(StringComparer.OrdinalIgnoreCase);
         List<string> fullRescanRoots = [];
+        List<RepoStalenessResult> checkedRoots = [];
 
         foreach (string repoRelPath in repoRoots)
         {
-            RepoStalenessResult result = await _gitStaleness.CheckAsync(ctx, root, repoRelPath, ct);
+            RepoStalenessResult result = await _gitStaleness.CheckAsync(ctx, root, repoRelPath, commitBaseline: false, ct: ct);
+            checkedRoots.Add(result);
             if (result.Unchanged)
             {
                 continue;
@@ -78,7 +95,19 @@ public sealed class GitStalenessService
             }
         }
 
-        return toReindex.Count > 0 ? toReindex.ToList() : [];
+        return new StalenessPlan(toReindex.Count > 0 ? toReindex.ToList() : [], checkedRoots);
+    }
+
+    /// <summary>Persists each checked repo's baseline. Call only after the planned files are indexed.</summary>
+    public async Task CommitBaselinesAsync(WorkspaceIndexContext ctx, StalenessPlan plan, CancellationToken ct)
+    {
+        foreach (RepoStalenessResult r in plan.Checked)
+        {
+            if (r.HeadSha != null)
+            {
+                await _gitStaleness.CommitBaselineAsync(ctx, r.RepoRelPath, r.HeadSha, r.IsDirty, ct);
+            }
+        }
     }
 
     /// <summary>
@@ -107,7 +136,7 @@ public sealed class GitStalenessService
             foreach (string entry in entries)
             {
                 string name = Path.GetFileName(entry);
-                if (AlwaysSkipDirs.Contains(name))
+                if (AlwaysSkipDirectories.Contains(name))
                 {
                     continue;
                 }
@@ -134,37 +163,5 @@ public sealed class GitStalenessService
                 }
             }
         }
-    }
-
-    public async Task<string[]> GetStaleFilesAsync(string root, CancellationToken ct)
-    {
-        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
-        List<FileEntity> rows = await _accessor.WithDbLockAsync(
-            () => ctx.Files.AsNoTracking().ToListAsync(ct), ct);
-
-        List<string> stale = [];
-        foreach (FileEntity row in rows)
-        {
-            string abs = Path.Combine(root, row.RelativePath);
-            if (!File.Exists(abs))
-            {
-                continue;
-            }
-
-            try
-            {
-                long writeMs = new DateTimeOffset(File.GetLastWriteTimeUtc(abs)).ToUnixTimeMilliseconds();
-                if (writeMs > row.LastModified)
-                {
-                    stale.Add(row.RelativePath);
-                }
-            }
-            catch
-            {
-                /* transient FS error — skip */
-            }
-        }
-
-        return stale.ToArray();
     }
 }

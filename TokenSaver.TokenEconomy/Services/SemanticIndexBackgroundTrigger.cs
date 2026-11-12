@@ -50,6 +50,11 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     private readonly ConcurrentDictionary<string, RepoIndexStats> _lastStats = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, string> _lastError = new(StringComparer.OrdinalIgnoreCase);
 
+    // Cancellation source of the in-flight run per root, so a forced reset can stop it.
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _cts = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly TimeSpan ForceStopWait = TimeSpan.FromSeconds(60);
+
     /// <summary>
     ///     Starts one incremental run for this root per process, on its first connect. The run
     ///     never rebuilds: RepoIndexer skips chunks whose content hash is unchanged, so an
@@ -67,10 +72,55 @@ public sealed partial class SemanticIndexBackgroundTrigger(
             return Task.FromResult(SemanticIndexTriggerStatus.AlreadyRunning);
         }
 
-        // CancellationToken.None, deliberately: this task must outlive the request that spawned
-        // it. See the class doc comment for why sharing `ct` here would be wrong.
-        _ = RunInBackgroundAsync(workspaceRoot, "incremental run on connect", CancellationToken.None);
+        // Not the request's `ct`, deliberately: this task must outlive the request that spawned
+        // it. See the class doc comment for why sharing `ct` here would be wrong. The run's own
+        // source is cancelled only by a forced reset.
+        CancellationTokenSource cts = new();
+        _cts[workspaceRoot] = cts;
+        _ = RunInBackgroundAsync(workspaceRoot, "incremental run on connect", cts.Token);
         return Task.FromResult(SemanticIndexTriggerStatus.Started);
+    }
+
+    /// <summary>
+    ///     Forced clean rebuild: cancels any in-flight run for this root, waits for it to stop,
+    ///     deletes every stored chunk, then starts a fresh manual run. Returns
+    ///     <see cref="SemanticIndexTriggerStatus.AlreadyRunning" /> if the old run did not stop in time.
+    /// </summary>
+    public async Task<SemanticIndexTriggerStatus> ForceRestartAsync(
+        string workspaceRoot, string[]? extensions, int concurrency, CancellationToken ct)
+    {
+        if (_cts.TryGetValue(workspaceRoot, out CancellationTokenSource? running))
+        {
+            try
+            {
+                await running.CancelAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The run just finished on its own.
+            }
+        }
+
+        DateTime deadline = DateTime.UtcNow + ForceStopWait;
+        while (_running.ContainsKey(workspaceRoot))
+        {
+            if (DateTime.UtcNow >= deadline)
+            {
+                return SemanticIndexTriggerStatus.AlreadyRunning;
+            }
+
+            await Task.Delay(100, ct);
+        }
+
+        WorkspaceIndexContext ctx = await db.GetDbAsync(workspaceRoot, ct);
+        _ = await db.WithDbLockAsync(() => ctx.Chunks.ExecuteDeleteAsync(ct), ct);
+
+        _ = _knownIndexed.TryRemove(workspaceRoot, out _);
+        _ = _lastStats.TryRemove(workspaceRoot, out _);
+        _ = _lastError.TryRemove(workspaceRoot, out _);
+        LogReset(logger, workspaceRoot);
+
+        return StartManual(workspaceRoot, extensions, concurrency);
     }
 
     /// <summary>
@@ -87,7 +137,9 @@ public sealed partial class SemanticIndexBackgroundTrigger(
         }
 
         _ = _lastError.TryRemove(workspaceRoot, out _);
-        _ = RunManualInBackgroundAsync(workspaceRoot, extensions, concurrency);
+        CancellationTokenSource cts = new();
+        _cts[workspaceRoot] = cts;
+        _ = RunManualInBackgroundAsync(workspaceRoot, extensions, concurrency, cts.Token);
         return SemanticIndexTriggerStatus.Started;
     }
 
@@ -127,12 +179,13 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     /// <summary>Error message from the most recent failed run for this root, if any.</summary>
     public string? GetLastError(string workspaceRoot) => _lastError.TryGetValue(workspaceRoot, out string? message) ? message : null;
 
-    private async Task RunManualInBackgroundAsync(string workspaceRoot, string[]? extensions, int concurrency)
+    private async Task RunManualInBackgroundAsync(
+        string workspaceRoot, string[]? extensions, int concurrency, CancellationToken ct)
     {
         LogStarted(logger, workspaceRoot, "manual run");
         try
         {
-            RepoIndexStats stats = await indexer.IndexRepoAsync(workspaceRoot, extensions, concurrency, CancellationToken.None);
+            RepoIndexStats stats = await indexer.IndexRepoAsync(workspaceRoot, extensions, concurrency, ct);
             if (stats.ChunksIndexed > 0 || stats.ChunksSkipped > 0)
             {
                 _knownIndexed[workspaceRoot] = 0;
@@ -140,14 +193,29 @@ public sealed partial class SemanticIndexBackgroundTrigger(
 
             RecordCompleted(workspaceRoot, stats);
         }
+        catch (OperationCanceledException)
+        {
+            LogCancelled(logger, workspaceRoot);
+        }
         catch (Exception ex)
         {
             RecordFailed(workspaceRoot, ex);
         }
         finally
         {
-            _ = _running.TryRemove(workspaceRoot, out _);
+            FinishRun(workspaceRoot);
         }
+    }
+
+    /// <summary>Releases the run's cancellation source and clears its running flag (in that order).</summary>
+    private void FinishRun(string workspaceRoot)
+    {
+        if (_cts.TryRemove(workspaceRoot, out CancellationTokenSource? cts))
+        {
+            cts.Dispose();
+        }
+
+        _ = _running.TryRemove(workspaceRoot, out _);
     }
 
     private async Task RunInBackgroundAsync(string workspaceRoot, string reason, CancellationToken ct)
@@ -163,13 +231,17 @@ public sealed partial class SemanticIndexBackgroundTrigger(
 
             RecordCompleted(workspaceRoot, stats);
         }
+        catch (OperationCanceledException)
+        {
+            LogCancelled(logger, workspaceRoot);
+        }
         catch (Exception ex)
         {
             RecordFailed(workspaceRoot, ex);
         }
         finally
         {
-            _ = _running.TryRemove(workspaceRoot, out _);
+            FinishRun(workspaceRoot);
         }
     }
 
@@ -197,6 +269,12 @@ public sealed partial class SemanticIndexBackgroundTrigger(
         Message = "Background semantic index for '{WorkspaceRoot}' complete: {Files} files, {Indexed} chunks embedded, {Skipped} unchanged, {Deleted} stale removed, {Failed} failed, {Seconds:F1}s.")]
     private static partial void LogCompleted(ILogger logger, string workspaceRoot, int files, int indexed, int skipped,
         int deleted, int failed, double seconds);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Background semantic index for '{WorkspaceRoot}' cancelled.")]
+    private static partial void LogCancelled(ILogger logger, string workspaceRoot);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Semantic index for '{WorkspaceRoot}' reset: all chunks deleted (forced rebuild).")]
+    private static partial void LogReset(ILogger logger, string workspaceRoot);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Background semantic index for '{WorkspaceRoot}' failed.")]
     private static partial void LogFailed(ILogger logger, string workspaceRoot, Exception ex);

@@ -106,7 +106,8 @@ public sealed class WorkspaceIgnoreFilter
             return false;
         }
 
-        return _gitignore.IsIgnored(relativePath, isDirectory)
+        return AlwaysSkipDirectories.IsUnderSkippedDirectory(relativePath, isDirectory)
+            || _gitignore.IsIgnored(relativePath, isDirectory)
             || _additional.IsIgnored(relativePath, isDirectory);
     }
 }
