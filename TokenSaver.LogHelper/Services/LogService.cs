@@ -2,6 +2,7 @@ using System.Globalization;
 using TokenSaver.LogHelper.Contracts;
 using TokenSaver.LogHelper.Filtering;
 using TokenSaver.LogHelper.Models;
+using TokenSaver.LogHelper.Parsing;
 using TokenSaver.LogHelper.State;
 
 namespace TokenSaver.LogHelper.Services;
@@ -14,15 +15,25 @@ public sealed class LogService : ILogService
 {
     private const string LastRunToken = "lastRun";
     private const string RunIdPrefix = "run-";
+    private const int MaxWatchSeconds = 25;
+    private static readonly LogRequestContext Context = new("watch");
 
     private readonly IReadOnlyList<ILogSourceProvider> _providers;
     private readonly LogHelperOptions _options;
     private readonly RunSnapshotStore? _runs;
+    private readonly Func<TimeSpan, CancellationToken, Task> _delay;
 
     public LogService(IEnumerable<ILogSourceProvider> providers, LogHelperOptions options)
+        : this(providers, options, (d, ct) => Task.Delay(d, ct))
+    {
+    }
+
+    /// <summary>The delay is injectable so watch tests run without waiting.</summary>
+    public LogService(IEnumerable<ILogSourceProvider> providers, LogHelperOptions options, Func<TimeSpan, CancellationToken, Task> delay)
     {
         _providers = providers.ToList();
         _options = options;
+        _delay = delay;
         _runs = string.IsNullOrWhiteSpace(options.StateDirectory)
             ? null
             : new RunSnapshotStore(options.StateDirectory);
@@ -48,14 +59,19 @@ public sealed class LogService : ILogService
 
     public async Task<LogQueryResult> QueryAsync(LogQueryRequest request, LogRequestContext context, CancellationToken ct)
     {
-        if (!string.Equals(request.View, "summary", StringComparison.Ordinal))
+        if (request.View is not ("summary" or "traces" or "ignored"))
         {
-            return Fail($"View '{request.View}' is not available yet; use 'summary'.");
+            return Fail($"Unknown view '{request.View}'. Use summary, traces or ignored.");
         }
 
         if (IsRunDiffRequest(request.Since))
         {
             return await QueryAgainstRunAsync(request, ct);
+        }
+
+        if (request.WaitSeconds > 0)
+        {
+            return await WatchAsync(request, ct);
         }
 
         LogReadResult read = await ReadAllAsync(request.Channel, request.Since, ct);
@@ -71,14 +87,18 @@ public sealed class LogService : ILogService
             return Fail(filtered.Error);
         }
 
-        IReadOnlyList<TemplateRow> rows = TemplateAggregator.Aggregate(filtered.Kept, _options);
-        SummaryText summary = SummaryFormatter.Format(rows, request.MaxTokens);
+        SummaryText body = request.View switch
+        {
+            "traces" => TracesFormatter.Format(TraceFlagger.Flag(filtered.Kept), request.MaxTokens),
+            "ignored" => IgnoredBody(filtered.Dropped, request.MaxTokens),
+            _ => SummaryFormatter.Format(TemplateAggregator.Aggregate(filtered.Kept, _options), request.MaxTokens),
+        };
 
         string text = batch.Reset
-            ? "(cursor reset: source changed)\n" + summary.Text
-            : summary.Text;
+            ? "(cursor reset: source changed)\n" + body.Text
+            : body.Text;
 
-        return Ok(text, RawCharsOf(batch.Entries), batch.NextCursor, summary.Truncated);
+        return Ok(text, RawCharsOf(batch.Entries), batch.NextCursor, body.Truncated);
     }
 
     public async Task<LogQueryResult> MarkRunAsync(ChannelId channel, LogRequestContext context, CancellationToken ct)
@@ -110,6 +130,54 @@ public sealed class LogService : ILogService
 
     public Task<LogQueryResult> SinkCompareAsync(ChannelId appChannel, ChannelId sinkChannel, int maxTokens, LogRequestContext context, CancellationToken ct) =>
         throw new NotSupportedException("Sink comparison arrives in phase 6.");
+
+    /// <summary>
+    /// Bounded live watch: reads once, then polls once a second until something new appears or the wait ends.
+    /// Returns the last result with its cursor, so the caller can keep polling without gaps or repeats.
+    /// A cancelled wait returns the last result rather than throwing.
+    /// </summary>
+    private async Task<LogQueryResult> WatchAsync(LogQueryRequest request, CancellationToken ct)
+    {
+        int seconds = Math.Min(request.WaitSeconds, MaxWatchSeconds);
+        var single = request with { WaitSeconds = 0 };
+
+        LogQueryResult last = await QueryAsync(single, Context, ct);
+        if (!last.Ok || last.Text.Length > 0)
+        {
+            return last;
+        }
+
+        for (int i = 0; i < seconds; i++)
+        {
+            try
+            {
+                await _delay(TimeSpan.FromSeconds(1), ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return last;
+            }
+
+            last = await QueryAsync(single with { Since = last.NextCursor ?? request.Since }, Context, ct);
+            if (!last.Ok || last.Text.Length > 0)
+            {
+                return last;
+            }
+        }
+
+        return last;
+    }
+
+    // What the filter dropped, summarized the same way as kept entries, so a filter can be checked for hidden errors.
+    private SummaryText IgnoredBody(IReadOnlyList<LogEntry> dropped, int maxTokens)
+    {
+        if (dropped.Count == 0)
+        {
+            return new SummaryText("nothing was dropped by the filter.", Truncated: false, Omitted: 0);
+        }
+
+        return SummaryFormatter.Format(TemplateAggregator.Aggregate(dropped, _options), maxTokens);
+    }
 
     private static bool IsRunDiffRequest(string? since) =>
         since is not null
