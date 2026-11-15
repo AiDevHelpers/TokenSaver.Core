@@ -67,6 +67,18 @@ public sealed class LogParser
                 continue;
             }
 
+            if (JsonLinesFormat.TryParse(line, out var jsonEntry) && jsonEntry is not null)
+            {
+                if (current is not null)
+                {
+                    entries.Add(Finish(current));
+                    current = null;
+                }
+
+                entries.Add(CapJson(jsonEntry));
+                continue;
+            }
+
             if (current is not null)
             {
                 entries.Add(Finish(current));
@@ -161,6 +173,16 @@ public sealed class LogParser
             raw,
             pending.FirstChance,
             truncated);
+    }
+
+    private LogEntry CapJson(LogEntry entry)
+    {
+        if (Encoding.UTF8.GetByteCount(entry.Raw) <= _maxEntryBytes)
+        {
+            return entry;
+        }
+
+        return entry with { Raw = TruncateToBytes(entry.Raw, _maxEntryBytes), Truncated = true };
     }
 
     private static string TruncateToBytes(string text, int maxBytes)
