@@ -28,6 +28,10 @@ public static class Redactor
             @"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
             RegexOptions.Compiled | RegexOptions.CultureInvariant),
             "<redacted:email>"),
+        (new Regex(
+            @"\b(AKIA|ASIA)[0-9A-Z]{16}\b",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant),
+            "<redacted:cloud-key>"),
     ];
 
     public static string Redact(string text, LogHelperOptions options)

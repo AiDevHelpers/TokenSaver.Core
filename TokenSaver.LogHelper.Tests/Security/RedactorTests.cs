@@ -23,6 +23,27 @@ public sealed class RedactorTests
         Assert.Contains(marker, output, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("AKIAIOSFODNN7EXAMPLE", "<redacted:cloud-key>")]
+    [InlineData("key=AKIAIOSFODNN7EXAMPLE end", "<redacted:cloud-key>")]
+    public void Redact_MasksCloudKeyShapes(string input, string marker)
+    {
+        string output = Redactor.Redact(input, Enabled);
+
+        Assert.DoesNotContain("AKIAIOSFODNN7EXAMPLE", output, StringComparison.Ordinal);
+        Assert.Contains(marker, output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("request 3f2504e0-4f89-11d3-9a0c-0305e82c3301 done")]
+    [InlineData("sha256 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08 ok")]
+    [InlineData(@"opened C:\logs\2026\app.log")]
+    [InlineData("commit 0a1b2c3 merged")]
+    public void Redact_LeavesIdsHashesAndPaths(string input)
+    {
+        Assert.Equal(input, Redactor.Redact(input, Enabled));
+    }
+
     [Fact]
     public void Disabled_LeavesTextUnchanged()
     {
