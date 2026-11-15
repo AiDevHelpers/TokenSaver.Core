@@ -128,8 +128,32 @@ public sealed class LogService : ILogService
             truncated: false);
     }
 
-    public Task<LogQueryResult> SinkCompareAsync(ChannelId appChannel, ChannelId sinkChannel, int maxTokens, LogRequestContext context, CancellationToken ct) =>
-        throw new NotSupportedException("Sink comparison arrives in phase 6.");
+    public async Task<LogQueryResult> SinkCompareAsync(ChannelId appChannel, ChannelId sinkChannel, int maxTokens, LogRequestContext context, CancellationToken ct)
+    {
+        LogReadResult app = await ReadAllAsync(appChannel, null, ct);
+        if (app.Error is not null)
+        {
+            return Fail(app.Error);
+        }
+
+        LogReadResult sink = await ReadAllAsync(sinkChannel, null, ct);
+        if (sink.Error is not null)
+        {
+            return Fail(sink.Error);
+        }
+
+        IReadOnlyList<LogEntry> appEntries = app.Batch!.Entries;
+        IReadOnlyList<LogEntry> sinkEntries = sink.Batch!.Entries;
+        var rows = SinkComparer.Compare(
+            TemplateAggregator.Aggregate(appEntries, _options),
+            TemplateAggregator.Aggregate(sinkEntries, _options));
+
+        SummaryText summary = rows.Count == 0
+            ? new SummaryText("no messages in either channel to compare.", Truncated: false, Omitted: 0)
+            : SinkComparer.Format(rows, maxTokens);
+
+        return Ok(summary.Text, RawCharsOf(appEntries) + RawCharsOf(sinkEntries), null, summary.Truncated);
+    }
 
     /// <summary>
     /// Bounded live watch: reads once, then polls once a second until something new appears or the wait ends.
