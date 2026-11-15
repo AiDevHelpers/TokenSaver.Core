@@ -4,10 +4,12 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
 
+using static TokenSaver.WslControl.Core.NativeMethods;
+
 using Microsoft.Win32.SafeHandles;
 
 /// <summary>Result of one process run in the active user's session.</summary>
-public sealed record SessionProcessResult(int ExitCode, byte[] Stdout, byte[] Stderr, bool TimedOut);
+public sealed record SessionProcessResult(int ExitCode, ReadOnlyMemory<byte> Stdout, ReadOnlyMemory<byte> Stderr, bool TimedOut);
 
 /// <summary>
 ///     Runs a process as the user logged on to the console session. Needed when TokenSaver runs as
@@ -99,7 +101,7 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
                 hStdError = errWrite,
             };
 
-            StringBuilder cmd = new(commandLine);
+            char[] cmd = (commandLine + "\0").ToCharArray();
             if (!CreateProcessAsUserW(primaryToken, null, cmd, IntPtr.Zero, IntPtr.Zero, true,
                     CreateUnicodeEnvironment | CreateNoWindow, environment, null, ref si, out pi))
             {
@@ -114,12 +116,16 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
             CloseHandle(errWrite);
             errWrite = IntPtr.Zero;
 
-            using FileStream outStream = new(new SafeFileHandle(outRead, ownsHandle: false), FileAccess.Read);
-            using FileStream errStream = new(new SafeFileHandle(errRead, ownsHandle: false), FileAccess.Read);
+            using SafeFileHandle outHandle = new(outRead, ownsHandle: false);
+            using SafeFileHandle errHandle = new(errRead, ownsHandle: false);
+            using FileStream outStream = new(outHandle, FileAccess.Read);
+            using FileStream errStream = new(errHandle, FileAccess.Read);
             using MemoryStream outBuf = new();
             using MemoryStream errBuf = new();
+#pragma warning disable CA2025 // Both copy tasks are awaited (Task.WaitAll) before this scope disposes the streams.
             Task outCopy = outStream.CopyToAsync(outBuf);
             Task errCopy = errStream.CopyToAsync(errBuf);
+#pragma warning restore CA2025
 
             uint wait = WaitForSingleObject(pi.hProcess, (uint)Math.Min(timeout.TotalMilliseconds, uint.MaxValue - 1));
             bool timedOut = wait == WaitTimeout;
@@ -216,101 +222,5 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
         {
             _ = CloseHandle(handle);
         }
-    }
-
-    [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern bool WTSEnumerateSessionsW(IntPtr server, int reserved, int version, out IntPtr sessionInfo, out int count);
-
-    [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern bool WTSQuerySessionInformationW(IntPtr server, uint sessionId, int infoClass, out IntPtr buffer, out uint bytesReturned);
-
-    [DllImport("wtsapi32.dll")]
-    private static extern void WTSFreeMemory(IntPtr memory);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WTS_SESSION_INFO
-    {
-        public uint SessionId;
-        public IntPtr pWinStationName;
-        public int State;
-    }
-
-    [DllImport("wtsapi32.dll", SetLastError = true)]
-    private static extern bool WTSQueryUserToken(uint sessionId, out IntPtr token);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    private static extern bool DuplicateTokenEx(
-        IntPtr existingToken, uint desiredAccess, IntPtr tokenAttributes,
-        int impersonationLevel, int tokenType, out IntPtr newToken);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    private static extern bool SetTokenInformation(IntPtr token, int infoClass, ref uint info, int length);
-
-    [DllImport("userenv.dll", SetLastError = true)]
-    private static extern bool CreateEnvironmentBlock(out IntPtr environment, IntPtr token, bool inherit);
-
-    [DllImport("userenv.dll", SetLastError = true)]
-    private static extern bool DestroyEnvironmentBlock(IntPtr environment);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool CreatePipe(out IntPtr read, out IntPtr write, ref SECURITY_ATTRIBUTES sa, uint size);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool SetHandleInformation(IntPtr handle, uint mask, uint flags);
-
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern IntPtr CreateFileW(
-        string name, uint access, uint share, ref SECURITY_ATTRIBUTES sa, uint disposition, uint flags, IntPtr template);
-
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern bool CreateProcessAsUserW(
-        IntPtr token, string? application, StringBuilder commandLine, IntPtr processAttributes, IntPtr threadAttributes,
-        bool inheritHandles, uint creationFlags, IntPtr environment, string? currentDirectory,
-        ref STARTUPINFO startupInfo, out PROCESS_INFORMATION processInformation);
-
-    [DllImport("kernel32.dll")]
-    private static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool GetExitCodeProcess(IntPtr process, out uint exitCode);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool TerminateProcess(IntPtr process, uint exitCode);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool CloseHandle(IntPtr handle);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct SECURITY_ATTRIBUTES
-    {
-        public int nLength;
-        public IntPtr lpSecurityDescriptor;
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool bInheritHandle;
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct STARTUPINFO
-    {
-        public int cb;
-        public string? lpReserved;
-        public string? lpDesktop;
-        public string? lpTitle;
-        public uint dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars, dwFillAttribute, dwFlags;
-        public short wShowWindow;
-        public short cbReserved2;
-        public IntPtr lpReserved2;
-        public IntPtr hStdInput;
-        public IntPtr hStdOutput;
-        public IntPtr hStdError;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PROCESS_INFORMATION
-    {
-        public IntPtr hProcess;
-        public IntPtr hThread;
-        public uint dwProcessId;
-        public uint dwThreadId;
     }
 }

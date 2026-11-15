@@ -97,8 +97,8 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
     ///     <see cref="CommitBaselineAsync" /> after indexing succeeds, so a failed run is retried.
     /// </summary>
     public async Task<RepoStalenessResult> CheckAsync(
-        WorkspaceIndexContext ctx, string workspaceRoot, string repoRelPath, CancellationToken ct = default,
-        bool commitBaseline = true)
+        WorkspaceIndexContext ctx, string workspaceRoot, string repoRelPath,
+        bool commitBaseline = true, CancellationToken ct = default)
     {
         string repoDir = repoRelPath == "." ? workspaceRoot : Path.Combine(workspaceRoot, repoRelPath);
 

@@ -14,7 +14,7 @@ namespace TokenSaver.CodeHelper.Indexing;
 ///     </list>
 ///     Name collisions produce false edges; that is accepted for a lightweight index.
 /// </summary>
-public static partial class CSharpReferenceGraph
+internal static partial class CSharpReferenceGraph
 {
     public const int KindTypeUsage = 1;
     public const int KindUsing = 2;

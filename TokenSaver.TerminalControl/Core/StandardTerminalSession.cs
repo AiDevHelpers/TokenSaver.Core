@@ -67,6 +67,17 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
 
     public void Dispose()
     {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing)
+        {
+            return;
+        }
+
         foreach (var tab in _tabs.Keys.ToList())
         {
             if (_tabs.TryRemove(tab, out var runtime))
@@ -79,6 +90,9 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
         {
             _pipeManager.Dispose();
         }
+
+        _process?.Dispose();
+        _process = null;
     }
 
     public async Task InitializeAsync(TerminalSessionConfig config, CancellationToken ct = default)
@@ -211,7 +225,7 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
 
         var fullCommand = workingDirectory is null
             ? command
-            : $"Set-Location -LiteralPath '{workingDirectory.Replace("'", "''")}'; {command}";
+            : $"Set-Location -LiteralPath '{workingDirectory.Replace("'", "''", StringComparison.Ordinal)}'; {command}";
         var requestId = Guid.NewGuid().ToString("N")[..8];
         var line = TabProtocol.FormatCommand(requestId, fullCommand);
 
@@ -231,8 +245,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             {
                 while (runtime.StdoutLines.Reader.TryRead(out var outLine))
                 {
-                    if (TabProtocol.TryParseEnd(outLine, out var endId, out var exitCode))
+                    if (TabProtocol.ParseEnd(outLine) is { } endLine)
                     {
+                        var endId = endLine.RequestId;
+                        var exitCode = endLine.ExitCode;
                         // Requests finish in order; only the head of the queue is ours to finish.
                         if (runtime.Pending.TryPeek(out var head) && head == endId)
                         {
@@ -249,8 +265,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
                                 ExecutionTimeMs: stopwatch.ElapsedMilliseconds);
                         }
                     }
-                    else if (TabProtocol.TryParseError(outLine, out var errId, out var errText))
+                    else if (TabProtocol.ParseError(outLine) is { } errLine)
                     {
+                        var errId = errLine.RequestId;
+                        var errText = errLine.Text;
                         if (runtime.Pending.TryPeek(out var current) && current == requestId && errId == requestId)
                         {
                             errors.Add(errText);
@@ -304,13 +322,24 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             }
             catch (IOException ex)
             {
-                _logger.LogDebug(ex, "Tab {TabId} command pipe already closed", tabId);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug(ex, "Tab {TabId} command pipe already closed", tabId);
+                }
             }
         }
 
         runtime.Dispose();
-        _pipeManager.ClosePipe(runtime.Info.StdoutPipe.PipeName);
-        _pipeManager.ClosePipe(runtime.Info.StderrPipe.PipeName);
+        if (runtime.Info.StdoutPipe is { } stdoutPipe)
+        {
+            _pipeManager.ClosePipe(stdoutPipe.PipeName);
+        }
+
+        if (runtime.Info.StderrPipe is { } stderrPipe)
+        {
+            _pipeManager.ClosePipe(stderrPipe.PipeName);
+        }
+
         _pipeManager.ClosePipe(runtime.CommandPipeName);
     }
 
@@ -436,7 +465,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Output pump for {PipeName} stopped", pipeName);
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug(ex, "Output pump for {PipeName} stopped", pipeName);
+                }
             }
             finally
             {

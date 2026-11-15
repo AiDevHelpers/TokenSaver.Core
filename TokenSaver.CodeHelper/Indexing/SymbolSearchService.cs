@@ -1,3 +1,4 @@
+#pragma warning disable CA1862, CA1304, CA1311 // EF Core translates ToUpper() to SQL UPPER (culture-neutral in SQLite); StringComparison overloads do not translate.
 using TokenSaver.CodeHelper.Models.Index;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
@@ -28,7 +29,7 @@ public sealed class SymbolSearchService
         string requested = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
         (string indexRoot, string prefix) = IndexRootResolver.Resolve(requested);
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(indexRoot, ct);
-        string nameUpper = name.ToUpperInvariant();
+        string nameUpper = name.ToUpper();
 
         return await _accessor.WithDbLockAsync(async () =>
         {
@@ -76,6 +77,17 @@ public sealed class SymbolSearchService
     }
 
     /// <summary>Returns the total number of indexed symbols for the workspace (0 when never scanned).</summary>
+    /// <summary>File and folder row counts in the workspace index (for code_index status).</summary>
+    public async Task<(int Files, int Folders)> CountFilesAndFoldersAsync(string workspaceRoot = "", CancellationToken ct = default)
+    {
+        string requested = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
+        (string indexRoot, _) = IndexRootResolver.Resolve(requested);
+        WorkspaceIndexContext ctx = await _accessor.GetDbAsync(indexRoot, ct);
+
+        return await _accessor.WithDbLockAsync(async () =>
+            (await ctx.Files.CountAsync(ct), await ctx.Folders.CountAsync(ct)), ct);
+    }
+
     public async Task<int> CountAllSymbolsAsync(string workspaceRoot = "", CancellationToken ct = default)
     {
         string requested = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
@@ -90,7 +102,7 @@ public sealed class SymbolSearchService
     {
         string root = string.IsNullOrEmpty(workspaceRoot) ? _config.GetWorkspaceRoot() : workspaceRoot;
         WorkspaceIndexContext ctx = await _accessor.GetDbAsync(root, ct);
-        string qUpper = query.ToUpperInvariant();
+        string qUpper = query.ToUpper();
 
         return await _accessor.WithDbLockAsync(async () =>
         {

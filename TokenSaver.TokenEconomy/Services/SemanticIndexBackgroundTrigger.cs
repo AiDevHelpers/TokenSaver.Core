@@ -35,9 +35,11 @@ public enum SemanticIndexTriggerStatus
 ///     nothing here needs to cancel or join the first run.
 /// </summary>
 public sealed partial class SemanticIndexBackgroundTrigger(
-    IRepoIndexer indexer, TokenEconomyDbAccessor db, ILogger<SemanticIndexBackgroundTrigger> logger)
+    IRepoIndexer indexer, TokenEconomyDbAccessor db, ILogger<SemanticIndexBackgroundTrigger> logger,
+    IndexPauseGate? pauseGate = null)
 {
     private readonly ConcurrentDictionary<string, byte> _running = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IndexPauseGate _pauseGate = pauseGate ?? new IndexPauseGate();
 
     // Once a workspace is known to have chunks, every later call can skip the DB round-trip
     // entirely — the answer never goes back to "no chunks" once RepoIndexer has written any.
@@ -49,6 +51,7 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     // Last completed run's stats and last failure message per workspace, for IndexStatus.
     private readonly ConcurrentDictionary<string, RepoIndexStats> _lastStats = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, string> _lastError = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _needsRebuild = new(StringComparer.OrdinalIgnoreCase);
 
     // Cancellation source of the in-flight run per root, so a forced reset can stop it.
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _cts = new(StringComparer.OrdinalIgnoreCase);
@@ -113,6 +116,12 @@ public sealed partial class SemanticIndexBackgroundTrigger(
         }
 
         WorkspaceIndexContext ctx = await db.GetDbAsync(workspaceRoot, ct);
+        if (!await ChunkSchemaRecovery.HasCurrentChunkSchemaAsync(ctx, ct))
+        {
+            // Stored Chunks table predates the current columns: back up, then recreate it so the rebuild can run.
+            _ = await ChunkSchemaRecovery.BackupAndRecreateChunksAsync(ctx, ct);
+        }
+
         _ = await db.WithDbLockAsync(() => ctx.Chunks.ExecuteDeleteAsync(ct), ct);
 
         _ = _knownIndexed.TryRemove(workspaceRoot, out _);
@@ -168,6 +177,14 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     /// <summary>True while a background run (manual or first-run) is in flight for this root.</summary>
     public bool IsRunning(string workspaceRoot) => _running.ContainsKey(workspaceRoot);
 
+    /// <summary>Pauses the run for this root at the next file boundary; chunks already stored are kept.</summary>
+    public void Pause(string workspaceRoot) => _pauseGate.Pause(workspaceRoot);
+
+    /// <summary>Resumes a paused run for this root.</summary>
+    public void Resume(string workspaceRoot) => _pauseGate.Resume(workspaceRoot);
+
+    public bool IsPaused(string workspaceRoot) => _pauseGate.IsPaused(workspaceRoot);
+
     /// <summary>Stats from the most recent completed run for this root, if any.</summary>
     public bool TryGetLastStats(string workspaceRoot, out RepoIndexStats? stats)
     {
@@ -178,6 +195,9 @@ public sealed partial class SemanticIndexBackgroundTrigger(
 
     /// <summary>Error message from the most recent failed run for this root, if any.</summary>
     public string? GetLastError(string workspaceRoot) => _lastError.TryGetValue(workspaceRoot, out string? message) ? message : null;
+
+    /// <summary>True when the last run failed because the stored index schema is older than the code (a rebuild is needed).</summary>
+    public bool NeedsRebuild(string workspaceRoot) => _needsRebuild.ContainsKey(workspaceRoot);
 
     private async Task RunManualInBackgroundAsync(
         string workspaceRoot, string[]? extensions, int concurrency, CancellationToken ct)
@@ -250,6 +270,7 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     {
         _lastStats[workspaceRoot] = stats;
         _ = _lastError.TryRemove(workspaceRoot, out _);
+        _ = _needsRebuild.TryRemove(workspaceRoot, out _);
         LogCompleted(logger, workspaceRoot, stats.FilesScanned, stats.ChunksIndexed, stats.ChunksSkipped,
             stats.ChunksDeleted, stats.ChunksFailed, stats.Elapsed.TotalSeconds);
     }
@@ -258,6 +279,10 @@ public sealed partial class SemanticIndexBackgroundTrigger(
     private void RecordFailed(string workspaceRoot, Exception ex)
     {
         _lastError[workspaceRoot] = ex.Message;
+        if (ex.Message.Contains("no such column", StringComparison.OrdinalIgnoreCase))
+        {
+            _needsRebuild[workspaceRoot] = 0;
+        }
         LogFailed(logger, workspaceRoot, ex);
     }
 

@@ -340,18 +340,22 @@ public sealed record ContextBehaviorConfig
             return null;
         }
 
-        return new ContextBehaviorConfig
+        return MergeSizing(local, global) with
         {
-            AutoWarmOnStartup = local?.AutoWarmOnStartup ?? global?.AutoWarmOnStartup,
-            AutoIntercept = local?.AutoIntercept ?? global?.AutoIntercept,
-            ContextSizeLimit = local?.ContextSizeLimit ?? global?.ContextSizeLimit,
-            TokenBudgetMargin = local?.TokenBudgetMargin ?? global?.TokenBudgetMargin,
-            SemanticThreshold = local?.SemanticThreshold ?? global?.SemanticThreshold,
-            Debug = local?.Debug ?? global?.Debug,
             DetectBuildArtifacts = local?.DetectBuildArtifacts ?? global?.DetectBuildArtifacts,
             BlockArtifactFileReads = local?.BlockArtifactFileReads ?? global?.BlockArtifactFileReads,
         };
     }
+
+    private static ContextBehaviorConfig MergeSizing(ContextBehaviorConfig? local, ContextBehaviorConfig? global) => new()
+    {
+        AutoWarmOnStartup = local?.AutoWarmOnStartup ?? global?.AutoWarmOnStartup,
+        AutoIntercept = local?.AutoIntercept ?? global?.AutoIntercept,
+        ContextSizeLimit = local?.ContextSizeLimit ?? global?.ContextSizeLimit,
+        TokenBudgetMargin = local?.TokenBudgetMargin ?? global?.TokenBudgetMargin,
+        SemanticThreshold = local?.SemanticThreshold ?? global?.SemanticThreshold,
+        Debug = local?.Debug ?? global?.Debug,
+    };
 
     public static ContextBehaviorConfig Defaults() => new()
     {
@@ -923,19 +927,23 @@ public sealed record ExtensionBehaviorConfig : IExtensionSettings
             return null;
         }
 
-        return new ExtensionBehaviorConfig
+        return MergeScalars(local, global) with
         {
-            Autostart = local?.Autostart ?? global?.Autostart,
-            VerboseLogging = local?.VerboseLogging ?? global?.VerboseLogging,
-            AutoCodeHelperEnabled = local?.AutoCodeHelperEnabled ?? global?.AutoCodeHelperEnabled,
-            AutoInstallPrompt = local?.AutoInstallPrompt ?? global?.AutoInstallPrompt,
-            McpExePath = local?.McpExePath ?? global?.McpExePath,
             Server = ExtensionServerConfig.Merge(local?.Server, global?.Server),
             Dotnet = ExtensionDotnetConfig.Merge(local?.Dotnet, global?.Dotnet),
             Notifications = ExtensionNotificationsConfig.Merge(local?.Notifications, global?.Notifications),
             SimpleModelServer = ExtensionSimpleModelServerConfig.Merge(local?.SimpleModelServer, global?.SimpleModelServer),
         };
     }
+
+    private static ExtensionBehaviorConfig MergeScalars(ExtensionBehaviorConfig? local, ExtensionBehaviorConfig? global) => new()
+    {
+        Autostart = local?.Autostart ?? global?.Autostart,
+        VerboseLogging = local?.VerboseLogging ?? global?.VerboseLogging,
+        AutoCodeHelperEnabled = local?.AutoCodeHelperEnabled ?? global?.AutoCodeHelperEnabled,
+        AutoInstallPrompt = local?.AutoInstallPrompt ?? global?.AutoInstallPrompt,
+        McpExePath = local?.McpExePath ?? global?.McpExePath,
+    };
 
     public static ExtensionBehaviorConfig Defaults() => new()
     {
@@ -1053,7 +1061,7 @@ public sealed record ExtensionSimpleModelServerConfig : IExtensionSimpleModelSer
     public string? ExePath { get; init; }
 
     [JsonPropertyName("healthUrl")]
-    public string? HealthUrl { get; init; }
+    public Uri? HealthUrl { get; init; }
 
     [JsonPropertyName("startTimeout")]
     public int? StartTimeout { get; init; }
@@ -1076,7 +1084,7 @@ public sealed record ExtensionSimpleModelServerConfig : IExtensionSimpleModelSer
     public static ExtensionSimpleModelServerConfig Defaults() => new()
     {
         ExePath = "",
-        HealthUrl = "http://localhost:11435/health",
+        HealthUrl = new Uri("http://localhost:11435/health"),
         StartTimeout = 600,
     };
 }

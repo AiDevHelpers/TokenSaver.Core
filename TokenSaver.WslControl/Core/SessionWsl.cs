@@ -23,7 +23,7 @@ public static class WslCommandLine
             return arg;
         }
 
-        return "\"" + arg.Replace("\"", "\\\"") + "\"";
+        return "\"" + arg.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
     }
 
     public static string ForExec(string distro, string fileName, IEnumerable<string> args)
@@ -75,7 +75,7 @@ public sealed partial class SessionWslApi(ISessionProcessRunner runner) : IWslAp
                 $"wsl -l -v failed (exit {result.ExitCode}, timedOut={result.TimedOut}).");
         }
 
-        return ParseDistroList(Encoding.Unicode.GetString(result.Stdout));
+        return ParseDistroList(Encoding.Unicode.GetString(result.Stdout.Span));
     }
 
     public DistroInfo? GetDefaultDistribution() => GetDistributionList().FirstOrDefault(d => d.IsDefault);
@@ -87,7 +87,7 @@ public sealed partial class SessionWslApi(ISessionProcessRunner runner) : IWslAp
     internal static IReadOnlyList<DistroInfo> ParseDistroList(string text)
     {
         List<DistroInfo> list = [];
-        foreach (string raw in text.Replace("\0", string.Empty).Replace("﻿", string.Empty)
+        foreach (string raw in text.Replace("\0", string.Empty, StringComparison.Ordinal).Replace("﻿", string.Empty, StringComparison.Ordinal)
                      .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
         {
             Match m = ListLine().Match(raw);
@@ -139,8 +139,8 @@ public sealed class SessionWslCommandExecutor(ISessionProcessRunner runner) : IW
                 distro,
                 display,
                 result.ExitCode,
-                Stdout: Encoding.UTF8.GetString(result.Stdout).TrimEnd('\n', '\r'),
-                Stderr: Encoding.UTF8.GetString(result.Stderr).TrimEnd('\n', '\r'));
+                Stdout: Encoding.UTF8.GetString(result.Stdout.Span).TrimEnd('\n', '\r'),
+                Stderr: Encoding.UTF8.GetString(result.Stderr.Span).TrimEnd('\n', '\r'));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

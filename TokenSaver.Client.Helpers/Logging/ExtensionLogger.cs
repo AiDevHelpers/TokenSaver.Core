@@ -67,15 +67,6 @@ public sealed class DefaultExtensionLogger : IExtensionLogger
         }
     }
 
-    public sealed record LogEntry
-    {
-        public DateTime Timestamp { get; init; }
-        public LogLevel Level { get; init; }
-        public string Message { get; init; } = string.Empty;
-
-        public override string ToString() =>
-            $"{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:G}] {Message}";
-    }
 }
 
 public enum LogLevel
@@ -143,4 +134,14 @@ public static class ExtensionLoggerFacade
             _logger.LogDebug(message);
         }
     }
+}
+
+public sealed record LogEntry
+{
+    public DateTime Timestamp { get; init; }
+    public LogLevel Level { get; init; }
+    public string Message { get; init; } = string.Empty;
+
+    public override string ToString() =>
+        $"{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:G}] {Message}";
 }

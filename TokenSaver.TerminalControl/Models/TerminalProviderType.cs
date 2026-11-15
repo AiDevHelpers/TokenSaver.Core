@@ -17,7 +17,7 @@ public sealed record TerminalProviderAvailability(
     TerminalProviderType Provider,
     bool IsInstalled,
     string? Version = null,
-    string? InstallUrl = null,
+    Uri? InstallUrl = null,
     string? ErrorMessage = null)
 {
     public bool IsAvailable => IsInstalled && string.IsNullOrEmpty(ErrorMessage);

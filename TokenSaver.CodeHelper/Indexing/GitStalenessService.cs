@@ -1,3 +1,4 @@
+#pragma warning disable CA1034, CA1002 // StalenessPlan is the public result record of PlanTargetFilesAsync; its list is owned by the plan.
 using TokenSaver.Config;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
@@ -66,7 +67,7 @@ public sealed class GitStalenessService
 
         foreach (string repoRelPath in repoRoots)
         {
-            RepoStalenessResult result = await _gitStaleness.CheckAsync(ctx, root, repoRelPath, ct, commitBaseline: false);
+            RepoStalenessResult result = await _gitStaleness.CheckAsync(ctx, root, repoRelPath, commitBaseline: false, ct: ct);
             checkedRoots.Add(result);
             if (result.Unchanged)
             {

@@ -68,6 +68,13 @@ public sealed class BehaviorConfigOverlay
         TokenEconomyBehaviorConfig? te = b.TokenEconomy;
         ContextBehaviorConfig? ctx = b.Context;
 
+        ApplyCodeHelper(ch);
+        ApplyTokenEconomy(te);
+        ApplyContextHelper(ctx);
+    }
+
+    private void ApplyCodeHelper(CodeHelperBehaviorConfig? ch)
+    {
         _codeHelperConfig.AutoEnabled = ch?.AutoEnabled ?? _codeHelperBaseline.AutoEnabled;
         _codeHelperConfig.RequireAnchorMatch = ch?.RequireAnchorMatch ?? _codeHelperBaseline.RequireAnchorMatch;
         _codeHelperConfig.CanDoThreshold = ch?.Ownership?.CanDoThreshold ?? _codeHelperBaseline.CanDoThreshold;
@@ -77,6 +84,10 @@ public sealed class BehaviorConfigOverlay
         _codeHelperConfig.WasteThreshold = ch?.Calibration?.WasteThreshold ?? _codeHelperBaseline.WasteThreshold;
         _codeHelperConfig.LearningRate = ch?.Calibration?.LearningRate ?? _codeHelperBaseline.LearningRate;
 
+    }
+
+    private void ApplyTokenEconomy(TokenEconomyBehaviorConfig? te)
+    {
         _tokenEconomyConfig.EnableDistill = te?.EnableDistill ?? _tokenEconomyBaseline.EnableDistill;
         _tokenEconomyConfig.EnableTerse = te?.AllowTerse ?? _tokenEconomyBaseline.EnableTerse;
         _tokenEconomyConfig.EnableRawRetention = te?.EnableRawRetention ?? _tokenEconomyBaseline.EnableRawRetention;
@@ -84,6 +95,10 @@ public sealed class BehaviorConfigOverlay
         _tokenEconomyConfig.EnableSummaryEmbedding = te?.EnableSummaryEmbedding ?? _tokenEconomyBaseline.EnableSummaryEmbedding;
         _tokenEconomyConfig.Terse = te?.TerseByDefault ?? _tokenEconomyBaseline.Terse;
 
+    }
+
+    private void ApplyContextHelper(ContextBehaviorConfig? ctx)
+    {
         _contextHelperConfig.AutoWarmOnStartup = ctx?.AutoWarmOnStartup ?? _contextHelperBaseline.AutoWarmOnStartup;
         _contextHelperConfig.AutoIntercept = ctx?.AutoIntercept ?? _contextHelperBaseline.AutoIntercept;
         _contextHelperConfig.ContextSizeLimit = ctx?.ContextSizeLimit ?? _contextHelperBaseline.ContextSizeLimit;

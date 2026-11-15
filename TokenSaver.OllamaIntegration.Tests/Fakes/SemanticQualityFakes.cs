@@ -1,3 +1,4 @@
+#pragma warning disable CA1515 // Shared test fake referenced across test files; must stay public.
 using System.Text.RegularExpressions;
 
 namespace TokenSaver.OllamaIntegration.Tests;

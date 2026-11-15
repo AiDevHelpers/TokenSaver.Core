@@ -116,6 +116,7 @@ public sealed partial class TaskClassifier
         return (fallback, fallbackConfidence);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated by System.Text.Json deserialization.")]
     private sealed class OllamaResponse
     {
         public string? Response { get; set; }

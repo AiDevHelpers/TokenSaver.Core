@@ -106,7 +106,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     /// <summary>
     ///     Indexes exactly the listed workspace-relative paths; a listed path that no longer exists
     ///     is removed from the index. The single entry point for targeted work: the change queue
-    ///     (<see cref="IndexChangeQueue" />) and single-file edits (<see cref="IndexFileAsync" />) both
+    ///     (<see cref="IndexChangeBuffer" />) and single-file edits (<see cref="IndexFileAsync" />) both
     ///     land here. Shares the per-root gate with <see cref="IndexWorkspaceAsync" />.
     /// </summary>
     public async Task<IndexStats> IndexPathsAsync(string root, IEnumerable<string> relPaths, CancellationToken ct = default)
@@ -175,15 +175,15 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
     ///     Cheap to call on every BuildConciseContext request: when nothing changed, this is just
     ///     one or two `git` subprocess calls per repo root.
     /// </summary>
-    public async Task<IndexStats> IndexWorkspaceAsync(string root, CancellationToken ct = default)
+    public async Task<IndexStats> IndexWorkspaceAsync(string workspaceRoot, CancellationToken ct = default)
     {
         // One pass per root at a time: concurrent callers (interactive request, background
         // trigger, codegen push) queue behind it instead of each summarizing the same files.
-        SemaphoreSlim gate = RootGates.GetOrAdd(Path.GetFullPath(root), _ => new SemaphoreSlim(1, 1));
+        SemaphoreSlim gate = RootGates.GetOrAdd(Path.GetFullPath(workspaceRoot), _ => new SemaphoreSlim(1, 1));
         await gate.WaitAsync(ct);
         try
         {
-            return await IndexWorkspaceCoreAsync(root, ct);
+            return await IndexWorkspaceCoreAsync(workspaceRoot, ct);
         }
         finally
         {

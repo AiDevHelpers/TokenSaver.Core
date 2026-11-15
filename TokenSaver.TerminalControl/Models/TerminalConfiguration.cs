@@ -10,7 +10,7 @@ public sealed record TerminalConfiguration(
 {
     public TerminalProfile? GetDefaultProfile() =>
         DefaultProfileGuid is not null
-            ? Profiles.FirstOrDefault(p => p.Guid == DefaultProfileGuid)
+            ? Profiles.FirstOrDefault(p => p.ProfileGuid == DefaultProfileGuid)
             : Profiles.FirstOrDefault(p => p.IsDefault);
 
     public IReadOnlyList<WslInstance> GetRunningInstances() =>

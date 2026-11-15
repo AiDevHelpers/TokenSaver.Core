@@ -1,3 +1,4 @@
+#pragma warning disable CA2000 // Test factories hand disposables to the code under test; each test is short-lived.
 using TokenSaver.Common.Core.Configuration;
 using TokenSaver.Database.Context;
 using TokenSaver.Database.Context.Entities;
@@ -22,8 +23,10 @@ namespace TokenSaver.TokenEconomy.Tests;
 ///     independently of RepoIndexer, then uses FakeOllamaHandler for the query embedding call —
 ///     no live Ollama required.
 /// </summary>
-public sealed class SemanticSearchServiceTests : IAsyncLifetime
+public sealed class SemanticSearchServiceTests : IAsyncLifetime, IDisposable
 {
+    public void Dispose() => _fakeHandler.Dispose();
+
     private readonly string _tempWorkspace = Path.Combine(Path.GetTempPath(), "lh-semsearch-tests-" + Guid.NewGuid());
     private readonly FakeOllamaHandler _fakeHandler = new();
     private WorkspaceIndexContext _ctx = null!;

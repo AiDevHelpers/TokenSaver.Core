@@ -40,7 +40,7 @@ public sealed class WindowsTerminalProvider : ITerminalProvider
                         Provider: TerminalProviderType.WindowsTerminal,
                         IsInstalled: false,
                         Version: null,
-                        InstallUrl: "https://www.microsoft.com/store/productId/9N0DX20HK701",
+                        InstallUrl: new Uri("https://www.microsoft.com/store/productId/9N0DX20HK701"),
                         ErrorMessage: "Windows Terminal is not installed");
                 }
 
@@ -69,7 +69,7 @@ public sealed class WindowsTerminalProvider : ITerminalProvider
                         Provider: TerminalProviderType.WindowsTerminal,
                         IsInstalled: false,
                         ErrorMessage: $"Error checking availability: {ex.Message}",
-                        InstallUrl: "https://www.microsoft.com/store/productId/9N0DX20HK701");
+                        InstallUrl: new Uri("https://www.microsoft.com/store/productId/9N0DX20HK701"));
                 }
             }
         }
@@ -79,7 +79,7 @@ public sealed class WindowsTerminalProvider : ITerminalProvider
             Provider: TerminalProviderType.WindowsTerminal,
             IsInstalled: false,
             ErrorMessage: "Unable to check Windows Terminal availability",
-            InstallUrl: "https://www.microsoft.com/store/productId/9N0DX20HK701");
+            InstallUrl: new Uri("https://www.microsoft.com/store/productId/9N0DX20HK701"));
     }
 
     public async Task<ITerminalSession> CreateSessionAsync(

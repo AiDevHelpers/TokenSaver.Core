@@ -104,7 +104,7 @@ public sealed partial class BehaviorConfigService : IBehaviorConfigService, IDis
     ///     and writes it back (creating the folder/file as needed). Refreshes the cached merged
     ///     view and raises <see cref="ConfigChanged" />.
     /// </summary>
-    public void Set(string workspaceRoot, Contracts.ConfigScope scope, Func<TokenSaverBehaviorConfig, TokenSaverBehaviorConfig> mutate)
+    public void Update(string workspaceRoot, Contracts.ConfigScope scope, Func<TokenSaverBehaviorConfig, TokenSaverBehaviorConfig> mutate)
     {
         ArgumentNullException.ThrowIfNull(mutate);
         string path = scope == Contracts.ConfigScope.Local ? LocalConfigPath(workspaceRoot) : GlobalConfigPath;

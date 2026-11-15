@@ -364,7 +364,17 @@ public partial class ContextCleanerService(
         StringBuilder sb = new();
         _ = sb.AppendLine(CultureInfo.InvariantCulture, $"Context built in {elapsed.TotalMilliseconds:N0}ms | {rawTokens:N0} → {finalTokens:N0} tokens  saved {savePct}% ({saved:N0} tokens)");
 
-        // Conversation
+        AppendConversationLine(sb, ctx);
+        AppendCodeLine(sb, ctx);
+        AppendFileLine(sb, ctx, byKind);
+        AppendLogAndToolLines(sb, ctx);
+        AppendDroppedLine(sb, ctx);
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static void AppendConversationLine(StringBuilder sb, PipelineContext ctx)
+    {
         StageDiagnostic? diagSummarize = ctx.StageDiagnostics.FirstOrDefault(d => d.StageName == "ConversationSummarization");
         int summarized = diagSummarize?.ItemsCollapsed ?? 0;
         int verbatim = Math.Max(0, ctx.History.Count - summarized);
@@ -374,8 +384,10 @@ public partial class ContextCleanerService(
             ? 0
             : Math.Round((double)(convTokensIn - convTokensOut) / convTokensIn * 100, 1);
         _ = sb.AppendLine(CultureInfo.InvariantCulture, $"  Conversation : {ctx.History.Count} turns — {summarized} summarized, {verbatim} verbatim  saved {convSavePct}%");
+    }
 
-        // Code
+    private static void AppendCodeLine(StringBuilder sb, PipelineContext ctx)
+    {
         StageDiagnostic? diagCode = ctx.StageDiagnostics.FirstOrDefault(d => d.StageName == "CodeBlockCollapsing");
         int collapsed = diagCode?.ItemsCollapsed ?? 0;
         int inline = ctx.Chunks.Count(c => c.Kind == ContentKind.Code && !c.WasCollapsed);
@@ -383,19 +395,25 @@ public partial class ContextCleanerService(
         int codeOut = diagCode?.OutputTokens ?? codeIn;
         double codeSavePct = codeIn == 0 ? 0 : Math.Round((double)(codeIn - codeOut) / codeIn * 100, 1);
         _ = sb.AppendLine(CultureInfo.InvariantCulture, $"  Code         : {collapsed + inline} blocks — {collapsed} collapsed, {inline} inline  saved {codeSavePct}%");
+    }
 
-        // Files
+    private static void AppendFileLine(StringBuilder sb, PipelineContext ctx, Dictionary<ContentKind, (int Total, int Dropped)> byKind)
+    {
         List<ManifestEntry> fileChunks = [.. ctx.Manifest.Entries.Where(e => e.Kind == ContentKind.File)];
-        if (fileChunks.Count > 0)
+        if (fileChunks.Count == 0)
         {
-            IEnumerable<string> fileNames = fileChunks.Select(e => Path.GetFileName(e.Source)).Distinct().Take(5);
-            int fileIn = byKind.GetValueOrDefault(ContentKind.File).Total;
-            int fileDropped = byKind.GetValueOrDefault(ContentKind.File).Dropped;
-            double fileSavePct = fileIn == 0 ? 0 : Math.Round((double)fileDropped / fileIn * 100, 1);
-            _ = sb.AppendLine(CultureInfo.InvariantCulture, $"  Files        : {string.Join(", ", fileNames)}  saved {fileSavePct}%");
+            return;
         }
 
-        // Logs
+        IEnumerable<string> fileNames = fileChunks.Select(e => Path.GetFileName(e.Source)).Distinct().Take(5);
+        int fileIn = byKind.GetValueOrDefault(ContentKind.File).Total;
+        int fileDropped = byKind.GetValueOrDefault(ContentKind.File).Dropped;
+        double fileSavePct = fileIn == 0 ? 0 : Math.Round((double)fileDropped / fileIn * 100, 1);
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"  Files        : {string.Join(", ", fileNames)}  saved {fileSavePct}%");
+    }
+
+    private static void AppendLogAndToolLines(StringBuilder sb, PipelineContext ctx)
+    {
         StageDiagnostic? diagLogs = ctx.StageDiagnostics.FirstOrDefault(d => d.StageName == "LogStripping");
         if (diagLogs?.ItemsDropped > 0)
         {
@@ -405,7 +423,6 @@ public partial class ContextCleanerService(
             _ = sb.AppendLine(CultureInfo.InvariantCulture, $"  Logs         : {diagLogs.ItemsDropped:N0} lines stripped, failures + tail preserved  saved {logSavePct}%");
         }
 
-        // Tool calls
         StageDiagnostic? diagTools = ctx.StageDiagnostics.FirstOrDefault(d => d.StageName == "ToolCallCompression");
         if (diagTools?.ItemsCollapsed > 0)
         {
@@ -414,8 +431,10 @@ public partial class ContextCleanerService(
                 : Math.Round((double)diagTools.TokensSaved / diagTools.InputTokens * 100, 1);
             _ = sb.AppendLine(CultureInfo.InvariantCulture, $"  Tool calls   : {diagTools.ItemsCollapsed} compressed  saved {toolSavePct}%");
         }
+    }
 
-        // Dropped (semantic filter)
+    private static void AppendDroppedLine(StringBuilder sb, PipelineContext ctx)
+    {
         StageDiagnostic? diagSemantic = ctx.StageDiagnostics.FirstOrDefault(d => d.StageName == "SemanticRelevanceFilter");
         if (diagSemantic?.ItemsDropped > 0)
         {
@@ -427,8 +446,6 @@ public partial class ContextCleanerService(
             _ = sb.AppendLine(CultureInfo.InvariantCulture,
                 $"  Dropped (low relevance): {diagSemantic.ItemsDropped} chunks (scores: {string.Join(", ", droppedEntries)})");
         }
-
-        return sb.ToString().TrimEnd();
     }
 
     private static int ApplyAdjustment(int budget, StrippingAdjustment? adj)

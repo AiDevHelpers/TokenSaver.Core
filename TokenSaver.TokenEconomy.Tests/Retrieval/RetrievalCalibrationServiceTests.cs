@@ -1,3 +1,4 @@
+#pragma warning disable CA2000 // Test factories hand disposables to the code under test; each test is short-lived.
 using TokenSaver.ContextHelper.Calibration;
 using TokenSaver.ContextHelper.Configuration;
 using TokenSaver.ContextHelper.Models.Calibration;
@@ -18,8 +19,10 @@ namespace TokenSaver.TokenEconomy.Tests;
 ///     irrelevant) is out of scope here, same split documented on OllamaEndpointRegistryTests —
 ///     see docs/context-builder-evaluation.md for the live/manual evaluation path.
 /// </summary>
-public sealed class RetrievalCalibrationServiceTests : IAsyncLifetime
+public sealed class RetrievalCalibrationServiceTests : IAsyncLifetime, IDisposable
 {
+    public void Dispose() => _fakeHandler.Dispose();
+
     private readonly string _tempWorkspace = Path.Combine(Path.GetTempPath(), "lh-retrieval-calib-tests-" + Guid.NewGuid());
     private readonly FakeOllamaHandler _fakeHandler = new();
 

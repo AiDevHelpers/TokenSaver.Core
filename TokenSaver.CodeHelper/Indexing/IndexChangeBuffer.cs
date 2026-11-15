@@ -10,7 +10,7 @@ namespace TokenSaver.CodeHelper.Indexing;
 ///     a repeated path collapses into one entry. Whole-root passes (git watcher, triggers) run on their
 ///     own schedule and still go through the same per-root gate.
 /// </summary>
-public sealed class IndexChangeQueue
+public sealed class IndexChangeBuffer
 {
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _pending =
         new(StringComparer.OrdinalIgnoreCase);

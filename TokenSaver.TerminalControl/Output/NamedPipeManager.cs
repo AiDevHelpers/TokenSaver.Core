@@ -195,7 +195,7 @@ public sealed class NamedPipeManager : IDisposable
     public long GetPipeSize(string pipeName)
     {
         var pipe = GetPipe(pipeName);
-        return pipe?.GetSize() ?? 0;
+        return pipe?.Size ?? 0;
     }
 
     public void Dispose()
@@ -291,7 +291,10 @@ public sealed class NamedCommandPipe : IDisposable
         }
         catch (IOException ex)
         {
-            _logger.LogDebug(ex, "Command pipe {PipeName} already closed", _pipeName);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug(ex, "Command pipe {PipeName} already closed", _pipeName);
+            }
         }
 
         _stream.Dispose();
@@ -379,27 +382,31 @@ public sealed class NamedServerPipe : IDisposable
     /// <summary>
     /// Reads all accumulated output from the buffer.
     /// </summary>
-    public Task<string> ReadAllOutputAsync()
+    public async Task<string> ReadAllOutputAsync()
     {
-        string result;
+        byte[] bytes;
         lock (_syncLock)
         {
-            _buffer.Seek(0, SeekOrigin.Begin);
-            using var reader = new StreamReader(_buffer, leaveOpen: true);
-            result = reader.ReadToEnd();
+            bytes = _buffer.ToArray();
+            _buffer.Position = _buffer.Length;
         }
 
-        return Task.FromResult(result);
+        using var copy = new MemoryStream(bytes, writable: false);
+        using var reader = new StreamReader(copy);
+        return await reader.ReadToEndAsync();
     }
 
     /// <summary>
     /// Gets the current size of the buffer.
     /// </summary>
-    public long GetSize()
+    public long Size
     {
-        lock (_syncLock)
+        get
         {
-            return _buffer.Length;
+            lock (_syncLock)
+            {
+                return _buffer.Length;
+            }
         }
     }
 

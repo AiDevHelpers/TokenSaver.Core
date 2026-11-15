@@ -29,7 +29,7 @@ public sealed class BehaviorConfigServiceTests : IDisposable
     [Fact]
     public void SetLocal_ThenGet_ReflectsValue()
     {
-        _service.Set(_root, ConfigScope.Local, c => c with
+        _service.Update(_root, ConfigScope.Local, c => c with
         {
             RepoHelper = (c.RepoHelper ?? new RepoHelperBehaviorConfig()) with { AddTokenSaverToGitignore = true },
         });

@@ -58,7 +58,7 @@ public class AdaptiveContextLoader
             tokenBudget,
             ct);
 
-        plan.SegmentsToLoad.AddRange(segments);
+        foreach (ContextSegment seg in segments) { plan.SegmentsToLoad.Add(seg); }
 
         // Ask access patterns for related segments we might have missed
         var segIds = segments.Select(s => s.Id).ToList();
@@ -137,7 +137,7 @@ public class AdaptiveLoadPlan
     public string SessionId { get; set; } = null!;
     public string DetectedTaskType { get; set; } = "General";
     public double TaskTypeConfidence { get; set; }
-    public List<ContextSegment> SegmentsToLoad { get; set; } = [];
-    public List<string> RecommendedSegmentIds { get; set; } = [];
+    public IList<ContextSegment> SegmentsToLoad { get; set; } = [];
+    public IList<string> RecommendedSegmentIds { get; set; } = [];
     public int TotalEstimatedTokens { get; set; }
 }

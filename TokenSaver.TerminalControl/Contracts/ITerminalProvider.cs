@@ -59,8 +59,8 @@ public interface ITerminalProviderSelector
 public sealed record TerminalProviderValidationResult(
     bool IsValid,
     string? ErrorMessage = null,
-    string? ActionUrl = null,
+    Uri? ActionUrl = null,
     string? ActionText = null)
 {
-    public bool HasInstallAction => !string.IsNullOrEmpty(ActionUrl) && ActionUrl.StartsWith("http", StringComparison.Ordinal);
+    public bool HasInstallAction => ActionUrl is { Scheme: "http" or "https" };
 }
