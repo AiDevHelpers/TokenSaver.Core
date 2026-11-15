@@ -18,7 +18,8 @@ public sealed record LogEntry(
     string? Category,
     string Message,
     string Raw,
-    bool FirstChanceException = false);
+    bool FirstChanceException = false,
+    bool Truncated = false);
 
 /// <summary>Filter applied to entries. All fields are optional; null means "no constraint".</summary>
 public sealed record LogFilterSpec
