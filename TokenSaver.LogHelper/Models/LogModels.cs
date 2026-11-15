@@ -1,0 +1,80 @@
+namespace TokenSaver.LogHelper.Models;
+
+public enum LogSeverity
+{
+    Unknown = 0,
+    Trace = 1,
+    Debug = 2,
+    Information = 3,
+    Warning = 4,
+    Error = 5,
+    Critical = 6,
+}
+
+/// <summary>One logical log entry after folding continuation lines (stack traces, indented messages).</summary>
+public sealed record LogEntry(
+    DateTimeOffset? Timestamp,
+    LogSeverity Severity,
+    string? Category,
+    string Message,
+    string Raw,
+    bool FirstChanceException = false);
+
+/// <summary>Filter applied to entries. All fields are optional; null means "no constraint".</summary>
+public sealed record LogFilterSpec
+{
+    public string? Match { get; init; }
+
+    public string? Exclude { get; init; }
+
+    public LogSeverity? MinLevel { get; init; }
+
+    public string? Category { get; init; }
+}
+
+/// <summary>Who is asking. Carried into every facade call so hosts can scope and audit later.</summary>
+public sealed record LogRequestContext(string CallerId, bool ReadOnly = true);
+
+public sealed record LogQueryRequest(
+    ChannelId Channel,
+    LogFilterSpec? Filter = null,
+    string View = "summary",
+    string? Since = null,
+    int WaitSeconds = 0,
+    int MaxTokens = 1500);
+
+public sealed record LogQueryResult(
+    bool Ok,
+    string? Error,
+    string Text,
+    int RawChars,
+    int ReturnedChars,
+    string? NextCursor,
+    bool Truncated);
+
+public sealed record LogChannelInfo(ChannelId Id, string Description, long? SizeBytes);
+
+/// <summary>One read from a source. <c>Reset</c> is true when the cursor no longer matched and reading restarted.</summary>
+public sealed record LogReadBatch(
+    IReadOnlyList<LogEntry> Entries,
+    string NextCursor,
+    bool Reset,
+    int Dropped);
+
+public sealed class LogHelperOptions
+{
+    /// <summary>Directories a file source may read from. Empty means nothing is readable.</summary>
+    public IReadOnlyList<string> AllowedRoots { get; set; } = Array.Empty<string>();
+
+    /// <summary>Where run snapshots and other state are written.</summary>
+    public string? StateDirectory { get; set; }
+
+    public bool RedactionEnabled { get; set; } = true;
+
+    /// <summary>Event Log channels that may be read. Security is never included by default.</summary>
+    public IReadOnlyList<string> EventLogAllowList { get; set; } = new[] { "Application", "System" };
+
+    public int MaxRegexLength { get; set; } = 512;
+
+    public int MaxEntryBytes { get; set; } = 16_384;
+}
