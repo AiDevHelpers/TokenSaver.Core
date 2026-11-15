@@ -4,8 +4,8 @@ using TokenSaver.LogHelper.Models;
 namespace TokenSaver.LogHelper.Sources;
 
 /// <summary>
-/// Serves <c>file:</c> channels. <see cref="ListChannelsAsync"/> returns nothing for now; channel
-/// enumeration arrives with the LogChannels tool.
+/// Serves <c>file:</c> channels named explicitly by path. <see cref="ListChannelsAsync"/> returns nothing:
+/// files are not enumerated, so callers must already know the path.
 /// </summary>
 public sealed class FileLogSourceProvider : ILogSourceProvider
 {
