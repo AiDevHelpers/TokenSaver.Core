@@ -20,6 +20,11 @@ public sealed class LogParser
         @"^\[(?<lvl>[A-Za-z]{3,8})\]\s?(?<msg>.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // VS Code output channel files: ["INFO" - 2:28:53 PM] message
+    private static readonly Regex VsCodeChannelHeader = new(
+        @"^\[""(?<lvl>[A-Za-z]{3,8})"" - [^\]]+\]\s?(?<msg>.*)$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private static readonly Regex MelHeader = new(
         @"^(?<lvl>trce|dbug|info|warn|fail|crit): (?<cat>.+?)(\[\d+\])?\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -97,6 +102,7 @@ public sealed class LogParser
 
     private static bool IsHeader(string line) =>
         BracketHeader.IsMatch(TrimTimestamp(line).rest)
+        || VsCodeChannelHeader.IsMatch(TrimTimestamp(line).rest)
         || MelHeader.IsMatch(line)
         || TracebackHeader.IsMatch(line)
         || FirstChanceHeader.IsMatch(line);
@@ -124,6 +130,12 @@ public sealed class LogParser
         if (bracket.Success && TryMapBracketLevel(bracket.Groups["lvl"].Value, out var bracketSeverity))
         {
             return new Pending(timestamp, bracketSeverity, null, bracket.Groups["msg"].Value, line);
+        }
+
+        Match channel = VsCodeChannelHeader.Match(rest);
+        if (channel.Success && TryMapBracketLevel(channel.Groups["lvl"].Value, out var channelSeverity))
+        {
+            return new Pending(timestamp, channelSeverity, null, channel.Groups["msg"].Value, line);
         }
 
         Match mel = MelHeader.Match(line);

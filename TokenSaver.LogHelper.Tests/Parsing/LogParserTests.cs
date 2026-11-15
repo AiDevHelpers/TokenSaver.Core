@@ -32,6 +32,17 @@ public sealed class LogParserTests
     }
 
     [Fact]
+    public void VsCodeChannelFormat_LevelInQuotes_MapsSeverity()
+    {
+        var entries = Parse("[\"ERROR\" - 2:28:53 PM] Extension failed to activate", "[\"INFO\" - 2:28:54 PM] ready");
+
+        Assert.Equal(LogSeverity.Error, entries[0].Severity);
+        Assert.Equal("Extension failed to activate", entries[0].Message);
+        Assert.Equal(LogSeverity.Information, entries[1].Severity);
+        Assert.Equal("ready", entries[1].Message);
+    }
+
+    [Fact]
     public void Plain_WordErrorInsideMessage_IsNotError()
     {
         var entries = Parse("0 errors found", "ErrorHandler registered");
