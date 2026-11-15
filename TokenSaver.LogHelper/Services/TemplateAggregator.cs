@@ -75,9 +75,11 @@ public static class TemplateAggregator
                 firstLine = firstLine[..SampleChars];
             }
 
+            // The hash keys the template as normalized. The label is redacted, so secrets that appear in
+            // message text never reach summaries or stored snapshots.
             return new TemplateRow(
                 TemplateHashOf(template),
-                template,
+                Redactor.Redact(template, options),
                 _max,
                 _count,
                 _firstSeen,
