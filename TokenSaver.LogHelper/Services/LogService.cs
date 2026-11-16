@@ -74,7 +74,13 @@ public sealed class LogService : ILogService
             return await WatchAsync(request, ct);
         }
 
-        LogReadResult read = await ReadAllAsync(request.Channel, request.Since, ct);
+        string? formatError = StructuredParser.Validate(request.Format, _options);
+        if (formatError is not null)
+        {
+            return Fail(formatError);
+        }
+
+        LogReadResult read = await ReadAllAsync(request.Channel, request.Since, ct, request.Format);
         if (read.Error is not null)
         {
             return Fail(read.Error);
@@ -291,7 +297,7 @@ public sealed class LogService : ILogService
         return (row, entry);
     }
 
-    private async Task<LogReadResult> ReadAllAsync(ChannelId channel, string? cursor, CancellationToken ct)
+    private async Task<LogReadResult> ReadAllAsync(ChannelId channel, string? cursor, CancellationToken ct, LogFormatSpec? format = null)
     {
         ILogSourceProvider? provider = _providers.FirstOrDefault(p =>
             string.Equals(p.Scheme, channel.Scheme, StringComparison.OrdinalIgnoreCase));
@@ -302,7 +308,7 @@ public sealed class LogService : ILogService
 
         try
         {
-            LogReadBatch batch = await provider.Open(channel).ReadAsync(cursor, int.MaxValue, ct);
+            LogReadBatch batch = await provider.Open(channel).ReadAsync(cursor, int.MaxValue, format, ct);
             return LogReadResult.Ok(batch);
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)

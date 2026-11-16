@@ -8,8 +8,9 @@ namespace TokenSaver.LogHelper.Sources;
 /// <summary>
 /// Resume state for a file source. <see cref="Anchor"/> is a hash of the bytes just before
 /// <see cref="Offset"/>; if the bytes there changed (truncation, rewrite) the cursor no longer matches.
+/// <see cref="Format"/> is the resolved <see cref="LogFormatSpec"/> as JSON, so a channel is sniffed once.
 /// </summary>
-internal sealed record FileCursorState(string Path, long Offset, string Anchor)
+internal sealed record FileCursorState(string Path, long Offset, string Anchor, string? Format = null)
 {
     public const int AnchorBytes = 256;
 

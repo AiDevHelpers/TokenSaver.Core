@@ -68,6 +68,42 @@ public static class LogFilter
             return false;
         }
 
+        foreach (FieldTerm term in spec.FieldTerms)
+        {
+            if (entry.Fields is null
+                || !entry.Fields.TryGetValue(term.Key, out string? value)
+                || !string.Equals(value, term.Value, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Parses a comma-separated list of <c>key=value</c> terms, for example <c>level=ERROR,service=api</c>.</summary>
+    public static bool TryParseFieldTerms(string? text, out IReadOnlyList<FieldTerm> terms, out string? error)
+    {
+        var parsed = new List<FieldTerm>();
+        terms = parsed;
+        error = null;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return true;
+        }
+
+        foreach (string part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            int equals = part.IndexOf('=', StringComparison.Ordinal);
+            if (equals <= 0 || equals == part.Length - 1)
+            {
+                error = $"Invalid field term '{part}'. Use key=value.";
+                return false;
+            }
+
+            parsed.Add(new FieldTerm(part[..equals].Trim(), part[(equals + 1)..].Trim()));
+        }
+
         return true;
     }
 

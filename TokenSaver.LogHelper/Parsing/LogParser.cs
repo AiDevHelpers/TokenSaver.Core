@@ -197,7 +197,7 @@ public sealed class LogParser
         return entry with { Raw = TruncateToBytes(entry.Raw, _maxEntryBytes), Truncated = true };
     }
 
-    private static string TruncateToBytes(string text, int maxBytes)
+    internal static string TruncateToBytes(string text, int maxBytes)
     {
         string cut = text.Length > maxBytes ? text[..maxBytes] : text;
         while (Encoding.UTF8.GetByteCount(cut) > maxBytes)

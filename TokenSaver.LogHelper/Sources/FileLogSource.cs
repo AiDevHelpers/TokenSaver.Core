@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TokenSaver.LogHelper.Contracts;
 using TokenSaver.LogHelper.Models;
 using TokenSaver.LogHelper.Parsing;
@@ -23,7 +24,10 @@ public sealed class FileLogSource : ILogSource
         _options = options;
     }
 
-    public async Task<LogReadBatch> ReadAsync(string? cursor, int maxEntries, CancellationToken ct)
+    public Task<LogReadBatch> ReadAsync(string? cursor, int maxEntries, CancellationToken ct) =>
+        ReadAsync(cursor, maxEntries, null, ct);
+
+    public async Task<LogReadBatch> ReadAsync(string? cursor, int maxEntries, LogFormatSpec? format, CancellationToken ct)
     {
         if (!PathGuard.TryResolve(_path, _options.AllowedRoots, out string? canonical, out string? reason) || canonical is null)
         {
@@ -48,6 +52,7 @@ public sealed class FileLogSource : ILogSource
 
         long offset = layout.BomLength;
         bool reset = false;
+        string? storedFormat = null;
 
         if (FileCursorState.TryDecode(cursor, out var state) && state is not null && state.Path == canonical)
         {
@@ -58,13 +63,19 @@ public sealed class FileLogSource : ILogSource
             else
             {
                 offset = Math.Max(state.Offset, layout.BomLength);
+                storedFormat = state.Format;
             }
         }
+
+        // An explicit format from the caller wins. Otherwise the format stored in the cursor is reused, so a
+        // channel is sniffed once and then stays on the same format until the cursor resets.
+        LogFormatSpec? explicitSpec = format is not null && StructuredParser.NameOf(format) != "auto" ? format : null;
+        string? carriedFormat = explicitSpec is not null ? JsonSerializer.Serialize(explicitSpec) : (reset ? null : storedFormat);
 
         long available = length - offset;
         if (available <= 0)
         {
-            return Empty(FileCursorState.Encode(new FileCursorState(canonical, offset, await AnchorAsync(stream, offset, ct))), reset);
+            return Empty(FileCursorState.Encode(new FileCursorState(canonical, offset, await AnchorAsync(stream, offset, ct), carriedFormat)), reset);
         }
 
         int toRead = (int)Math.Min(available, MaxChunkBytes);
@@ -74,7 +85,7 @@ public sealed class FileLogSource : ILogSource
         int consumed = EncodingSniffer.LastCompleteLineEnd(buffer, toRead, layout.Newline);
         if (consumed == 0)
         {
-            return Empty(FileCursorState.Encode(new FileCursorState(canonical, offset, await AnchorAsync(stream, offset, ct))), reset);
+            return Empty(FileCursorState.Encode(new FileCursorState(canonical, offset, await AnchorAsync(stream, offset, ct), carriedFormat)), reset);
         }
 
         string text = layout.Encoding.GetString(buffer, 0, consumed);
@@ -82,16 +93,49 @@ public sealed class FileLogSource : ILogSource
         string[] parts = text.Split('\n');
         var lines = parts.Take(parts.Length - 1).Select(l => l.TrimEnd('\r')).ToList();
 
-        var entries = new LogParser(_options).Parse(lines);
+        LogFormatSpec spec = explicitSpec ?? ReadSpec(carriedFormat) ?? FormatSniffer.Resolve(format, lines, _options);
+        IReadOnlyList<LogEntry> entries = ParseWith(spec, lines);
 
         long newOffset = offset + consumed;
         string anchor = await AnchorAsync(stream, newOffset, ct);
 
         return new LogReadBatch(
             entries,
-            FileCursorState.Encode(new FileCursorState(canonical, newOffset, anchor)),
+            FileCursorState.Encode(new FileCursorState(canonical, newOffset, anchor, JsonSerializer.Serialize(spec))),
             reset,
             Dropped: 0);
+    }
+
+    private IReadOnlyList<LogEntry> ParseWith(LogFormatSpec spec, List<string> lines)
+    {
+        if (StructuredParser.NameOf(spec) == "plain")
+        {
+            return new LogParser(_options).Parse(lines);
+        }
+
+        if (!StructuredParser.TryCreate(spec, _options, out StructuredParser? parser, out string? error) || parser is null)
+        {
+            throw new ArgumentException(error, nameof(spec));
+        }
+
+        return parser.ParseLines(lines);
+    }
+
+    private static LogFormatSpec? ReadSpec(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<LogFormatSpec>(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static LogReadBatch Empty(string cursor, bool reset) =>
