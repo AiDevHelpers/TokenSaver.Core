@@ -296,6 +296,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
         throw new InvalidOperationException($"Tab '{tabId}' closed before the command finished.");
     }
 
+    /// <summary>
+    /// Asks the tab's wrapper to exit. wt has no close-tab command, so the wt tab
+    /// closes only when the wrapper process exits; this method does not force it closed.
+    /// </summary>
     public async Task CloseTabAsync(string tabId, CancellationToken ct = default)
     {
         EnsureReady();

@@ -155,26 +155,6 @@ public sealed class NamedPipeManager : IDisposable
     }
 
     /// <summary>
-    /// Monitors output from a pipe in real-time via an async enumerable.
-    /// </summary>
-    public async IAsyncEnumerable<string> MonitorPipeOutputAsync(
-        string pipeName,
-        System.Collections.Generic.IAsyncEnumerable<System.Collections.Generic.IEnumerable<string>>? ct = null)
-    {
-        var pipe = GetPipe(pipeName);
-        if (pipe is null)
-        {
-            _logger.LogWarning("Pipe {PipeName} not found", pipeName);
-            yield break;
-        }
-
-        await foreach (var line in pipe.ReadLinesAsync())
-        {
-            yield return line;
-        }
-    }
-
-    /// <summary>
     /// Reads all accumulated output from a pipe.
     /// </summary>
     public async Task<string> ReadPipeOutputAsync(string pipeName)
