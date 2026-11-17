@@ -82,11 +82,37 @@ public class TokenSaverConfig
     /// <summary>How often <c>EndpointHealthMonitor</c> pings each configured endpoint.</summary>
     public TimeSpan HealthCheckInterval { get; set; } = TimeSpan.FromSeconds(30);
 
+    private string _configuredRoot = "";
+    private string _lastResolvedRoot = "";
+
     /// <summary>
-    ///     Workspace root path. When set, this is exported as SIMPLEMODELSERVER_WORKSPACE so that
-    ///     SimpleModelServer writes its config and .tokensaver/ folder under this path.
+    ///     Workspace root path. Setting it records the configured default (appsettings or environment).
+    ///     Reading it answers for the request being served: that session's resolved root, else the
+    ///     configured default — never another client's root. Outside a request (background services)
+    ///     it answers the most recently resolved root, else the configured default.
+    ///     When set, this is exported as SIMPLEMODELSERVER_WORKSPACE so that SimpleModelServer writes
+    ///     its config and .tokensaver/ folder under this path.
     /// </summary>
-    public string WorkspaceRoot { get; set; } = "";
+    public string WorkspaceRoot
+    {
+        get
+        {
+            WorkspaceScope? scope = WorkspaceScope.Current;
+            if (scope is not null)
+            {
+                return string.IsNullOrWhiteSpace(scope.Root) ? _configuredRoot : scope.Root;
+            }
+
+            return string.IsNullOrWhiteSpace(_lastResolvedRoot) ? _configuredRoot : _lastResolvedRoot;
+        }
+        set => _configuredRoot = value ?? "";
+    }
+
+    /// <summary>Records the latest root a session resolved, for callers that run outside any request.</summary>
+    public void RecordResolvedRoot(string root)
+    {
+        _lastResolvedRoot = root;
+    }
 
     /// <summary>
     ///     When true (default), the MCP server automatically registers itself with all detected
