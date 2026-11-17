@@ -225,7 +225,7 @@ public sealed class LogService : ILogService
         RunSnapshot? baseline;
         if (string.Equals(request.Since, LastRunToken, StringComparison.Ordinal))
         {
-            baseline = stored.LastOrDefault();
+            baseline = stored.Count > 0 ? stored[^1] : null;
             if (baseline is null)
             {
                 return Ok("no baseline for this channel yet; call LogMarkRun first.", 0, null, false);
@@ -274,7 +274,7 @@ public sealed class LogService : ILogService
         }
 
         var kept = new HashSet<LogEntry>(filtered.Kept, ReferenceEqualityComparer.Instance);
-        IReadOnlyList<TemplateRow> rows = candidates.Where(c => kept.Contains(c.Entry)).Select(c => c.Row).ToList();
+        List<TemplateRow> rows = candidates.Where(c => kept.Contains(c.Entry)).Select(c => c.Row).ToList();
 
         SummaryText summary = SummaryFormatter.Format(rows, request.MaxTokens);
         var text = new System.Text.StringBuilder();

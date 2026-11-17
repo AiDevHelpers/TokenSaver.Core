@@ -19,7 +19,7 @@ public sealed record ChannelId(string? Host, string Scheme, string Name)
             return false;
         }
 
-        int colon = text.IndexOf(':');
+        int colon = text.IndexOf(':', StringComparison.Ordinal);
         if (colon <= 0)
         {
             return false;
@@ -29,7 +29,7 @@ public sealed record ChannelId(string? Host, string Scheme, string Name)
         string? host = null;
         string scheme = prefix;
 
-        int slash = prefix.IndexOf('/');
+        int slash = prefix.IndexOf('/', StringComparison.Ordinal);
         if (slash >= 0)
         {
             host = prefix[..slash];

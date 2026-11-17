@@ -134,7 +134,7 @@ public sealed class LogServiceWatchTests : IDisposable
             new LogQueryRequest(_channel, Since: cursor, WaitSeconds: 5), Context, CancellationToken.None);
 
         var lines = result.Text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Single(lines.Where(l => l.Contains("dup", StringComparison.Ordinal)));
+        Assert.Single(lines, l => l.Contains("dup", StringComparison.Ordinal));
         Assert.Contains("x2", result.Text, StringComparison.Ordinal);
     }
 }
