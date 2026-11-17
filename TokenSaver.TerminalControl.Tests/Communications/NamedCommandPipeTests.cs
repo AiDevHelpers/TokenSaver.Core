@@ -61,6 +61,24 @@ public sealed class NamedCommandPipeTests : IDisposable
     }
 
     [Fact]
+    public async Task CommandPipe_DoesNotAcceptReconnectAfterClientDisconnects()
+    {
+        using var pipes = CreateManager();
+        var name = pipes.CreateCommandPipe(_session, "t6");
+        var command = pipes.GetCommandPipe(name)!;
+
+        using (var first = new NamedPipeClientStream(".", name, PipeDirection.In))
+        {
+            var connect = first.ConnectAsync(5000);
+            await command.WaitForClientAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
+            await connect;
+        }
+
+        await Assert.ThrowsAnyAsync<Exception>(
+            () => command.WaitForClientAsync(TimeSpan.FromMilliseconds(500), CancellationToken.None));
+    }
+
+    [Fact]
     public void ClosePipe_RemovesCommandPipe()
     {
         using var pipes = CreateManager();
