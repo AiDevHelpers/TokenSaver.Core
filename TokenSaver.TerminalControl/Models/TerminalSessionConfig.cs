@@ -8,7 +8,8 @@ public sealed record TerminalSessionConfig(
     string? PlaceholderTabName = "__placeholder",
     int OutputBufferSize = 10000,
     TimeSpan? GracefulCloseTimeout = null,
-    IReadOnlyDictionary<string, string>? EnvironmentVariables = null)
+    IReadOnlyDictionary<string, string>? EnvironmentVariables = null,
+    TerminalLaunchMode LaunchMode = TerminalLaunchMode.InteractiveUser)
 {
     public TimeSpan ActualGracefulCloseTimeout =>
         GracefulCloseTimeout ?? TimeSpan.FromSeconds(5);

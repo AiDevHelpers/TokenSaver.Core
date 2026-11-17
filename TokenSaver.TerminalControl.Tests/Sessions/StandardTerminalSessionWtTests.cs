@@ -52,6 +52,24 @@ public sealed class StandardTerminalSessionWtTests : IDisposable
     }
 
     [Fact]
+    public async Task ServiceAccountMode_OpensNoWindowAndRunsWrapperDirectly()
+    {
+        var launcher = new RecordingTerminalLauncher();
+        using var pipes = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
+        var session = CreateSession(launcher, pipes);
+        await session.InitializeAsync(new TerminalSessionConfig(LaunchMode: TerminalLaunchMode.ServiceAccount));
+
+        Assert.Empty(launcher.Started);
+
+        await session.CreateTabAsync("headless");
+
+        var tabLaunch = Assert.Single(launcher.Started);
+        Assert.Equal("pwsh", tabLaunch.FileName);
+        Assert.DoesNotContain("new-tab", tabLaunch.Arguments, StringComparison.Ordinal);
+        Assert.Contains("tokensaver-tab.ps1", tabLaunch.Arguments, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task InitializeAsync_WhenWtMissing_TerminatesAndRethrows()
     {
         var launcher = new RecordingTerminalLauncher { ThrowOnStart = new FileNotFoundException("wt.exe") };

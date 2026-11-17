@@ -23,7 +23,8 @@ public sealed class NamedPipeManager : IDisposable
     public NamedPipeInfo CreateOutputPipe(
         string sessionId,
         string tabId,
-        NamedPipeStreamType streamType)
+        NamedPipeStreamType streamType,
+        System.Security.Principal.SecurityIdentifier? clientSid = null)
     {
         ThrowIfDisposed();
 
@@ -38,7 +39,7 @@ public sealed class NamedPipeManager : IDisposable
         {
             try
             {
-                var serverPipe = new NamedServerPipe(pipeName, _logger);
+                var serverPipe = new NamedServerPipe(pipeName, _logger, ClientAcl(clientSid));
                 _pipes[pipeName] = serverPipe;
 
                 if (_logger.IsEnabled(LogLevel.Debug))
@@ -64,18 +65,25 @@ public sealed class NamedPipeManager : IDisposable
     /// Creates a pipe that TokenSaver writes commands into; the tab's wrapper connects as the client.
     /// Server-side writes are used so an elevated client can read from a pipe created at a lower integrity level.
     /// </summary>
-    public string CreateCommandPipe(string sessionId, string tabId)
+    public string CreateCommandPipe(string sessionId, string tabId, System.Security.Principal.SecurityIdentifier? clientSid = null)
     {
         ThrowIfDisposed();
 
         var pipeName = $"TokenSaver-{sessionId}-{tabId}-Cmd";
         lock (_syncLock)
         {
-            _commandPipes[pipeName] = new NamedCommandPipe(pipeName, _logger);
+            _commandPipes[pipeName] = new NamedCommandPipe(pipeName, _logger, ClientAcl(clientSid));
         }
 
         return pipeName;
     }
+
+    /// <summary>
+    /// With a client SID (a terminal started in the user's session by a LocalSystem service) the pipe gets
+    /// the restricted ACL. Otherwise the default ACL applies, which is what same-user processes need.
+    /// </summary>
+    private static System.IO.Pipes.PipeSecurity? ClientAcl(System.Security.Principal.SecurityIdentifier? clientSid) =>
+        clientSid is null ? null : PipeSecurityFactory.Create(clientSid);
 
     /// <summary>
     /// Gets a command pipe by name.
@@ -228,18 +236,30 @@ public sealed class NamedCommandPipe : IDisposable
     private readonly NamedPipeServerStream _stream;
     private StreamWriter? _writer;
 
-    public NamedCommandPipe(string pipeName, ILogger logger)
+    public NamedCommandPipe(string pipeName, ILogger logger, System.IO.Pipes.PipeSecurity? security = null)
     {
         _pipeName = pipeName;
         _logger = logger;
-        _stream = new NamedPipeServerStream(
-            pipeName,
-            PipeDirection.Out,
-            maxNumberOfServerInstances: 1,
-            PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous,
-            inBufferSize: 0,
-            outBufferSize: 64 * 1024);
+        _stream = security is null
+            ? new NamedPipeServerStream(
+                pipeName,
+                PipeDirection.Out,
+                maxNumberOfServerInstances: 1,
+                PipeTransmissionMode.Byte,
+                PipeOptions.Asynchronous,
+                inBufferSize: 0,
+                outBufferSize: 64 * 1024)
+            : NamedPipeServerStreamAcl.Create(
+                pipeName,
+                PipeDirection.Out,
+                1,
+                PipeTransmissionMode.Byte,
+                PipeOptions.Asynchronous,
+                0,
+                64 * 1024,
+                security,
+                System.IO.HandleInheritability.None,
+                (PipeAccessRights)0);
     }
 
     /// <summary>
@@ -293,16 +313,28 @@ public sealed class NamedServerPipe : IDisposable
     private StreamReader? _reader;
     private readonly object _syncLock = new();
 
-    public NamedServerPipe(string pipeName, ILogger logger)
+    public NamedServerPipe(string pipeName, ILogger logger, System.IO.Pipes.PipeSecurity? security = null)
     {
         _pipeName = pipeName;
         _logger = logger;
-        _serverStream = new NamedPipeServerStream(
-            pipeName,
-            PipeDirection.In,
-            maxNumberOfServerInstances: 1,
-            PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous);
+        _serverStream = security is null
+            ? new NamedPipeServerStream(
+                pipeName,
+                PipeDirection.In,
+                maxNumberOfServerInstances: 1,
+                PipeTransmissionMode.Byte,
+                PipeOptions.Asynchronous)
+            : NamedPipeServerStreamAcl.Create(
+                pipeName,
+                PipeDirection.In,
+                1,
+                PipeTransmissionMode.Byte,
+                PipeOptions.Asynchronous,
+                64 * 1024,
+                0,
+                security,
+                System.IO.HandleInheritability.None,
+                (PipeAccessRights)0);
     }
 
     /// <summary>

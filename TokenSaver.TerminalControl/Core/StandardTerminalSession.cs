@@ -2,6 +2,7 @@ namespace TokenSaver.TerminalControl.Core;
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Security.Principal;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using TokenSaver.TerminalControl.Contracts;
@@ -17,7 +18,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
     private readonly ILogger _logger;
     private readonly NamedPipeManager _pipeManager;
     private readonly bool _ownsPipeManager;
-    private readonly ITerminalProcessLauncher _launcher;
+    private readonly ITerminalProcessLauncher? _injectedLauncher;
+    private ITerminalProcessLauncher _launcher;
+    private SecurityIdentifier? _clientSid;
+    private bool _headless;
     private readonly ConcurrentDictionary<string, TabRuntime> _tabs = new();
     private Process? _process;
     private TerminalSessionConfig? _config;
@@ -50,6 +54,7 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
     {
         _logger = logger;
         IsElevated = elevated;
+        _injectedLauncher = launcher;
         _launcher = launcher ?? new ProcessTerminalLauncher();
         // Create a logger for the pipe manager if not provided
         if (pipeManager is null)
@@ -112,9 +117,20 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             var discovery = new Discovery.TerminalConfigurationDiscovery(discoveryLogger);
             _terminalConfig = await discovery.DiscoverConfigurationAsync(ct);
 
+            // Headless: the wrapper runs under TokenSaver's own account with no window; only the pipes are used.
+            _headless = !IsElevated && config.LaunchMode == TerminalLaunchMode.ServiceAccount;
+            _clientSid = null;
+            if (!_headless && _injectedLauncher is null && ConsoleUserSession.RunningAsLocalSystem())
+            {
+                // LocalSystem runs in session 0 and can't show a window: start the terminal in the logged-on
+                // user's session and grant that user the pipes.
+                _launcher = new ConsoleUserTerminalLauncher();
+                _clientSid = ConsoleUserSession.GetConsoleUserSid();
+            }
+
             // Open this session's own Windows Terminal window. Throws if wt.exe is missing.
             // An elevated session opens no window here: each tab prompts UAC when it is created.
-            if (!IsElevated)
+            if (!IsElevated && !_headless)
             {
                 _process = _launcher.Start(new ProcessStartInfo
                 {
@@ -153,9 +169,9 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
         var tabId = $"{SessionId}-{Guid.NewGuid():N}".Substring(0, 24);
 
         // Output and command pipes for this tab. Stderr is reported in-band on stdout.
-        var stdoutPipe = _pipeManager.CreateOutputPipe(SessionId, tabId, NamedPipeStreamType.Stdout);
-        var stderrPipe = _pipeManager.CreateOutputPipe(SessionId, tabId, NamedPipeStreamType.Stderr);
-        var commandPipeName = _pipeManager.CreateCommandPipe(SessionId, tabId);
+        var stdoutPipe = _pipeManager.CreateOutputPipe(SessionId, tabId, NamedPipeStreamType.Stdout, _clientSid);
+        var stderrPipe = _pipeManager.CreateOutputPipe(SessionId, tabId, NamedPipeStreamType.Stderr, _clientSid);
+        var commandPipeName = _pipeManager.CreateCommandPipe(SessionId, tabId, _clientSid);
 
         var tabInfo = new TerminalTabInfo(
             TabId: tabId,
@@ -181,9 +197,11 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
         {
             _launcher.Start(new ProcessStartInfo
             {
-                FileName = "wt.exe",
-                Arguments = $"-w {WindowName} new-tab --title \"{tabName}\" pwsh -NoProfile -File \"{WrapperPath}\" " +
-                    $"-StdoutPipe \"{stdoutPipe.PipeName}\" -CommandPipe \"{commandPipeName}\"",
+                FileName = _headless ? "pwsh" : "wt.exe",
+                Arguments = _headless
+                    ? $"-NoProfile -File \"{WrapperPath}\" -StdoutPipe \"{stdoutPipe.PipeName}\" -CommandPipe \"{commandPipeName}\""
+                    : $"-w {WindowName} new-tab --title \"{tabName}\" pwsh -NoProfile -File \"{WrapperPath}\" " +
+                        $"-StdoutPipe \"{stdoutPipe.PipeName}\" -CommandPipe \"{commandPipeName}\"",
                 // Elevated tabs: UAC prompt per tab. They join the same elevated window by name.
                 Verb = IsElevated ? "runas" : null,
                 UseShellExecute = IsElevated,
