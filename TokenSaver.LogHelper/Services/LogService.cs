@@ -125,7 +125,9 @@ public sealed class LogService : ILogService
 
         string text = batch.Reset
             ? "(cursor reset: source changed)\n" + body.Text
-            : body.Text;
+            : batch.Rotated
+                ? "(log rolled: includes the rest of the previous file)\n" + body.Text
+                : body.Text;
 
         return Ok(text, RawCharsOf(batch.Entries), batch.NextCursor, body.Truncated);
     }
