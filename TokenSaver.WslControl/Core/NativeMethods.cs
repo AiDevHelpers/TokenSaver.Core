@@ -4,51 +4,12 @@ using System.Text;
 
 namespace TokenSaver.WslControl.Core;
 
-/// <summary>Win32 entry points used to run a process in the active user session.</summary>
+/// <summary>
+/// Win32 entry points for the pipe and process calls in <see cref="ConsoleUserProcessRunner"/>. Session and token
+/// calls live in TokenSaver.WindowsSession.
+/// </summary>
 internal static class NativeMethods
 {
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    internal static extern bool WTSEnumerateSessionsW(IntPtr server, int reserved, int version, out IntPtr sessionInfo, out int count);
-
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    internal static extern bool WTSQuerySessionInformationW(IntPtr server, uint sessionId, int infoClass, out IntPtr buffer, out uint bytesReturned);
-
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("wtsapi32.dll")]
-    internal static extern void WTSFreeMemory(IntPtr memory);
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct WTS_SESSION_INFO
-    {
-        public uint SessionId;
-        public IntPtr pWinStationName;
-        public int State;
-    }
-
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("wtsapi32.dll", SetLastError = true)]
-    internal static extern bool WTSQueryUserToken(uint sessionId, out IntPtr token);
-
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("advapi32.dll", SetLastError = true)]
-    internal static extern bool DuplicateTokenEx(
-        IntPtr existingToken, uint desiredAccess, IntPtr tokenAttributes,
-        int impersonationLevel, int tokenType, out IntPtr newToken);
-
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("advapi32.dll", SetLastError = true)]
-    internal static extern bool SetTokenInformation(IntPtr token, int infoClass, ref uint info, int length);
-
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("userenv.dll", SetLastError = true)]
-    internal static extern bool CreateEnvironmentBlock(out IntPtr environment, IntPtr token, bool inherit);
-
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("userenv.dll", SetLastError = true)]
-    internal static extern bool DestroyEnvironmentBlock(IntPtr environment);
-
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     [DllImport("kernel32.dll", SetLastError = true)]
     internal static extern bool CreatePipe(out IntPtr read, out IntPtr write, ref SECURITY_ATTRIBUTES sa, uint size);
@@ -119,4 +80,3 @@ internal static class NativeMethods
         public uint dwThreadId;
     }
 }
-

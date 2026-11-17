@@ -7,6 +7,7 @@ using System.Text;
 using static TokenSaver.WslControl.Core.NativeMethods;
 
 using Microsoft.Win32.SafeHandles;
+using TokenSaver.WindowsSession;
 
 /// <summary>Result of one process run in the active user's session.</summary>
 public sealed record SessionProcessResult(int ExitCode, ReadOnlyMemory<byte> Stdout, ReadOnlyMemory<byte> Stderr, bool TimedOut);
@@ -25,11 +26,6 @@ public interface ISessionProcessRunner
 
 public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
 {
-    private const uint InvalidSessionId = 0xFFFFFFFF;
-    private const uint TokenAllAccess = 0xF01FF;
-    private const int SecurityImpersonation = 2;
-    private const int TokenPrimary = 1;
-    private const int TokenSessionIdClass = 12;
     private const uint CreateUnicodeEnvironment = 0x00000400;
     private const uint CreateNoWindow = 0x08000000;
     private const uint StartfUseStdHandles = 0x00000100;
@@ -46,14 +42,12 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
 
     private static SessionProcessResult RunCore(string commandLine, TimeSpan timeout)
     {
-        uint sessionId = FindLoggedOnUserSession();
-        if (sessionId == InvalidSessionId)
+        uint sessionId = UserSession.FindFirstLoggedOnSession();
+        if (sessionId == UserSession.NoSession)
         {
             throw new InvalidOperationException("No active user session with a logged-on user was found.");
         }
 
-        IntPtr userToken = IntPtr.Zero;
-        IntPtr primaryToken = IntPtr.Zero;
         IntPtr environment = IntPtr.Zero;
         IntPtr outRead = IntPtr.Zero, outWrite = IntPtr.Zero;
         IntPtr errRead = IntPtr.Zero, errWrite = IntPtr.Zero;
@@ -61,22 +55,10 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
         PROCESS_INFORMATION pi = default;
         bool processCreated = false;
 
+        using var token = UserSession.OpenPrimaryToken(sessionId, bindToSession: true);
         try
         {
-            if (!WTSQueryUserToken(sessionId, out userToken))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "WTSQueryUserToken failed.");
-            }
-
-            if (!DuplicateTokenEx(userToken, TokenAllAccess, IntPtr.Zero, SecurityImpersonation, TokenPrimary, out primaryToken))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "DuplicateTokenEx failed.");
-            }
-
-            uint sid = sessionId;
-            _ = SetTokenInformation(primaryToken, TokenSessionIdClass, ref sid, sizeof(uint));
-
-            if (!CreateEnvironmentBlock(out environment, primaryToken, false))
+            if (UserSession.TryCreateEnvironmentBlock(token, out environment) is false)
             {
                 environment = IntPtr.Zero;
             }
@@ -102,7 +84,7 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
             };
 
             char[] cmd = (commandLine + "\0").ToCharArray();
-            if (!CreateProcessAsUserW(primaryToken, null, cmd, IntPtr.Zero, IntPtr.Zero, true,
+            if (!CreateProcessAsUserW(token.Handle, null, cmd, IntPtr.Zero, IntPtr.Zero, true,
                     CreateUnicodeEnvironment | CreateNoWindow, environment, null, ref si, out pi))
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error(), "CreateProcessAsUser failed.");
@@ -157,63 +139,8 @@ public sealed class ConsoleUserProcessRunner : ISessionProcessRunner
             CloseIfValid(outRead);
             CloseIfValid(errRead);
             CloseIfValid(nul);
-            if (environment != IntPtr.Zero)
-            {
-                _ = DestroyEnvironmentBlock(environment);
-            }
-
-            CloseIfValid(primaryToken);
-            CloseIfValid(userToken);
+            UserSession.DestroyEnvironmentBlock(environment);
         }
-    }
-
-    /// <summary>
-    ///     Picks the first active session that has a logged-on user. The console session may have no
-    ///     user (for example when you connect over RDP), so the console session isn't used.
-    /// </summary>
-    private static uint FindLoggedOnUserSession()
-    {
-        const int WtsActive = 0;
-        const int WtsUserName = 5;
-        if (!WTSEnumerateSessionsW(IntPtr.Zero, 0, 1, out IntPtr infos, out int count))
-        {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "WTSEnumerateSessions failed.");
-        }
-
-        try
-        {
-            int size = Marshal.SizeOf<WTS_SESSION_INFO>();
-            for (int i = 0; i < count; i++)
-            {
-                WTS_SESSION_INFO info = Marshal.PtrToStructure<WTS_SESSION_INFO>(infos + i * size);
-                if (info.State != WtsActive)
-                {
-                    continue;
-                }
-
-                if (WTSQuerySessionInformationW(IntPtr.Zero, info.SessionId, WtsUserName, out IntPtr buf, out _))
-                {
-                    try
-                    {
-                        string? user = Marshal.PtrToStringUni(buf);
-                        if (!string.IsNullOrEmpty(user))
-                        {
-                            return info.SessionId;
-                        }
-                    }
-                    finally
-                    {
-                        WTSFreeMemory(buf);
-                    }
-                }
-            }
-        }
-        finally
-        {
-            WTSFreeMemory(infos);
-        }
-
-        return InvalidSessionId;
     }
 
     private static void CloseIfValid(IntPtr handle)

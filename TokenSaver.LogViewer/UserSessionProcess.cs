@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
+using TokenSaver.WindowsSession;
 
 namespace TokenSaver.LogViewer;
 
@@ -9,14 +10,12 @@ namespace TokenSaver.LogViewer;
 /// Starts a process on the desktop of the user signed in at the console. A Windows service runs in session 0, whose
 /// windows nobody sees, so the viewer is started with that user's token instead. Needs the privilege services running
 /// as LocalSystem have (SeTcbPrivilege); it throws <see cref="Win32Exception"/> without it or without a signed-in user.
+/// Token and session calls come from TokenSaver.WindowsSession.
 /// </summary>
 #pragma warning disable CA1060, CA1838 // A small private P/Invoke surface for one purpose; StringBuilder buffers are the documented pattern for these calls.
 [SupportedOSPlatform("windows")]
 internal static class UserSessionProcess
 {
-    private const uint TokenAll = 0xF01FF;
-    private const int SecurityImpersonation = 2;
-    private const int TokenPrimary = 1;
     private const uint CreateUnicodeEnvironment = 0x400;
     private const uint CreateNewConsole = 0x10;
 
@@ -26,44 +25,31 @@ internal static class UserSessionProcess
     /// <summary>Resolves a path that holds environment variables (for example %LOCALAPPDATA%) for the console user.</summary>
     public static string ExpandForConsoleUser(string template)
     {
-        IntPtr token = QueryConsoleUserToken();
-        try
+        using var token = OpenConsoleUserToken();
+        var buffer = new StringBuilder(1024);
+        if (!ExpandEnvironmentStringsForUser(token.Handle, template, buffer, (uint)buffer.Capacity))
         {
-            var buffer = new StringBuilder(1024);
-            if (!ExpandEnvironmentStringsForUser(token, template, buffer, (uint)buffer.Capacity))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
 
-            return buffer.ToString();
-        }
-        finally
-        {
-            _ = CloseHandle(token);
-        }
+        return buffer.ToString();
     }
 
     /// <summary>Starts <paramref name="commandLine"/> (program path first) on the console user's desktop.</summary>
     public static int Start(string commandLine)
     {
-        IntPtr userToken = QueryConsoleUserToken();
-        IntPtr primary = IntPtr.Zero;
+        using var primary = OpenConsoleUserToken();
         IntPtr environment = IntPtr.Zero;
         try
         {
-            if (!DuplicateTokenEx(userToken, TokenAll, IntPtr.Zero, SecurityImpersonation, TokenPrimary, out primary))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error());
-            }
-
-            if (!CreateEnvironmentBlock(out environment, primary, false))
+            if (!UserSession.TryCreateEnvironmentBlock(primary, out environment))
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
 
             var startup = new StartupInfo { cb = Marshal.SizeOf<StartupInfo>(), lpDesktop = "winsta0\\default" };
             var builder = new StringBuilder(commandLine);
-            if (!CreateProcessAsUser(primary, null, builder, IntPtr.Zero, IntPtr.Zero, false, CreateUnicodeEnvironment | CreateNewConsole, environment, null, ref startup, out ProcessInformation info))
+            if (!CreateProcessAsUser(primary.Handle, null, builder, IntPtr.Zero, IntPtr.Zero, false, CreateUnicodeEnvironment | CreateNewConsole, environment, null, ref startup, out ProcessInformation info))
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
@@ -74,34 +60,19 @@ internal static class UserSessionProcess
         }
         finally
         {
-            if (environment != IntPtr.Zero)
-            {
-                _ = DestroyEnvironmentBlock(environment);
-            }
-
-            if (primary != IntPtr.Zero)
-            {
-                _ = CloseHandle(primary);
-            }
-
-            _ = CloseHandle(userToken);
+            UserSession.DestroyEnvironmentBlock(environment);
         }
     }
 
-    private static IntPtr QueryConsoleUserToken()
+    private static UserToken OpenConsoleUserToken()
     {
-        uint session = WTSGetActiveConsoleSessionId();
-        if (session == 0xFFFFFFFF)
+        uint session = UserSession.ActiveConsoleSession();
+        if (session == UserSession.NoSession)
         {
             throw new Win32Exception("No user is signed in at the console.");
         }
 
-        if (!WTSQueryUserToken(session, out IntPtr token))
-        {
-            throw new Win32Exception(Marshal.GetLastWin32Error());
-        }
-
-        return token;
+        return UserSession.OpenPrimaryToken(session, bindToSession: false);
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -137,25 +108,6 @@ internal static class UserSessionProcess
     }
 
 #pragma warning disable SYSLIB1054, CA5392 // Plain P/Invoke declarations; the marshalling is simple and explicit.
-    [DllImport("kernel32.dll")]
-    private static extern uint WTSGetActiveConsoleSessionId();
-
-    [DllImport("wtsapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool WTSQueryUserToken(uint sessionId, out IntPtr token);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DuplicateTokenEx(IntPtr existing, uint access, IntPtr attributes, int impersonation, int tokenType, out IntPtr duplicate);
-
-    [DllImport("userenv.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CreateEnvironmentBlock(out IntPtr environment, IntPtr token, [MarshalAs(UnmanagedType.Bool)] bool inherit);
-
-    [DllImport("userenv.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DestroyEnvironmentBlock(IntPtr environment);
-
     [DllImport("userenv.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ExpandEnvironmentStringsForUser(IntPtr token, string source, StringBuilder destination, uint size);

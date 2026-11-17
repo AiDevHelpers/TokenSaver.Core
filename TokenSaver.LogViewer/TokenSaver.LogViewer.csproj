@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\TokenSaver.LogHelper\TokenSaver.LogHelper.csproj" />
+    <ProjectReference Include="..\TokenSaver.WindowsSession\TokenSaver.WindowsSession.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />

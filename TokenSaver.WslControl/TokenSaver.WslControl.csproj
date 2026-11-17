@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\TokenSaver.Common.Core\TokenSaver.Common.Core.csproj" />
+    <ProjectReference Include="..\TokenSaver.WindowsSession\TokenSaver.WindowsSession.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Community.Wsl.Sdk" Version="3.1.0" />
