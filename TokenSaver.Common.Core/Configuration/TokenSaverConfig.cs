@@ -114,6 +114,18 @@ public class TokenSaverConfig
     /// </summary>
     public string AllowedCommands { get; set; } = "";
 
+    /// <summary>
+    ///     When true (default) every /mcp and /api request must carry the per-install bearer token. The Host and
+    ///     Origin checks apply either way.
+    /// </summary>
+    public bool RequireAuth { get; set; } = true;
+
+    /// <summary>Token file path. Empty means %ProgramData%\TokenSaver\auth-token.</summary>
+    public string AuthTokenPath { get; set; } = "";
+
+    /// <summary>Local group whose members may read the token file.</summary>
+    public string AuthGroupName { get; set; } = "TokenSaver Users";
+
     /// <summary>Records the latest root a session resolved, for callers that run outside any request.</summary>
     public void RecordResolvedRoot(string root)
     {
