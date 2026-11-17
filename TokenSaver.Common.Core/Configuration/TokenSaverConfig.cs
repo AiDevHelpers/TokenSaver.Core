@@ -108,6 +108,12 @@ public class TokenSaverConfig
         set => _configuredRoot = value ?? "";
     }
 
+    /// <summary>
+    ///     Executables the <c>run_tests</c> and <c>lint_fix</c> tools may launch, comma separated. A command whose
+    ///     executable is not listed (or is given as a path) is refused. Empty means the built-in default list.
+    /// </summary>
+    public string AllowedCommands { get; set; } = "";
+
     /// <summary>Records the latest root a session resolved, for callers that run outside any request.</summary>
     public void RecordResolvedRoot(string root)
     {

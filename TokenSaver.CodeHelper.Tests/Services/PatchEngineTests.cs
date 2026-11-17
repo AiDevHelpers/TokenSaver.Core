@@ -94,4 +94,107 @@ public sealed class PatchEngineTests : IDisposable
 
         Assert.Empty(Directory.GetFiles(_root, "*.tmp"));
     }
+
+    [Theory]
+    [InlineData("../outside.txt")]
+    [InlineData("sub/../../outside.txt")]
+    public async Task Apply_RefusesPathsThatEscapeTheWorkspace(string relative)
+    {
+        string outside = Path.GetFullPath(Path.Combine(_root, "..", "outside.txt"));
+        await File.WriteAllTextAsync(outside, "keep");
+        try
+        {
+            PatchResult result = await _engine.ApplyAsync(Replace(relative, "keep", "changed"), _root);
+
+            Assert.False(result.Success);
+            Assert.Contains("outside the workspace root", result.Error, StringComparison.Ordinal);
+            Assert.Equal("keep", await File.ReadAllTextAsync(outside));
+        }
+        finally
+        {
+            File.Delete(outside);
+        }
+    }
+
+    [Fact]
+    public async Task Apply_RefusesAnAbsolutePathOutsideTheWorkspace()
+    {
+        string other = Path.Combine(Path.GetTempPath(), "other-" + Guid.NewGuid().ToString("N") + ".txt");
+        await File.WriteAllTextAsync(other, "keep");
+        try
+        {
+            PatchResult result = await _engine.ApplyAsync(Replace(other, "keep", "changed"), _root);
+
+            Assert.False(result.Success);
+            Assert.Equal("keep", await File.ReadAllTextAsync(other));
+        }
+        finally
+        {
+            File.Delete(other);
+        }
+    }
+
+    [Fact]
+    public async Task Apply_WithNoWorkspaceRoot_FailsInsteadOfUsingTheWorkingDirectory()
+    {
+        PatchResult result = await _engine.ApplyAsync(Replace("a.txt", "x", "y"), "");
+
+        Assert.False(result.Success);
+        Assert.Contains("No workspace root", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Rollback_RestoresFromARealBackup()
+    {
+        string path = Path.Combine(_root, "r.txt");
+        await File.WriteAllTextAsync(path, "before");
+        PatchResult applied = await _engine.ApplyAsync(Replace("r.txt", "before", "after"), _root);
+        Assert.True(applied.Success, applied.Error);
+
+        bool ok = await _engine.RollbackAsync(applied.BackupPath!, "r.txt", _root);
+
+        Assert.True(ok);
+        Assert.Equal("before", await File.ReadAllTextAsync(path));
+    }
+
+    [Fact]
+    public async Task Rollback_RefusesASourceThatIsNotABackup()
+    {
+        string path = Path.Combine(_root, "target.txt");
+        await File.WriteAllTextAsync(path, "intact");
+        string stranger = Path.Combine(Path.GetTempPath(), "stranger-" + Guid.NewGuid().ToString("N") + ".txt");
+        await File.WriteAllTextAsync(stranger, "payload");
+        try
+        {
+            bool ok = await _engine.RollbackAsync(stranger, "target.txt", _root);
+
+            Assert.False(ok);
+            Assert.Equal("intact", await File.ReadAllTextAsync(path));
+        }
+        finally
+        {
+            File.Delete(stranger);
+        }
+    }
+
+    [Fact]
+    public async Task Rollback_RefusesATargetOutsideTheWorkspace()
+    {
+        string path = Path.Combine(_root, "src.txt");
+        await File.WriteAllTextAsync(path, "x");
+        PatchResult applied = await _engine.ApplyAsync(Replace("src.txt", "x", "y"), _root);
+        string outside = Path.Combine(Path.GetTempPath(), "rb-out-" + Guid.NewGuid().ToString("N") + ".txt");
+        await File.WriteAllTextAsync(outside, "intact");
+        try
+        {
+            bool ok = await _engine.RollbackAsync(applied.BackupPath!, outside, _root);
+
+            Assert.False(ok);
+            Assert.Equal("intact", await File.ReadAllTextAsync(outside));
+        }
+        finally
+        {
+            File.Delete(outside);
+        }
+    }
 }

@@ -1,6 +1,7 @@
 using TokenSaver.CodeHelper.Configuration;
 using TokenSaver.CodeHelper.Indexing;
 using TokenSaver.CodeHelper.Models.Patch;
+using TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -50,7 +51,13 @@ public sealed partial class PatchEngine
 
     public async Task<PatchResult> ApplyAsync(PatchOperation op, string workspaceRoot, CancellationToken ct = default)
     {
-        string abs = ResolveAbsPath(op.FilePath, workspaceRoot);
+        PathCheck target = WorkspacePathGuard.Resolve(op.FilePath, workspaceRoot);
+        if (!target.Ok)
+        {
+            return Fail(op, target.Error!);
+        }
+
+        string abs = target.FullPath;
 
         if (!File.Exists(abs))
         {
@@ -162,12 +169,17 @@ public sealed partial class PatchEngine
     public async Task<bool> RollbackAsync(string backupPath, string targetFilePath, string workspaceRoot,
         CancellationToken ct = default)
     {
-        if (!File.Exists(backupPath))
+        // The source must be a backup this engine wrote and the target must be inside the workspace;
+        // otherwise this would be an arbitrary file copy.
+        PathCheck source = WorkspacePathGuard.Resolve(backupPath, workspaceRoot, BackupRoot(workspaceRoot));
+        PathCheck dest = WorkspacePathGuard.Resolve(targetFilePath, workspaceRoot);
+        if (!source.Ok || !dest.Ok || !File.Exists(source.FullPath))
         {
             return false;
         }
 
-        string abs = ResolveAbsPath(targetFilePath, workspaceRoot);
+        backupPath = source.FullPath;
+        string abs = dest.FullPath;
         try
         {
             File.Copy(backupPath, abs, true);
@@ -347,9 +359,7 @@ public sealed partial class PatchEngine
 
     private async Task<string> WriteBackupAsync(string abs, string relPath, string workspaceRoot, CancellationToken ct)
     {
-        string backupRoot = Path.IsPathRooted(_config.BackupPath)
-            ? _config.BackupPath
-            : Path.Combine(workspaceRoot, _config.BackupPath);
+        string backupRoot = BackupRoot(workspaceRoot);
         _ = Directory.CreateDirectory(backupRoot);
 
         // Millisecond timestamp plus a short guid: two edits to one file inside the same second
@@ -436,9 +446,11 @@ public sealed partial class PatchEngine
         }
     }
 
-    private string ResolveAbsPath(string filePath, string workspaceRoot)
+    private string BackupRoot(string workspaceRoot)
     {
-        return Path.IsPathRooted(filePath) ? filePath : Path.Combine(workspaceRoot, filePath);
+        return Path.IsPathRooted(_config.BackupPath)
+            ? _config.BackupPath
+            : Path.Combine(workspaceRoot, _config.BackupPath);
     }
 
     private static int FindNthOccurrence(string source, string pattern, int n)
