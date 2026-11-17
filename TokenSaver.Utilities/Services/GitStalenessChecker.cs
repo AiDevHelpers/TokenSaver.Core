@@ -290,6 +290,7 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
             using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
             Task<string> outputTask = process.StandardOutput.ReadToEndAsync(linked.Token);
+            Task<string> errorTask = process.StandardError.ReadToEndAsync(linked.Token);
             try
             {
                 await process.WaitForExitAsync(linked.Token);
@@ -300,14 +301,21 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
                 {
                     process.Kill(true);
                 }
-                catch
+                catch (InvalidOperationException)
                 {
+                    // Already exited.
+                }
+
+                if (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
+                {
+                    Debug.WriteLine($"git {arguments} timed out after 5s in {workingDir}; treating as unavailable.");
                 }
 
                 return null;
             }
 
             string output = await outputTask;
+            _ = await errorTask;
             return process.ExitCode == 0 ? output : null;
         }
         catch

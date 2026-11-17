@@ -315,8 +315,21 @@ public partial class OllamaService
 
             using Process process = new() { StartInfo = startInfo };
             _ = process.Start();
-            string stdout = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+            Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(timeout.Token);
+            Task<string> stderrTask = process.StandardError.ReadToEndAsync(timeout.Token);
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                process.Kill(entireProcessTree: true);
+                return new GpuStats { Gpu = "unavailable" };
+            }
+
+            string stdout = await stdoutTask;
+            _ = await stderrTask;
 
             if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(stdout))
             {
