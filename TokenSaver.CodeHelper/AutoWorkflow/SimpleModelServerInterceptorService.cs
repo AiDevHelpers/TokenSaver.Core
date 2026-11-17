@@ -90,21 +90,51 @@ public sealed partial class SimpleModelServerInterceptorService(
 
         return classification switch
         {
-            DraftClassification.ArchitectureOrDesign => SimpleModelServerInterceptionResult.Deferred(
-                                "This task appears to require architecture or design decisions. " +
-                                "The draft model cannot make these without guidance.\n\n" +
-                                "Please describe the high-level design, types, and interfaces needed. " +
-                                "Once you provide the skeleton, I can implement the details.",
-                                true),
-            DraftClassification.Uncertain => SimpleModelServerInterceptionResult.Deferred(
-                                "The local draft model is not confident about this request. " +
-                                "Please provide more detail or implement this directly.\n\n" +
-                                "If you describe the approach or skeleton design, I can help with the implementation.",
-                                false),
+            DraftClassification.ArchitectureOrDesign => SimpleModelServerInterceptionResult.Deferred(ArchitectureDeferral, true),
+            DraftClassification.Uncertain => SimpleModelServerInterceptionResult.Deferred(UncertainDeferral, false),
             DraftClassification.CodeTask => await TryImplementAsync(userPrompt, workspaceRoot, ct),
             _ => SimpleModelServerInterceptionResult.PassThrough,
         };
     }
+
+    /// <summary>
+    ///     Classifies a code-writing prompt without implementing anything: never calls the patch
+    ///     engine and never touches a file. Architecture and uncertain requests return a
+    ///     deferral; a concrete code task passes through, so the calling AI (or the explicit
+    ///     <c>code_work</c> tool) does the writing. This is the only entry point the request
+    ///     middleware uses.
+    /// </summary>
+    public async Task<SimpleModelServerInterceptionResult> TryAdviseAsync(
+        string userPrompt,
+        CancellationToken ct = default)
+    {
+        if (!_workflow.DetectCodeBuildIntent(userPrompt))
+        {
+            LogNotCodeBuildIntent(_log);
+            return SimpleModelServerInterceptionResult.PassThrough;
+        }
+
+        DraftClassification classification = await ClassifyWithSimpleModelServerAsync(userPrompt, ct);
+        LogSimpleModelServerClassification(_log, classification);
+
+        return classification switch
+        {
+            DraftClassification.ArchitectureOrDesign => SimpleModelServerInterceptionResult.Deferred(ArchitectureDeferral, true),
+            DraftClassification.Uncertain => SimpleModelServerInterceptionResult.Deferred(UncertainDeferral, false),
+            _ => SimpleModelServerInterceptionResult.PassThrough,
+        };
+    }
+
+    private const string ArchitectureDeferral =
+        "This task appears to require architecture or design decisions. " +
+        "The draft model cannot make these without guidance.\n\n" +
+        "Please describe the high-level design, types, and interfaces needed. " +
+        "Once you provide the skeleton, I can implement the details.";
+
+    private const string UncertainDeferral =
+        "The local draft model is not confident about this request. " +
+        "Please provide more detail or implement this directly.\n\n" +
+        "If you describe the approach or skeleton design, I can help with the implementation.";
 
     /// <summary>
     ///     After the calling AI provides architecture guidance, use the draft model

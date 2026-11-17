@@ -419,7 +419,7 @@ public sealed record CodeHelperBehaviorConfig
 
     public static CodeHelperBehaviorConfig Defaults() => new()
     {
-        AutoEnabled = true,
+        AutoEnabled = false,
         RequireAnchorMatch = true,
         Ownership = new OwnershipThresholds { CanDoThreshold = 0.70, DeferThreshold = 0.40 },
         Planner = new PlannerThresholds { ConfidenceThreshold = 0.65, ModelCallThreshold = 0.55 },
