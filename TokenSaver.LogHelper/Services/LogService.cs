@@ -20,7 +20,9 @@ public sealed class LogService : ILogService
 
     private readonly IReadOnlyList<ILogSourceProvider> _providers;
     private readonly LogHelperOptions _options;
-    private readonly RunSnapshotStore? _runs;
+    private RunSnapshotStore? _runsCache;
+    private string? _runsCacheDirectory;
+    private readonly object _runsLock = new();
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
 
     public LogService(IEnumerable<ILogSourceProvider> providers, LogHelperOptions options)
@@ -34,9 +36,30 @@ public sealed class LogService : ILogService
         _providers = providers.ToList();
         _options = options;
         _delay = delay;
-        _runs = string.IsNullOrWhiteSpace(options.StateDirectory)
-            ? null
-            : new RunSnapshotStore(options.StateDirectory);
+    }
+
+    /// <summary>
+    ///     The run-snapshot store for the current state directory, created on first use. The directory can
+    ///     appear after startup (workspace root learned from the client), so it is re-read per call.
+    /// </summary>
+    private RunSnapshotStore? GetRuns()
+    {
+        string? directory = _options.StateDirectory;
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return null;
+        }
+
+        lock (_runsLock)
+        {
+            if (_runsCache is null || !string.Equals(_runsCacheDirectory, directory, StringComparison.Ordinal))
+            {
+                _runsCache = new RunSnapshotStore(directory);
+                _runsCacheDirectory = directory;
+            }
+
+            return _runsCache;
+        }
     }
 
     public async Task<IReadOnlyList<LogChannelInfo>> ListChannelsAsync(string? nameFilter, LogRequestContext context, CancellationToken ct)
@@ -109,7 +132,8 @@ public sealed class LogService : ILogService
 
     public async Task<LogQueryResult> MarkRunAsync(ChannelId channel, LogRequestContext context, CancellationToken ct)
     {
-        if (_runs is null)
+        RunSnapshotStore? runs = GetRuns();
+        if (runs is null)
         {
             return Fail("No state directory is configured, so runs cannot be marked.");
         }
@@ -125,7 +149,7 @@ public sealed class LogService : ILogService
         string runId = NewRunId();
         var snapshot = RunSnapshot.FromRows(runId, DateTimeOffset.UtcNow, rows);
 
-        await _runs.AppendAsync(channel.ToString(), snapshot, ct);
+        await runs.AppendAsync(channel.ToString(), snapshot, ct);
 
         return Ok(
             string.Create(CultureInfo.InvariantCulture, $"{runId} marked: {rows.Count} templates from {entries.Count} entries"),
@@ -216,16 +240,17 @@ public sealed class LogService : ILogService
 
     private async Task<LogQueryResult> QueryAgainstRunAsync(LogQueryRequest request, CancellationToken ct)
     {
-        if (_runs is null)
+        RunSnapshotStore? runs = GetRuns();
+        if (runs is null)
         {
             return Fail("No state directory is configured, so runs cannot be compared.");
         }
 
-        IReadOnlyList<RunSnapshot> stored = await _runs.ListAsync(request.Channel.ToString(), ct);
+        IReadOnlyList<RunSnapshot> stored = await runs.ListAsync(request.Channel.ToString(), ct);
         RunSnapshot? baseline;
         if (string.Equals(request.Since, LastRunToken, StringComparison.Ordinal))
         {
-            baseline = stored.LastOrDefault();
+            baseline = stored.Count > 0 ? stored[^1] : null;
             if (baseline is null)
             {
                 return Ok("no baseline for this channel yet; call LogMarkRun first.", 0, null, false);
@@ -274,7 +299,7 @@ public sealed class LogService : ILogService
         }
 
         var kept = new HashSet<LogEntry>(filtered.Kept, ReferenceEqualityComparer.Instance);
-        IReadOnlyList<TemplateRow> rows = candidates.Where(c => kept.Contains(c.Entry)).Select(c => c.Row).ToList();
+        List<TemplateRow> rows = candidates.Where(c => kept.Contains(c.Entry)).Select(c => c.Row).ToList();
 
         SummaryText summary = SummaryFormatter.Format(rows, request.MaxTokens);
         var text = new System.Text.StringBuilder();

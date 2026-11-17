@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-using System.Diagnostics;
-using System.Text;
+using TokenSaver.Common.Core.Processes;
 
 namespace TokenSaver.LanguageHelpers.Core.Process;
 
@@ -61,89 +60,37 @@ public sealed class ProcessRunner(ILogger<ProcessRunner> logger) : IProcessRunne
         TimeSpan? timeout = null,
         CancellationToken ct = default)
     {
-        ProcessStartInfo psi = new()
-        {
-            FileName = fileName,
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true
-        };
-        foreach (string arg in arguments)
-        {
-            psi.ArgumentList.Add(arg);
-        }
-
-        using System.Diagnostics.Process process = new() { StartInfo = psi };
-
-        StringBuilder stdout = new();
-        StringBuilder stderr = new();
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data is not null)
+        CommandResult result = await CommandRunner.RunAsync(
+            new CommandRequest
             {
-                stdout.AppendLine(e.Data);
-            }
-        };
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is not null)
-            {
-                stderr.AppendLine(e.Data);
-            }
-        };
+                FileName = fileName,
+                Arguments = arguments,
+                WorkingDirectory = workingDirectory,
+                Timeout = timeout ?? DefaultTimeout,
+            },
+            ct);
 
-        try
-        {
-            if (!process.Start())
-            {
-                return NotLaunched(fileName);
-            }
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        if (!result.Launched)
         {
             if (logger.IsEnabled(LogLevel.Debug))
             {
-                logger.LogDebug(ex, "Failed to launch {FileName}", fileName);
+                logger.LogDebug("Failed to launch {FileName}: {Error}", fileName, result.LaunchError);
             }
 
             return NotLaunched(fileName);
         }
 
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        using CancellationTokenSource timeoutCts = new(timeout ?? DefaultTimeout);
-        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
-
-        try
+        if (result.TimedOut)
         {
-            await process.WaitForExitAsync(linked.Token);
-        }
-        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
-        {
-            TryKill(process);
             logger.LogWarning("{FileName} timed out after {Timeout}", fileName, timeout ?? DefaultTimeout);
-            return new ProcessResult
-            {
-                ExitCode = -1,
-                StandardOutput = stdout.ToString(),
-                StandardError = stderr.ToString(),
-                TimedOut = true
-            };
-        }
-        catch (OperationCanceledException)
-        {
-            TryKill(process);
-            throw;
         }
 
         return new ProcessResult
         {
-            ExitCode = process.ExitCode,
-            StandardOutput = stdout.ToString(),
-            StandardError = stderr.ToString()
+            ExitCode = result.ExitCode,
+            StandardOutput = result.StdOut,
+            StandardError = result.StdErr,
+            TimedOut = result.TimedOut,
         };
     }
 
@@ -152,29 +99,13 @@ public sealed class ProcessRunner(ILogger<ProcessRunner> logger) : IProcessRunne
     {
         // "--version" is understood by dotnet, pwsh, ruff, python, and virtually every CLI we target.
         // We only care whether the executable launches, not what it prints.
-        try
-        {
-            ProcessResult result = await RunAsync(
-                fileName,
-                ["--version"],
-                Directory.GetCurrentDirectory(),
-                TimeSpan.FromSeconds(20),
-                ct);
-            return result.Launched;
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            if (logger.IsEnabled(LogLevel.Debug))
-            {
-                logger.LogDebug(ex, "Availability probe for {FileName} threw", fileName);
-            }
-
-            return false;
-        }
+        ProcessResult result = await RunAsync(
+            fileName,
+            ["--version"],
+            Directory.GetCurrentDirectory(),
+            TimeSpan.FromSeconds(20),
+            ct);
+        return result.Launched;
     }
 
     private static ProcessResult NotLaunched(string fileName) => new()
@@ -184,22 +115,4 @@ public sealed class ProcessRunner(ILogger<ProcessRunner> logger) : IProcessRunne
         StandardError = $"Executable '{fileName}' could not be launched (not found on PATH?).",
         Launched = false
     };
-
-    private void TryKill(System.Diagnostics.Process process)
-    {
-        try
-        {
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-            }
-        }
-        catch (Exception ex)
-        {
-            if (logger.IsEnabled(LogLevel.Debug))
-            {
-                logger.LogDebug(ex, "Failed to kill process {Id}", process.Id);
-            }
-        }
-    }
 }

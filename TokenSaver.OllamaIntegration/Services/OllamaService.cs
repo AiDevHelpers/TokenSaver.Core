@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using System.Diagnostics;
+using TokenSaver.Common.Core.Processes;
 using System.Linq;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -303,22 +304,15 @@ public partial class OllamaService
     {
         try
         {
-            ProcessStartInfo startInfo = new()
+            CommandResult run = await CommandRunner.RunAsync(new CommandRequest
             {
                 FileName = "nvidia-smi",
-                Arguments = "--query-gpu=name,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+                Arguments = ["--query-gpu=name,memory.used,memory.total,utilization.gpu", "--format=csv,noheader,nounits"],
+                Timeout = TimeSpan.FromSeconds(10),
+            });
 
-            using Process process = new() { StartInfo = startInfo };
-            _ = process.Start();
-            string stdout = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
-
-            if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(stdout))
+            string stdout = run.StdOut;
+            if (!run.Success || string.IsNullOrWhiteSpace(stdout))
             {
                 return new GpuStats { Gpu = "unavailable" };
             }

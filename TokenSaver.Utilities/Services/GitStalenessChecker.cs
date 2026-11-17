@@ -4,6 +4,7 @@ using TokenSaver.Database.Context.Entities;
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
+using TokenSaver.Common.Core.Processes;
 
 namespace TokenSaver.Utilities.Services;
 
@@ -270,47 +271,24 @@ public sealed partial class GitStalenessChecker(ILogger<GitStalenessChecker> log
     {
         try
         {
-            ProcessStartInfo psi = new()
-            {
-                FileName = "git",
-                Arguments = arguments,
-                WorkingDirectory = workingDir,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-            using Process? process = Process.Start(psi);
-            if (process == null)
-            {
-                return null;
-            }
-
-            using CancellationTokenSource timeoutCts = new(TimeSpan.FromSeconds(5));
-            using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
-
-            Task<string> outputTask = process.StandardOutput.ReadToEndAsync(linked.Token);
-            try
-            {
-                await process.WaitForExitAsync(linked.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                try
+            CommandResult result = await CommandRunner.RunAsync(
+                new CommandRequest
                 {
-                    process.Kill(true);
-                }
-                catch
-                {
-                }
+                    FileName = "git",
+                    Arguments = CommandLine.Split(arguments),
+                    WorkingDirectory = workingDir,
+                    Timeout = TimeSpan.FromSeconds(5),
+                },
+                ct);
 
-                return null;
+            if (result.TimedOut)
+            {
+                Debug.WriteLine($"git {arguments} timed out after 5s in {workingDir}; treating as unavailable.");
             }
 
-            string output = await outputTask;
-            return process.ExitCode == 0 ? output : null;
+            return result.Success ? result.StdOut : null;
         }
-        catch
+        catch (OperationCanceledException)
         {
             return null;
         }

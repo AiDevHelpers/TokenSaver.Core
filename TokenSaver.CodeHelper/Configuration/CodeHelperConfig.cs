@@ -23,8 +23,11 @@ public class CodeHelperConfig
 
     // ── Auto-workflow ──────────────────────────────────────────────────────────
 
-    /// <summary>Enable auto-workflow intercept for code-build prompts. On by default.</summary>
-    public bool AutoEnabled { get; set; } = true;
+    /// <summary>
+    ///     Enable the advisory auto-workflow intercept for allowlisted tools. Opt-in; off by default. The intercept
+    ///     only adds deferral guidance to the prompt — it never writes files (that is the explicit <c>code_work</c> tool).
+    /// </summary>
+    public bool AutoEnabled { get; set; }
 
     /// <summary>Seconds to wait for the calling AI to return a skeleton before timing out.</summary>
     public int SkeletonTimeoutSec { get; set; } = 60;

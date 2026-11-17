@@ -82,11 +82,41 @@ public sealed record LogReadBatch(
 
 public sealed class LogHelperOptions
 {
-    /// <summary>Directories a file source may read from. Empty means nothing is readable.</summary>
-    public IReadOnlyList<string> AllowedRoots { get; set; } = Array.Empty<string>();
+    private IReadOnlyList<string> _allowedRoots = Array.Empty<string>();
+    private string? _stateDirectory;
 
-    /// <summary>Where run snapshots and other state are written.</summary>
-    public string? StateDirectory { get; set; }
+    /// <summary>
+    ///     Resolves the workspace root each time it is needed, so a root that is only learned after startup
+    ///     (a client's first call) is picked up. Null or empty means no workspace root yet.
+    /// </summary>
+    public Func<string?>? WorkspaceRootProvider { get; set; }
+
+    /// <summary>Directories a file source may read from. Empty means nothing is readable. Includes the current workspace root when a provider is set.</summary>
+    public IReadOnlyList<string> AllowedRoots
+    {
+        get
+        {
+            string? root = WorkspaceRootProvider?.Invoke();
+            return string.IsNullOrWhiteSpace(root) ? _allowedRoots : [.. _allowedRoots, root];
+        }
+        set => _allowedRoots = value;
+    }
+
+    /// <summary>Where run snapshots and other state are written. Defaults to .tokensaver/logs under the current workspace root.</summary>
+    public string? StateDirectory
+    {
+        get
+        {
+            if (_stateDirectory is not null)
+            {
+                return _stateDirectory;
+            }
+
+            string? root = WorkspaceRootProvider?.Invoke();
+            return string.IsNullOrWhiteSpace(root) ? null : Path.Combine(root, ".tokensaver", "logs");
+        }
+        set => _stateDirectory = value;
+    }
 
     public bool RedactionEnabled { get; set; } = true;
 

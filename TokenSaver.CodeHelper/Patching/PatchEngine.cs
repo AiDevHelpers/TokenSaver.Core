@@ -1,6 +1,7 @@
 using TokenSaver.CodeHelper.Configuration;
 using TokenSaver.CodeHelper.Indexing;
 using TokenSaver.CodeHelper.Models.Patch;
+using TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -50,7 +51,13 @@ public sealed partial class PatchEngine
 
     public async Task<PatchResult> ApplyAsync(PatchOperation op, string workspaceRoot, CancellationToken ct = default)
     {
-        string abs = ResolveAbsPath(op.FilePath, workspaceRoot);
+        PathCheck target = WorkspacePathGuard.Resolve(op.FilePath, workspaceRoot);
+        if (!target.Ok)
+        {
+            return Fail(op, target.Error!);
+        }
+
+        string abs = target.FullPath;
 
         if (!File.Exists(abs))
         {
@@ -58,9 +65,12 @@ public sealed partial class PatchEngine
         }
 
         string content;
+        Encoding encoding;
         try
         {
-            content = await File.ReadAllTextAsync(abs, ct);
+            byte[] raw = await File.ReadAllBytesAsync(abs, ct);
+            encoding = DetectEncoding(raw);
+            content = encoding.GetString(raw, GetPreambleLength(raw), raw.Length - GetPreambleLength(raw));
         }
         catch (Exception ex)
         {
@@ -109,7 +119,7 @@ public sealed partial class PatchEngine
         // Write
         try
         {
-            await File.WriteAllTextAsync(abs, newContent, ct);
+            await WriteAtomicAsync(abs, newContent, encoding, ct);
         }
         catch (Exception ex)
         {
@@ -159,12 +169,17 @@ public sealed partial class PatchEngine
     public async Task<bool> RollbackAsync(string backupPath, string targetFilePath, string workspaceRoot,
         CancellationToken ct = default)
     {
-        if (!File.Exists(backupPath))
+        // The source must be a backup this engine wrote and the target must be inside the workspace;
+        // otherwise this would be an arbitrary file copy.
+        PathCheck source = WorkspacePathGuard.Resolve(backupPath, workspaceRoot, BackupRoot(workspaceRoot));
+        PathCheck dest = WorkspacePathGuard.Resolve(targetFilePath, workspaceRoot);
+        if (!source.Ok || !dest.Ok || !File.Exists(source.FullPath))
         {
             return false;
         }
 
-        string abs = ResolveAbsPath(targetFilePath, workspaceRoot);
+        backupPath = source.FullPath;
+        string abs = dest.FullPath;
         try
         {
             File.Copy(backupPath, abs, true);
@@ -344,22 +359,98 @@ public sealed partial class PatchEngine
 
     private async Task<string> WriteBackupAsync(string abs, string relPath, string workspaceRoot, CancellationToken ct)
     {
-        string backupRoot = Path.IsPathRooted(_config.BackupPath)
-            ? _config.BackupPath
-            : Path.Combine(workspaceRoot, _config.BackupPath);
+        string backupRoot = BackupRoot(workspaceRoot);
         _ = Directory.CreateDirectory(backupRoot);
 
-        string ts = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-        string safeName = relPath.Replace('/', '_').Replace('\\', '_');
-        string dest = Path.Combine(backupRoot, $"{ts}_{safeName}");
+        // Millisecond timestamp plus a short guid: two edits to one file inside the same second
+        // must not share a backup name, or the second overwrites the first (the original).
+        string ts = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
+        string unique = Guid.NewGuid().ToString("N")[..6];
+        string safeName = relPath.Replace('/', '_').Replace('\\', '_').Replace(':', '_');
+        string dest = Path.Combine(backupRoot, $"{ts}_{unique}_{safeName}");
 
-        await File.WriteAllTextAsync(dest, await File.ReadAllTextAsync(abs, ct), ct);
+        // Byte copy: no decode/re-encode, so the backup is identical to the original.
+        await using (FileStream src = new(abs, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, true))
+        await using (FileStream dst = new(dest, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true))
+        {
+            await src.CopyToAsync(dst, ct);
+        }
+
         return dest;
     }
 
-    private string ResolveAbsPath(string filePath, string workspaceRoot)
+    private static int GetPreambleLength(byte[] raw)
     {
-        return Path.IsPathRooted(filePath) ? filePath : Path.Combine(workspaceRoot, filePath);
+        return raw.Length >= 3 && raw[0] == 0xEF && raw[1] == 0xBB && raw[2] == 0xBF
+            ? 3
+            : raw.Length >= 2 && ((raw[0] == 0xFF && raw[1] == 0xFE) || (raw[0] == 0xFE && raw[1] == 0xFF))
+                ? 2
+                : 0;
+    }
+
+    /// <summary>Picks the file's own encoding (BOM-aware) so an edit does not change it. No BOM means UTF-8 without BOM.</summary>
+    private static Encoding DetectEncoding(byte[] raw)
+    {
+        if (raw.Length >= 3 && raw[0] == 0xEF && raw[1] == 0xBB && raw[2] == 0xBF)
+        {
+            return new UTF8Encoding(true);
+        }
+
+        if (raw.Length >= 2 && raw[0] == 0xFF && raw[1] == 0xFE)
+        {
+            return new UnicodeEncoding(false, true);
+        }
+
+        if (raw.Length >= 2 && raw[0] == 0xFE && raw[1] == 0xFF)
+        {
+            return new UnicodeEncoding(true, true);
+        }
+
+        return new UTF8Encoding(false);
+    }
+
+    /// <summary>Writes to a temp file in the target directory, then swaps it in so a crash never leaves a half-written file.</summary>
+    private static async Task WriteAtomicAsync(string abs, string content, Encoding encoding, CancellationToken ct)
+    {
+        string temp = $"{abs}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            byte[] preamble = encoding.GetPreamble();
+            byte[] body = encoding.GetBytes(content);
+            await using (FileStream fs = new(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true))
+            {
+                await fs.WriteAsync(preamble, ct);
+                await fs.WriteAsync(body, ct);
+            }
+
+            // Antivirus/indexers can hold the target for a few ms right after the backup read.
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    File.Replace(temp, abs, null);
+                    break;
+                }
+                catch (IOException) when (attempt < 5)
+                {
+                    await Task.Delay(25 * attempt, ct);
+                }
+            }
+        }
+        finally
+        {
+            if (File.Exists(temp))
+            {
+                File.Delete(temp);
+            }
+        }
+    }
+
+    private string BackupRoot(string workspaceRoot)
+    {
+        return Path.IsPathRooted(_config.BackupPath)
+            ? _config.BackupPath
+            : Path.Combine(workspaceRoot, _config.BackupPath);
     }
 
     private static int FindNthOccurrence(string source, string pattern, int n)

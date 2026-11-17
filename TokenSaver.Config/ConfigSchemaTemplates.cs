@@ -108,12 +108,12 @@ public static class ConfigSchemaTemplates
     // ── codeHelper ──────────────────────────────────────────────────────────────
 
     private const string AutoEnabledCommented =
-        "    // Master switch for CodeHelper auto-workflow. Default: true.\n" +
-        "    // \"autoEnabled\": true,";
+        "    // Advisory auto-workflow intercept (adds guidance to allowlisted tool prompts; never writes files). Default: false.\n" +
+        "    // \"autoEnabled\": false,";
 
     private const string AutoEnabledUncommented =
-        "    // Master switch for CodeHelper auto-workflow. Default: true.\n" +
-        "    \"autoEnabled\": true,";
+        "    // Advisory auto-workflow intercept (adds guidance to allowlisted tool prompts; never writes files). Default: false.\n" +
+        "    \"autoEnabled\": false,";
 
     private const string RequireAnchorMatchCommented =
         "    // Require an exact anchor-text match before applying a patch. Default: true.\n" +
