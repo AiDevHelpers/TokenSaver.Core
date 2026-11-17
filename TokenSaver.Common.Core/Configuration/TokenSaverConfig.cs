@@ -154,4 +154,7 @@ public class TokenSaverConfig
 
     /// <summary>Token-economy tool surface configuration (distillation, terse-mode, semantic index, savings tracking).</summary>
     public TokenEconomyConfig TokenEconomy { get; set; } = new();
+
+    /// <summary>Log viewer tab: auto-open on <c>LogQuery</c> and the viewer's location.</summary>
+    public LogViewerConfig LogViewer { get; set; } = new();
 }

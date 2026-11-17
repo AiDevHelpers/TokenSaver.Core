@@ -73,12 +73,17 @@ public sealed record LogQueryResult(
 
 public sealed record LogChannelInfo(ChannelId Id, string Description, long? SizeBytes);
 
-/// <summary>One read from a source. <c>Reset</c> is true when the cursor no longer matched and reading restarted.</summary>
+/// <summary>
+/// One read from a source. <c>Reset</c> is true when the cursor no longer matched and reading restarted, so earlier
+/// lines may have been lost. <c>Rotated</c> is true when a rolling file was replaced: the entries then start with the
+/// unread rest of the rolled file, followed by the new file, and nothing was lost or repeated.
+/// </summary>
 public sealed record LogReadBatch(
     IReadOnlyList<LogEntry> Entries,
     string NextCursor,
     bool Reset,
-    int Dropped);
+    int Dropped,
+    bool Rotated = false);
 
 public sealed class LogHelperOptions
 {

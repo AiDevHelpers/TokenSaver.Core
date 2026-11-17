@@ -9,8 +9,10 @@ namespace TokenSaver.LogHelper.Sources;
 /// Resume state for a file source. <see cref="Anchor"/> is a hash of the bytes just before
 /// <see cref="Offset"/>; if the bytes there changed (truncation, rewrite) the cursor no longer matches.
 /// <see cref="Format"/> is the resolved <see cref="LogFormatSpec"/> as JSON, so a channel is sniffed once.
+/// <see cref="Stamp"/> is the file's last-write time (UTC ticks) when it was last read: a file rolled away since then
+/// has a last-write time at or after it, which is how a rolled file is told apart from an old one. 0 means unknown.
 /// </summary>
-internal sealed record FileCursorState(string Path, long Offset, string Anchor, string? Format = null)
+internal sealed record FileCursorState(string Path, long Offset, string Anchor, string? Format = null, long Stamp = 0)
 {
     public const int AnchorBytes = 256;
 
