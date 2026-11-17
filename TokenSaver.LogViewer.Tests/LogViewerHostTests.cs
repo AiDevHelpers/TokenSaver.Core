@@ -241,6 +241,7 @@ public sealed class LogViewerHostTests : IDisposable
     }
 
     /// <summary>Stands in for the viewer process: connects to the pipe, says ready, records what it is sent.</summary>
+#pragma warning disable CA1001 // Test fake: its pipe is closed by Kill or when the process is torn down.
     private sealed class FakeViewer
     {
         private readonly NamedPipeClientStream _client;

@@ -1,5 +1,7 @@
 namespace TokenSaver.WindowsSession;
 
+using static TokenSaver.WindowsSession.NativeMethods;
+
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -146,45 +148,8 @@ public static class UserSession
         public int State;
     }
 
-#pragma warning disable SYSLIB1054, CA5392 // Plain P/Invoke declarations with explicit marshalling.
-    [DllImport("kernel32.dll")]
-    private static extern uint WTSGetActiveConsoleSessionId();
-
-    [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool WTSEnumerateSessionsW(IntPtr server, int reserved, int version, out IntPtr sessionInfo, out int count);
-
-    [DllImport("wtsapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool WTSQuerySessionInformationW(IntPtr server, uint sessionId, int infoClass, out IntPtr buffer, out uint bytesReturned);
-
-    [DllImport("wtsapi32.dll")]
-    private static extern void WTSFreeMemory(IntPtr memory);
-
-    [DllImport("wtsapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool WTSQueryUserToken(uint sessionId, out IntPtr token);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DuplicateTokenEx(IntPtr existing, uint access, IntPtr attributes, int impersonation, int tokenType, out IntPtr duplicate);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetTokenInformation(IntPtr token, int infoClass, ref uint info, int length);
-
-    [DllImport("userenv.dll", EntryPoint = "CreateEnvironmentBlock", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CreateEnvironmentBlock(out IntPtr environment, IntPtr token, [MarshalAs(UnmanagedType.Bool)] bool inherit);
-
-    [DllImport("userenv.dll", EntryPoint = "DestroyEnvironmentBlock", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DestroyEnvironmentBlockNative(IntPtr environment);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool CloseHandle(IntPtr handle);
-#pragma warning restore SYSLIB1054, CA5392
+    // Forwarded to NativeMethods; UserToken releases its handle through this.
+    internal static bool CloseHandle(IntPtr handle) => NativeMethods.CloseHandle(handle);
 }
 
 /// <summary>A primary user token. Dispose it when the processes started with it are no longer needed.</summary>

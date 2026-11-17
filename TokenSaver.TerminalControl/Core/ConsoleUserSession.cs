@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using TokenSaver.TerminalControl.Contracts;
 using TokenSaver.WindowsSession;
+using static TokenSaver.TerminalControl.Core.NativeMethods;
 
 /// <summary>
 /// Starts a terminal in the logged-on user's session. Needed when TokenSaver runs as LocalSystem: a LocalSystem
@@ -81,32 +82,4 @@ public static class ConsoleUserSession
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct STARTUPINFO
-    {
-        public int cb;
-        public string? lpReserved;
-        public string? lpDesktop;
-        public string? lpTitle;
-        public int dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars, dwFillAttribute, dwFlags;
-        public short wShowWindow, cbReserved2;
-        public IntPtr lpReserved2, hStdInput, hStdOutput, hStdError;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PROCESS_INFORMATION
-    {
-        public IntPtr hProcess;
-        public IntPtr hThread;
-        public uint dwProcessId;
-        public uint dwThreadId;
-    }
-
-#pragma warning disable SYSLIB1054, CA5392 // Plain P/Invoke declarations with explicit marshalling.
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern bool CreateProcessAsUserW(IntPtr token, string? applicationName, char[] commandLine, IntPtr processAttributes, IntPtr threadAttributes, bool inheritHandles, uint creationFlags, IntPtr environment, string? currentDirectory, ref STARTUPINFO startupInfo, out PROCESS_INFORMATION processInformation);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool CloseHandle(IntPtr handle);
-#pragma warning restore SYSLIB1054, CA5392
 }
