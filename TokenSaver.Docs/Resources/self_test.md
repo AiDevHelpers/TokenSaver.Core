@@ -1,6 +1,7 @@
 # TokenSaver Full Self-Test
 
 Trigger phrase: "ask tokensaver to run the full self test".
+IDE bridge checks are maintained in the `SperryDev.Ide-Bridge` repository at `docs/self_test.md`.
 
 Run every TokenSaver MCP tool (`mcp__TokenSaver__*`) and report the result of each in a table.
 
@@ -22,18 +23,12 @@ Call these directly and record the result.
 - list_ollama_endpoints
 - agent_config (action: get)
 - model_route (only if a read-only form exists; otherwise SKIPPED)
-- query_ide_status (ideType: VsCode)
-- get_debug_state (ideType: VsCode)
-- get_debug_output (ideType: VsCode)
-- list_breakpoints (ideType: VsCode)
 - get_captured_problems
 - get_problem_summary
 - get_high_priority_issues
 - get_problems_by_file
 - get_problems_by_severity
-- get_last_test_result (ideType: VsCode)
 - get_debug_events
-- search_debug_output (pattern: "error")
 - wsl_status
 - wsl_health
 - container_logs (containerName: "tokensaver-self-test-nonexistent")
@@ -61,16 +56,11 @@ Run these only against `./.tokensaver-test/` or the `./.tokensaver/` cache. Use 
 - run_tests (only if a test project is discoverable in `./.tokensaver-test/`; otherwise SKIPPED)
 - code_work (action: start, prompt: "What is the current working directory?")
 - diff_summarize (repoPath: workspace root, stagedOnly: true)
-- set_breakpoint, then remove_breakpoint (on `.tokensaver-test/sample.txt` line 1; a missing debug session is recorded as a FAIL with its message)
-- execute_step (only if a debug session is active; otherwise SKIPPED)
 
 ## Tier 3: confirm first
 
 Do not run these without explicit approval from the user. Describe what each would do and what approval it needs:
 
-- launch_ide, stop_ide
-- start_debugger, stop_debugger, start_debug_session, stop_debug_session
-- clear_debug_output, clear_all_diagnostics
 - wsl_run, wsl_do, wsl_debug_setup
 - register_mcp_providers
 - set_agent_preference

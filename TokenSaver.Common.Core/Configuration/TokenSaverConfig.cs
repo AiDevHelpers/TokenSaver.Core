@@ -55,11 +55,6 @@ public class TokenSaverConfig
     public int ServerPort { get; set; } = 11436;
     public int ContextSizeLimit { get; set; } = 120_000;
     /// <summary>
-    ///     How IdeRunTests runs tests: "TestExplorer" (default) triggers Test Explorer in the IDE, and "DotnetTest"
-    ///     runs <c>dotnet test</c> with a TRX logger. IdeGetTestResults reads the newest TRX file in both modes.
-    /// </summary>
-    public string IdeTestRunMode { get; set; } = "TestExplorer";
-    /// <summary>
     ///     When true, the console log minimum level is Debug instead of Information (see
     ///     <c>Program.cs</c>, read directly off configuration before <see cref="TokenSaverConfig" />
     ///     is bound). Off by default; <c>scripts/run-dev-server.ps1</c> turns this on in the
@@ -155,6 +150,4 @@ public class TokenSaverConfig
     /// <summary>Token-economy tool surface configuration (distillation, terse-mode, semantic index, savings tracking).</summary>
     public TokenEconomyConfig TokenEconomy { get; set; } = new();
 
-    /// <summary>Log viewer tab: auto-open on <c>LogQuery</c> and the viewer's location.</summary>
-    public LogViewerConfig LogViewer { get; set; } = new();
 }
