@@ -6,7 +6,7 @@ namespace TokenSaver.OllamaIntegration.Services;
 ///     hints, self-check instructions, and token budget trimming.
 ///     The interface lives in <c>TokenSaver.Library</c> so low-level services
 ///     (<see cref="OllamaService" />, PlanBuilder, etc.) can depend on it without
-///     pulling in <c>TokenSaver.AgentHelpers.Core</c>. The concrete implementation is registered
+///     pulling in <c>AiDevHelpers.AgentHelpers.Core</c>. The concrete implementation is registered
 ///     in <c>TokenSaver.MCP</c> backed by <c>AgentAdapterRegistry</c>.
 /// </summary>
 public interface IPromptAdapter

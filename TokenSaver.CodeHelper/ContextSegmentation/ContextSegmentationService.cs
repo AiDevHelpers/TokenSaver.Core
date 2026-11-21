@@ -163,7 +163,7 @@ public class ContextSegmentationService
                 Label = "Agent Adapters",
                 PathPatterns =
                 [
-                    "src/Core/TokenSaver.AgentHelpers.*/**"
+                    "src/Core/AiDevHelpers.AgentHelpers.*/**"
                 ],
                 Priority = SegmentPriority.Optional,
                 PrimaryTaskTypes = ["Code", "Review"],

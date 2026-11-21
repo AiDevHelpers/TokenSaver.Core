@@ -3,7 +3,7 @@ namespace TokenSaver.CodeHelper.Research;
 /// <summary>
 ///     Describes how the calling AI client prefers to receive research context.
 ///     Resolved by the MCP tool layer (which has AgentHelpers) and passed into
-///     ResearchContextService so this library stays free of TokenSaver.AgentHelpers.Core.
+///     ResearchContextService so this library stays free of AiDevHelpers.AgentHelpers.Core.
 /// </summary>
 public sealed record ResearchContextFormat
 {

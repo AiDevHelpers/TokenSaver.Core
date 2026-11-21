@@ -188,7 +188,7 @@ public sealed record RepoHelperBehaviorConfig
 ///     "safe to summarize/omit, because the caller will come back for more."
 ///     </para>
 ///     <para>
-///     Three of the four built-in <c>TokenSaver.AgentHelpers.OpenSource</c> client adapters
+///     Three of the four built-in <c>AiDevHelpers.AgentHelpers.OpenSource</c> client adapters
 ///     already hardcode this per measured behavior: Cursor writes tool output to temp files and
 ///     re-reads selectively (<see langword="true" /> — genuinely lazy-safe); Copilot silently
 ///     drops content above ~8K tokens per response and never asks again; Continue hard-errors
@@ -215,7 +215,7 @@ public sealed record LazyContextBehaviorConfig
 
     /// <summary>
     ///     Per-client-name overrides, keyed by the same <c>ClientName</c> value
-    ///     <see cref="TokenSaver.AgentHelpers.Core.Models.CallerInfo" /> reports (from the MCP
+    ///     <see cref="AiDevHelpers.AgentHelpers.Core.Models.CallerInfo" /> reports (from the MCP
     ///     <c>initialize</c> handshake — e.g. <c>"claude-code"</c>, <c>"cursor"</c>,
     ///     <c>"my-custom-agent"</c>), case-insensitive. A key present here always wins over
     ///     <see cref="DefaultWillAskForMissingContext" /> for that client — <i>except</i> for
@@ -580,7 +580,7 @@ public sealed record TokenEconomyBehaviorConfig
 
 /// <summary>
 ///     Global defaults for the provider-native context-reduction features surfaced by
-///     <c>TokenSaver.AgentHelpers.*</c> (see <c>docs/config-behavior-contract.md</c> for the
+///     <c>AiDevHelpers.AgentHelpers.*</c> (see <c>docs/config-behavior-contract.md</c> for the
 ///     research backing these fields). Every AI-model provider TokenSaver talks to
 ///     (Anthropic/Claude, DeepSeek, Qwen/DashScope, and the Ollama-hosted OpenSource family —
 ///     Llama/Mistral/Gemma) ships some built-in mechanism for shrinking the tokens it actually

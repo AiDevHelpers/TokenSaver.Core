@@ -15,7 +15,7 @@ namespace TokenSaver.CodeHelper.Research;
 ///     true  — send summaries + retrieval hints (client will re-read files itself)
 ///     false — embed full content for top files, summaries for mid-tier (Copilot, Continue)
 ///     The caller (MCP tool layer) resolves the format via AgentHelpers and passes it in,
-///     keeping this service free of TokenSaver.AgentHelpers.Core.
+///     keeping this service free of AiDevHelpers.AgentHelpers.Core.
 /// </summary>
 public sealed partial class ResearchContextService
 {
