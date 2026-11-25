@@ -1,0 +1,93 @@
+{
+  "device": "cpu",
+  "corpus_size": 442,
+  "query_count": 74,
+  "top_k": 12,
+  "timing": {
+    "embed_model_load_s": 0.5330343999958131,
+    "rerank_model_load_s": 6.873030099988682,
+    "corpus_embed_total_s": 206.01488619999145,
+    "corpus_embed_chunks_per_sec": 2.1454760291978276,
+    "query_embed_total_s": 16.741133200004697,
+    "query_embed_queries_per_sec": 4.420250356766723,
+    "cosine_topk_total_s": 0.00273949999245815,
+    "rerank_latency_p50_s": 10.536773450003238,
+    "rerank_latency_p95_s": 14.591843305007199,
+    "rerank_latency_p99_s": 19.264885041991064,
+    "rerank_latency_mean_s": 11.342249154054239,
+    "end_to_end_query_mean_s": 11.5685177040542
+  },
+  "memory": {
+    "peak_gpu_mb": null,
+    "peak_process_rss_mb": 1119.53515625
+  },
+  "accuracy_by_category": {
+    "adversarial": {
+      "n": 11,
+      "recall@1_pre": 0.6363636363636364,
+      "recall@1_post": 0.7272727272727273,
+      "recall@5_pre": 0.8181818181818182,
+      "recall@5_post": 0.9090909090909091,
+      "recall@10_pre": 0.9090909090909091,
+      "recall@10_post": 0.9090909090909091,
+      "mrr_pre": 0.7386363636363636,
+      "mrr_post": 0.803030303030303,
+      "ndcg@10_pre": 0.791703980252393,
+      "ndcg@10_post": 0.8463254768782035
+    },
+    "negative": {
+      "n": 15,
+      "recall@1_pre": 0.0,
+      "recall@1_post": 0.0,
+      "recall@5_pre": 0.0,
+      "recall@5_post": 0.0,
+      "recall@10_pre": 0.0,
+      "recall@10_post": 0.0,
+      "mrr_pre": null,
+      "mrr_post": null,
+      "ndcg@10_pre": null,
+      "ndcg@10_post": null
+    },
+    "conceptual": {
+      "n": 25,
+      "recall@1_pre": 0.25,
+      "recall@1_post": 0.20833333333333334,
+      "recall@5_pre": 0.4583333333333333,
+      "recall@5_post": 0.4583333333333333,
+      "recall@10_pre": 0.5,
+      "recall@10_post": 0.5416666666666666,
+      "mrr_pre": 0.3164351851851852,
+      "mrr_post": 0.3163690476190476,
+      "ndcg@10_pre": 0.5007771417688177,
+      "ndcg@10_post": 0.5417019382584322
+    },
+    "symbol_lookup": {
+      "n": 8,
+      "recall@1_pre": 0.875,
+      "recall@1_post": 0.875,
+      "recall@5_pre": 1.0,
+      "recall@5_post": 1.0,
+      "recall@10_pre": 1.0,
+      "recall@10_post": 1.0,
+      "mrr_pre": 0.9375,
+      "mrr_post": 0.9375,
+      "ndcg@10_pre": 0.9538662191964322,
+      "ndcg@10_post": 0.9538662191964322
+    },
+    "doc_derived": {
+      "n": 15,
+      "recall@1_pre": 0.9333333333333333,
+      "recall@1_post": 0.8,
+      "recall@5_pre": 0.9333333333333333,
+      "recall@5_post": 0.9333333333333333,
+      "recall@10_pre": 0.9333333333333333,
+      "recall@10_post": 0.9333333333333333,
+      "mrr_pre": 0.9333333333333333,
+      "mrr_post": 0.8666666666666667,
+      "ndcg@10_pre": 0.9333333333333333,
+      "ndcg@10_post": 0.884123967142861
+    }
+  },
+  "negative_false_positive_rate": 0.2,
+  "adversarial_discrimination_rate": 1.0
+}
