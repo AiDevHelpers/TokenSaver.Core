@@ -1,21 +1,21 @@
 #pragma warning disable CA2000 // Test factories hand disposables to the code under test; each test is short-lived.
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
-using TokenSaver.TokenEconomy.Services;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TokenSaver.OllamaIntegration.Tests;
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.OllamaIntegration.Tests;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using System.Text.Json;
 
 using Xunit;
 
-namespace TokenSaver.TokenEconomy.Tests;
+namespace AiDevTools.TokenSaver.TokenEconomy.Tests;
 
 /// <summary>
 ///     SemanticSearchService is the only reader of the Chunks table (backs the SemanticGrep MCP

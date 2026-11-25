@@ -1,12 +1,12 @@
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
 
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
-using TokenSaver.Common.Core.Processes;
+using AiDevTools.TokenSaver.Common.Core.Processes;
 
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>
 ///     Result of a staleness check for one repo root. <see cref="IsFirstRun" /> and

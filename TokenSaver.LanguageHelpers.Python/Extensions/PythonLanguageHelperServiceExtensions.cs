@@ -1,9 +1,9 @@
-using TokenSaver.LanguageHelpers.Core.Contracts;
-using TokenSaver.LanguageHelpers.Core.Extensions;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Contracts;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
 
-namespace TokenSaver.LanguageHelpers.Python.Extensions;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Python.Extensions;
 
 /// <summary>DI wiring for the Python language helper.</summary>
 public static class PythonLanguageHelperServiceExtensions

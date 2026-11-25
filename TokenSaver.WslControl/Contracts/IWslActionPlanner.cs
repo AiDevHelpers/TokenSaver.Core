@@ -1,6 +1,6 @@
-namespace TokenSaver.WslControl.Contracts;
+namespace AiDevTools.TokenSaver.WslControl.Contracts;
 
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Turns a natural-language request into an executable <see cref="WslActionPlan" /> by

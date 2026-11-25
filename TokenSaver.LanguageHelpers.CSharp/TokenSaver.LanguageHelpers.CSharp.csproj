@@ -17,4 +17,10 @@
   <ItemGroup>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
+  <PropertyGroup>
+    <PackageId>AiDevTools.TokenSaver.LanguageHelpers.CSharp</PackageId>
+    <AssemblyName>AiDevTools.TokenSaver.LanguageHelpers.CSharp</AssemblyName>
+    <RootNamespace>AiDevTools.TokenSaver.LanguageHelpers.CSharp</RootNamespace>
+  </PropertyGroup>
+
 </Project>

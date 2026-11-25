@@ -1,4 +1,4 @@
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>
 ///     Directory names that every indexer skips, anywhere in the tree: VCS metadata, our own

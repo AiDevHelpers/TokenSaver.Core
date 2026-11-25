@@ -1,7 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Shared <see cref="JsonSerializerOptions" /> for JSON produced by the Workspace Index

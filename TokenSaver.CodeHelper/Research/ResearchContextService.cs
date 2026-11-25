@@ -1,11 +1,11 @@
-using TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.Extensions.Logging;
 
 using System.Globalization;
 using System.Text;
 
-namespace TokenSaver.CodeHelper.Research;
+namespace AiDevTools.TokenSaver.CodeHelper.Research;
 
 /// <summary>
 ///     Scans the workspace for files relevant to a research or planning prompt,

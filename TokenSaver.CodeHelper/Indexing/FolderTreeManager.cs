@@ -1,6 +1,6 @@
-using TokenSaver.Config;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.Config;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,7 +10,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Owns the Folder tree: bootstrap creation, incremental ancestor-chain creation for

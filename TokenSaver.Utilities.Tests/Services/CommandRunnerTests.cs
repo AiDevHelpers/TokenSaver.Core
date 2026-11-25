@@ -1,10 +1,10 @@
 using System.Diagnostics;
 
-using TokenSaver.Common.Core.Processes;
+using AiDevTools.TokenSaver.Common.Core.Processes;
 
 using Xunit;
 
-namespace TokenSaver.Utilities.Tests;
+namespace AiDevTools.TokenSaver.Utilities.Tests;
 
 /// <summary>The shared runner against real child processes (PowerShell 7, present on the dev and CI machines).</summary>
 public sealed class CommandRunnerTests

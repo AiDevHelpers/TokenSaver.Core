@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Models.Calibration;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Calibration;
 
 /// <summary>
 ///     Per-task-kind and per-language confidence multipliers.

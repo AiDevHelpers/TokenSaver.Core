@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace TokenSaver.CodeHelper.ContextSegmentation;
+namespace AiDevTools.TokenSaver.CodeHelper.ContextSegmentation;
 
 /// <summary>
 /// Records access patterns in .tokensaver/context/access-patterns.jsonl.

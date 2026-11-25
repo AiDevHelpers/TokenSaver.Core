@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.TokenEconomy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 /// <summary>One function/class/markdown-section/whole-file chunk produced by IChunkExtractor, before summarization/embedding.</summary>
 /// <param name="ChunkType">"function" | "class" | "md_section" | "module" (whole-file fallback).</param>

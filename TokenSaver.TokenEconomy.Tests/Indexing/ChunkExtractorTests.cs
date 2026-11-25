@@ -1,9 +1,9 @@
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
-using TokenSaver.TokenEconomy.Services;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Services;
 
 using Xunit;
 
-namespace TokenSaver.TokenEconomy.Tests;
+namespace AiDevTools.TokenSaver.TokenEconomy.Tests;
 
 /// <summary>
 ///     Covers IChunkExtractor's regex-boundary heuristics directly — pure string-in/chunks-out,

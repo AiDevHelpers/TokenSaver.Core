@@ -1,12 +1,12 @@
-using TokenSaver.LanguageHelpers.Core.Models;
-using TokenSaver.LanguageHelpers.Core.Process;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Process;
 
 using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace TokenSaver.LanguageHelpers.CSharp;
+namespace AiDevTools.TokenSaver.LanguageHelpers.CSharp;
 
 /// <summary>Parsed outcome of one <c>dotnet format</c> invocation.</summary>
 public sealed record DotnetFormatOutcome

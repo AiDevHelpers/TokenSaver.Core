@@ -1,19 +1,19 @@
 #pragma warning disable CA2000 // Test factories hand disposables to the code under test; each test is short-lived.
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.Database.Context;
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.OllamaIntegration.Tests;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
-using TokenSaver.TokenEconomy.Services;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.OllamaIntegration.Tests;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Services;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Xunit;
 
-namespace TokenSaver.TokenEconomy.Tests;
+namespace AiDevTools.TokenSaver.TokenEconomy.Tests;
 
 /// <summary>
 ///     Covers how <see cref="SemanticIndexBackgroundTrigger" /> marks a background run complete or
@@ -115,7 +115,7 @@ public sealed class SemanticIndexBackgroundTriggerTests : IDisposable
     {
         _ = Directory.CreateDirectory(_root);
         WorkspaceIndexContext ctx = await _db.GetDbAsync(_root, CancellationToken.None);
-        _ = ctx.Chunks.Add(new TokenSaver.Database.Context.Entities.ChunkEntity
+        _ = ctx.Chunks.Add(new AiDevTools.TokenSaver.Database.Context.Entities.ChunkEntity
         {
             RelativePath = "Old.cs", StartLine = 1, EndLine = 2, ContentHash = "x", Summary = "s", EmbeddingVector = "[]"
         });

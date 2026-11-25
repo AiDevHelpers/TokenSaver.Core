@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace TokenSaver.OllamaIntegration.Models.Ollama;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Models.Ollama;
 
 public class OllamaTagsResponse
 {

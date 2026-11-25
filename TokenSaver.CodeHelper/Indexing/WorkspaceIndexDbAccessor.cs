@@ -1,5 +1,5 @@
-using TokenSaver.Database.Context;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -8,7 +8,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Shared DB-access seam for the split WorkspaceIndexService: owns one cached
@@ -26,7 +26,7 @@ namespace TokenSaver.CodeHelper.Indexing;
 ///     directly: FolderTreeManager.RefreshTouchedFolderDescriptionsAsync failing this way while
 ///     WorkspaceIndexService.IndexWorkspaceAsync was still iterating touched files for the root
 ///     that got swapped out). Each root now keeps its own entry for the accessor's lifetime
-///     instead — see TokenSaver.Database.Context.TokenEconomyDbAccessor for the identical fix
+///     instead — see AiDevTools.TokenSaver.Database.Context.TokenEconomyDbAccessor for the identical fix
 ///     applied to its sibling.
 /// </summary>
 public sealed partial class WorkspaceIndexDbAccessor : IDisposable

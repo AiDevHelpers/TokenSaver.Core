@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 
-using TokenSaver.Config.Contracts;
+using AiDevTools.TokenSaver.Config.Contracts;
 
-namespace TokenSaver.Config;
+namespace AiDevTools.TokenSaver.Config;
 
 /// <summary>
 ///     Behavior configuration persisted in <c>.tokensaver/config.json</c> (per-workspace) and,
@@ -115,7 +115,7 @@ public sealed record RepoHelperBehaviorConfig
     ///     chosen for whatever tool is connecting — using that tool's most token-efficient
     ///     supported mechanism (a scoped/lazy-loaded rule file where the tool supports one, a
     ///     single flat instruction file otherwise) rather than assuming one universal format. See
-    ///     <c>TokenSaver.MCP.Services.InstructionOptimizerService</c>. On by default; writes are
+    ///     <c>AiDevTools.TokenSaver.MCP.Services.InstructionOptimizerService</c>. On by default; writes are
     ///     confined to a delimited managed block so hand-authored content is never clobbered.
     /// </summary>
     [JsonPropertyName("optimizeInstructions")]
@@ -126,7 +126,7 @@ public sealed record RepoHelperBehaviorConfig
     ///     <c>InstructionCacheService.DiscoverClaudeMdChain</c>) larger than a size threshold has
     ///     its oversized <c>##</c> sections automatically split out into synthetic sub-docs, purely
     ///     in the cached/synced representation TokenSaver builds for a connecting AI client — see
-    ///     <c>TokenSaver.MCP.Services.InstructionAutoSplitter</c>. The real source
+    ///     <c>AiDevTools.TokenSaver.MCP.Services.InstructionAutoSplitter</c>. The real source
     ///     <c>CLAUDE.md</c> on disk (and the project's own <c>.claude/rules/</c> directory) are
     ///     never read back into or written from this step; only
     ///     <c>.tokensaver/context/instructions/</c> (already a derived cache) and per-client sync
@@ -142,7 +142,7 @@ public sealed record RepoHelperBehaviorConfig
     ///     preserved as <c>CLAUDE.human.md</c> — and configures Claude Code's own
     ///     <c>claudeMdExcludes</c> setting (<c>.claude/settings.local.json</c>) so it stops loading
     ///     the global/ancestor files a second time natively. See
-    ///     <c>TokenSaver.MCP.Services.InstructionOptimizerService.SyncClaudeCodeCombinedFile</c>.
+    ///     <c>AiDevTools.TokenSaver.MCP.Services.InstructionOptimizerService.SyncClaudeCodeCombinedFile</c>.
     ///     Unlike <see cref="OptimizeInstructions" />/<see cref="AutoSplitOversizedInstructions" />
     ///     (which only ever touch derived cache/sync-target files), this rewrites the user's real
     ///     <c>CLAUDE.md</c> and a settings file — so unset/false means off, not on; there is no
@@ -271,7 +271,7 @@ public sealed record LazyContextBehaviorConfig
 
 /// <summary>
 ///     Overlaid onto <c>ContextHelperConfig</c> at startup and on every config-file change — see
-///     <c>TokenSaver.CodeHelper.Configuration.BehaviorConfigOverlay</c>. Null = keep the
+///     <c>AiDevTools.TokenSaver.CodeHelper.Configuration.BehaviorConfigOverlay</c>. Null = keep the
 ///     appsettings-bound default. Covers BuildConciseContext/ContextHygiene tuning, chiefly
 ///     whether the server warms its context cache automatically at startup.
 /// </summary>
@@ -372,7 +372,7 @@ public sealed record ContextBehaviorConfig
 
 /// <summary>
 ///     Overlaid onto <c>CodeHelperConfig</c> at startup and on every config-file change — see
-///     <c>TokenSaver.CodeHelper.Configuration.BehaviorConfigOverlay</c>. Null = keep the
+///     <c>AiDevTools.TokenSaver.CodeHelper.Configuration.BehaviorConfigOverlay</c>. Null = keep the
 ///     appsettings-bound default. Grouped by what the setting decides, not just its C# type:
 ///     <see cref="Ownership" /> = whether CodeHelper handles a step at all, <see cref="Planner" />
 ///     = whether the local model gets consulted while planning, <see cref="Calibration" /> = how
@@ -881,7 +881,7 @@ public sealed record OpenSourceAgentConfig
 ///     <see cref="IExtensionSettings" /> for what each property controls. Both extensions read
 ///     this through their own host mechanism rather than this type directly (VS Code's native
 ///     settings store is authoritative there; the VS extension mirrors this shape locally rather
-///     than taking a project reference — see <c>TokenSaver.Vs.Extension.Configuration.BehaviorConfig</c>).
+///     than taking a project reference — see <c>AiDevTools.TokenSaver.Vs.Extension.Configuration.BehaviorConfig</c>).
 /// </summary>
 public sealed record ExtensionBehaviorConfig : IExtensionSettings
 {
@@ -959,7 +959,7 @@ public sealed record ExtensionBehaviorConfig : IExtensionSettings
     };
 }
 
-/// <summary>TokenSaver.MCP server lifecycle settings. Overrides <see cref="ExtensionBehaviorConfig.Server" />.</summary>
+/// <summary>AiDevTools.TokenSaver.MCP server lifecycle settings. Overrides <see cref="ExtensionBehaviorConfig.Server" />.</summary>
 public sealed record ExtensionServerConfig : IExtensionServerSettings
 {
     [JsonPropertyName("port")]
@@ -994,7 +994,7 @@ public sealed record ExtensionServerConfig : IExtensionServerSettings
     };
 }
 
-/// <summary>How the extension launches TokenSaver.MCP directly from source. Overrides <see cref="ExtensionBehaviorConfig.Dotnet" />.</summary>
+/// <summary>How the extension launches AiDevTools.TokenSaver.MCP directly from source. Overrides <see cref="ExtensionBehaviorConfig.Dotnet" />.</summary>
 public sealed record ExtensionDotnetConfig : IExtensionDotnetSettings
 {
     [JsonPropertyName("command")]

@@ -1,7 +1,7 @@
-using TokenSaver.LanguageHelpers.Core;
-using TokenSaver.LanguageHelpers.Core.Configuration;
-using TokenSaver.LanguageHelpers.Core.Models;
-using TokenSaver.LanguageHelpers.Core.Process;
+using AiDevTools.TokenSaver.LanguageHelpers.Core;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Configuration;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Process;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 using System.Globalization;
 
-namespace TokenSaver.LanguageHelpers.CSharp;
+namespace AiDevTools.TokenSaver.LanguageHelpers.CSharp;
 
 /// <summary>
 ///     C# implementation of the seven language-helper operations. The syntax checker runs in-process on

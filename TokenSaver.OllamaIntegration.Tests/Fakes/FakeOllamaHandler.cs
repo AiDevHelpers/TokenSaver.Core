@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace TokenSaver.OllamaIntegration.Tests;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Tests;
 
 /// <summary>
 ///     In-process substitute for a live Ollama/SimpleModelServer endpoint — intercepts

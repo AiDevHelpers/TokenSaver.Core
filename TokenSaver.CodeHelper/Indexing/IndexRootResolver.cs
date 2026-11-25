@@ -1,6 +1,6 @@
-using TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Resolves which workspace index covers a requested folder. Each index lives at

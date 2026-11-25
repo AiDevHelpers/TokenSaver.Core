@@ -1,6 +1,6 @@
-namespace TokenSaver.WslControl.Contracts;
+namespace AiDevTools.TokenSaver.WslControl.Contracts;
 
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Prepares a WSL distribution as a debug destination: verifies the debugger backend is

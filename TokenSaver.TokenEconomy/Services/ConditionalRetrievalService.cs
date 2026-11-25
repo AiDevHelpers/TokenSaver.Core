@@ -1,10 +1,10 @@
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 using Microsoft.Extensions.Options;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>Default <see cref="IConditionalRetrievalService" /> — see that interface's doc comment.</summary>
 public sealed class ConditionalRetrievalService(

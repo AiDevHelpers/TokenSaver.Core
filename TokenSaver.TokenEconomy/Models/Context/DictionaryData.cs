@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.Context;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.Context;
 
 public class DictionaryData
 {

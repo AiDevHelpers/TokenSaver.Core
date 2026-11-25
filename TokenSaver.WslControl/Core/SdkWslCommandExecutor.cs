@@ -1,11 +1,11 @@
-namespace TokenSaver.WslControl.Core;
+namespace AiDevTools.TokenSaver.WslControl.Core;
 
 using Community.Wsl.Sdk;
 
 using Microsoft.Extensions.Logging;
 
-using TokenSaver.WslControl.Contracts;
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Contracts;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Default <see cref="IWslCommandExecutor" />: runs a command with Community.Wsl.Sdk's

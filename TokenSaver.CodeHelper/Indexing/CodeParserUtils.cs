@@ -1,9 +1,9 @@
-using TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
 
 using System.Security.Cryptography;
 using System.Text;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Shared utilities used by all symbol parsers and WorkspaceCodeScanner.

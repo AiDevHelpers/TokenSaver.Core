@@ -1,11 +1,11 @@
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using System.Text;
 using System.Text.Json;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>
 ///     Default <see cref="IRerankService" /> — asks the "rerank" model route (see

@@ -1,4 +1,4 @@
-namespace TokenSaver.WslControl.Models;
+namespace AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     A "is this distro actually working" snapshot: the report answers the question a caller

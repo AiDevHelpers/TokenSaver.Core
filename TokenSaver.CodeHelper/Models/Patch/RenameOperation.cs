@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Models.Patch;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Patch;
 
 public record RenameOperation : PatchOperation
 {

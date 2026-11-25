@@ -1,6 +1,6 @@
-using TokenSaver.CodeHelper.Models.Patch;
-using TokenSaver.CodeHelper.Patching;
-using TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.CodeHelper.Models.Patch;
+using AiDevTools.TokenSaver.CodeHelper.Patching;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.Extensions.Logging;
 
@@ -10,7 +10,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.CodeHelper.AutoWorkflow;
+namespace AiDevTools.TokenSaver.CodeHelper.AutoWorkflow;
 
 /// <summary>
 ///     Intercepts code-writing prompts and routes them through the draft model first.

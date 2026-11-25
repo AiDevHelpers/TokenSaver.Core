@@ -1,6 +1,6 @@
-using TokenSaver.CodeHelper.Models.Patch;
+using AiDevTools.TokenSaver.CodeHelper.Models.Patch;
 
-namespace TokenSaver.CodeHelper.AutoWorkflow;
+namespace AiDevTools.TokenSaver.CodeHelper.AutoWorkflow;
 
 public record WorkflowResult(
     string SessionId,

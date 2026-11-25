@@ -1,18 +1,18 @@
 #pragma warning disable CA2000 // Test factories hand disposables to the code under test; each test is short-lived.
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.Database.Context;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
-using TokenSaver.TokenEconomy.Services;
-using TokenSaver.OllamaIntegration.Tests;
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Services;
+using AiDevTools.TokenSaver.OllamaIntegration.Tests;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Xunit;
 
-namespace TokenSaver.TokenEconomy.Tests;
+namespace AiDevTools.TokenSaver.TokenEconomy.Tests;
 
 /// <summary>
 ///     RepoIndexer is the only writer of the Chunks table — these tests exercise IndexRepoAsync
@@ -73,7 +73,7 @@ public sealed class RepoIndexerTests : IDisposable
         Assert.True(stats.ChunksIndexed > 0);
 
         WorkspaceIndexContext ctx = await _db.GetDbAsync(_tempWorkspace, CancellationToken.None);
-        List<TokenSaver.Database.Context.Entities.ChunkEntity> rows = ctx.Chunks.ToList();
+        List<AiDevTools.TokenSaver.Database.Context.Entities.ChunkEntity> rows = ctx.Chunks.ToList();
         Assert.NotEmpty(rows);
         Assert.Contains(rows, r => r.RelativePath == "Widget.cs");
     }
@@ -187,7 +187,7 @@ public sealed class RepoIndexerTests : IDisposable
         Assert.Equal(3, stats.FilesScanned);
         Assert.Equal(0, stats.ChunksFailed);
         WorkspaceIndexContext ctx = await _db.GetDbAsync(_tempWorkspace, CancellationToken.None);
-        List<TokenSaver.Database.Context.Entities.ChunkEntity> rows = ctx.Chunks.ToList();
+        List<AiDevTools.TokenSaver.Database.Context.Entities.ChunkEntity> rows = ctx.Chunks.ToList();
         Assert.Equal(stats.ChunksIndexed, rows.Count);
         Assert.Contains(rows, r => r.RelativePath == "A.cs");
         Assert.Contains(rows, r => r.RelativePath.EndsWith("B.cs", StringComparison.Ordinal));

@@ -1,9 +1,9 @@
-namespace TokenSaver.WslControl.Tests;
+namespace AiDevTools.TokenSaver.WslControl.Tests;
 
 using Community.Wsl.Sdk;
 
-using TokenSaver.WslControl.Contracts;
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Contracts;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>In-memory <see cref="IWslApi" /> so provider logic runs without a real WSL install.</summary>
 internal sealed class FakeWslApi : IWslApi

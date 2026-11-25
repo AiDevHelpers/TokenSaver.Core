@@ -1,4 +1,4 @@
-namespace TokenSaver.OllamaIntegration.Models.Ollama;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Models.Ollama;
 
 public class GpuStats
 {

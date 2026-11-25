@@ -1,4 +1,4 @@
-namespace TokenSaver.WslControl.Models;
+namespace AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Outcome of running a single command inside a WSL distribution.

@@ -1,13 +1,13 @@
-namespace TokenSaver.OllamaIntegration.Services;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
 ///     Adapts a raw prompt for a specific local model before sending to inference.
 ///     Implementations apply model-family-specific structuring: role-priming, output schema
 ///     hints, self-check instructions, and token budget trimming.
-///     The interface lives in <c>TokenSaver.Library</c> so low-level services
+///     The interface lives in <c>AiDevTools.TokenSaver.Library</c> so low-level services
 ///     (<see cref="OllamaService" />, PlanBuilder, etc.) can depend on it without
 ///     pulling in <c>AiDevHelpers.AgentHelpers.Core</c>. The concrete implementation is registered
-///     in <c>TokenSaver.MCP</c> backed by <c>AgentAdapterRegistry</c>.
+///     in <c>AiDevTools.TokenSaver.MCP</c> backed by <c>AgentAdapterRegistry</c>.
 /// </summary>
 public interface IPromptAdapter
 {

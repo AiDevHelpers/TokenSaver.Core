@@ -1,11 +1,11 @@
-using TokenSaver.Common.Contracts;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Common.Contracts;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging;
 
 using System.Text;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Produces a per-file description: AI summary (when a summarizer is configured and the

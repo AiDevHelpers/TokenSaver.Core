@@ -1,4 +1,4 @@
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>Describes a workspace path that exists but is not covered by .gitignore.</summary>
 public sealed record GitignoreIssue(

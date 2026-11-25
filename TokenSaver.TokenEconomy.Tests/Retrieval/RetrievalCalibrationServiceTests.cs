@@ -1,15 +1,15 @@
 #pragma warning disable CA2000 // Test factories hand disposables to the code under test; each test is short-lived.
-using TokenSaver.ContextHelper.Calibration;
-using TokenSaver.ContextHelper.Configuration;
-using TokenSaver.ContextHelper.Models.Calibration;
+using AiDevTools.TokenSaver.ContextHelper.Calibration;
+using AiDevTools.TokenSaver.ContextHelper.Configuration;
+using AiDevTools.TokenSaver.ContextHelper.Models.Calibration;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TokenSaver.OllamaIntegration.Tests;
+using AiDevTools.TokenSaver.OllamaIntegration.Tests;
 
 using Xunit;
 
-namespace TokenSaver.TokenEconomy.Tests;
+namespace AiDevTools.TokenSaver.TokenEconomy.Tests;
 
 /// <summary>
 ///     RetrievalCalibrationService's gap-detection/threshold-adjustment/persistence logic,

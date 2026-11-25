@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Models.Calibration;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Calibration;
 
 /// <summary>Severity of fixes the calling AI applied to CodeHelper's scaffold output.</summary>
 public enum FixSeverity

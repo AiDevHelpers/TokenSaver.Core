@@ -1,14 +1,14 @@
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Options;
 
 using System.Diagnostics;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>
 ///     Default <see cref="IDistillationService" />: role-specific compression prompts (normal +

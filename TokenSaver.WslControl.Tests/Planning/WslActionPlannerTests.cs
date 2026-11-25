@@ -1,9 +1,9 @@
-namespace TokenSaver.WslControl.Tests;
+namespace AiDevTools.TokenSaver.WslControl.Tests;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
-using TokenSaver.WslControl.Core;
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Core;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 using Xunit;
 

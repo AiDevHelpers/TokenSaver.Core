@@ -1,10 +1,10 @@
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>Targeted indexing: only the listed paths are touched, everything else is left alone.</summary>
 public sealed class IndexPathsTests : IDisposable

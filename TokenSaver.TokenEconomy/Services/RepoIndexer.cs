@@ -1,11 +1,11 @@
 #pragma warning disable CA1506 // IndexRepoAsync orchestrates the full index pipeline; the coupling is the pipeline itself and is kept in one place on purpose.
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -16,7 +16,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>Default <see cref="IRepoIndexer" /> — see that interface's doc comment.</summary>
 public sealed partial class RepoIndexer(

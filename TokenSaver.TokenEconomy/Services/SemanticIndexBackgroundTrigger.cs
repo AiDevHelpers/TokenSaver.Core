@@ -1,13 +1,13 @@
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.Database.Context;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using System.Collections.Concurrent;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 public enum SemanticIndexTriggerStatus
 {

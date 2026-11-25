@@ -1,8 +1,8 @@
-using TokenSaver.TokenEconomy.Services;
+using AiDevTools.TokenSaver.TokenEconomy.Services;
 
 using Xunit;
 
-namespace TokenSaver.TokenEconomy.Tests;
+namespace AiDevTools.TokenSaver.TokenEconomy.Tests;
 
 public sealed class CleanSummaryTests
 {

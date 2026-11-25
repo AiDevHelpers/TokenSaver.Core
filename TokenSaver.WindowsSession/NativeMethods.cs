@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace TokenSaver.WindowsSession;
+namespace AiDevTools.TokenSaver.WindowsSession;
 
 /// <summary>Win32 entry points behind <see cref="UserSession" />. Kept apart so the rest of the code is plain C#.</summary>
 internal static partial class NativeMethods

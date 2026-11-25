@@ -1,4 +1,4 @@
-using TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace TokenSaver.OllamaIntegration.Services;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
 ///     Reads and writes SimpleModelServer agent configs through the router's admin API

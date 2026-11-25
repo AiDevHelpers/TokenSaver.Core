@@ -1,8 +1,8 @@
-using TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Cross-file symbol dependency queries, backed by SymbolReferences.

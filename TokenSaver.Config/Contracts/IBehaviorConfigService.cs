@@ -1,4 +1,4 @@
-namespace TokenSaver.Config.Contracts;
+namespace AiDevTools.TokenSaver.Config.Contracts;
 
 /// <summary>
 /// Service for managing behavior configuration that merges local and global settings.

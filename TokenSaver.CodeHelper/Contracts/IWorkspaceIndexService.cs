@@ -1,6 +1,6 @@
-using TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
 
-namespace TokenSaver.CodeHelper.Contracts;
+namespace AiDevTools.TokenSaver.CodeHelper.Contracts;
 
 /// <summary>
 /// Service for indexing and searching symbols/files in a workspace.

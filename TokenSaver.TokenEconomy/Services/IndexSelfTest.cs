@@ -1,11 +1,11 @@
-using TokenSaver.Database.Context;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 using System.Globalization;
 using System.Text;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>Result of <see cref="IndexSelfTest.RunAsync" />: what the known fixture produced.</summary>
 public sealed record IndexSelfTestResult(

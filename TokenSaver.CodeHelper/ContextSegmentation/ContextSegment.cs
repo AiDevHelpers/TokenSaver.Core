@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.ContextSegmentation;
+namespace AiDevTools.TokenSaver.CodeHelper.ContextSegmentation;
 
 /// <summary>
 /// A logical partition of codebase context — may span multiple files/folders.
@@ -11,7 +11,7 @@ public class ContextSegment
     /// <summary>Concise label: "main_arch", "subsystem_indexing", etc.</summary>
     public string Label { get; set; } = null!;
 
-    /// <summary>Glob patterns: ["src/Core/TokenSaver.CodeHelper/Indexing/**"], ["*.csproj"]</summary>
+    /// <summary>Glob patterns: ["src/Core/AiDevTools.TokenSaver.CodeHelper/Indexing/**"], ["*.csproj"]</summary>
     public IReadOnlyList<string> PathPatterns { get; set; } = [];
 
     /// <summary>Approximate token size; used for budget planning.</summary>

@@ -1,13 +1,13 @@
 using System.Diagnostics;
 
-using TokenSaver.CodeHelper.Models.Index;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>
 ///     Reference edges are rebuilt only for changed files and the sources that depend on them,

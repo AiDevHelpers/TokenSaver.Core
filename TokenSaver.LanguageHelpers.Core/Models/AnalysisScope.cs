@@ -1,4 +1,4 @@
-namespace TokenSaver.LanguageHelpers.Core.Models;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
 /// <summary>
 ///     Describes what a language-helper operation should act on: a set of target paths (files and/or

@@ -1,11 +1,11 @@
 #pragma warning disable CA1862, CA1304, CA1311 // EF Core translates ToUpper() to SQL UPPER (culture-neutral in SQLite); StringComparison overloads do not translate.
-using TokenSaver.CodeHelper.Models.Index;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Symbol graph queries (replaces CodeIndexService): exact-name lookup, per-file symbol

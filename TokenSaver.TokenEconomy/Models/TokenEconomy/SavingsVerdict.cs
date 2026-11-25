@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.TokenEconomy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 /// <summary>
 ///     "Is this tool/role worth keeping distillation on for?" — a direct answer instead of a
@@ -7,7 +7,7 @@ namespace TokenSaver.TokenEconomy.Models.TokenEconomy;
 /// <param name="WorthIt">
 ///     True = clears both thresholds. False = fails one of them. Null = not enough calls
 ///     recorded yet to judge (see
-///     <see cref="TokenSaver.Library.Configuration.TokenEconomyConfig.WorthItMinCalls" />).
+///     <see cref="AiDevTools.TokenSaver.Library.Configuration.TokenEconomyConfig.WorthItMinCalls" />).
 /// </param>
 /// <param name="Reason">Human-readable explanation of the verdict, e.g. which threshold it failed.</param>
 public sealed record SavingsVerdict(bool? WorthIt, string Reason);

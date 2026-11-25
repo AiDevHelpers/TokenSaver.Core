@@ -1,4 +1,4 @@
-namespace TokenSaver.WslControl.Core;
+namespace AiDevTools.TokenSaver.WslControl.Core;
 
 using System.Text.RegularExpressions;
 
@@ -6,8 +6,8 @@ using Community.Wsl.Sdk;
 
 using Microsoft.Extensions.Logging;
 
-using TokenSaver.WslControl.Contracts;
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Contracts;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Default <see cref="IWslProvider" />. Detection and enumeration go through the SDK's

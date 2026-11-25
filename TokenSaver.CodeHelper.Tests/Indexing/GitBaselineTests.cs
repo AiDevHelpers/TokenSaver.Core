@@ -1,10 +1,10 @@
 using System.Diagnostics;
 
-using TokenSaver.Common.Contracts;
+using AiDevTools.TokenSaver.Common.Contracts;
 
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>
 ///     The git baseline (RepoStaleness.LastHeadSha) must advance only after indexing succeeds.

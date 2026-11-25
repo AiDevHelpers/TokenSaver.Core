@@ -1,6 +1,6 @@
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Utilities.Services;
 
-namespace TokenSaver.Config;
+namespace AiDevTools.TokenSaver.Config;
 
 /// <summary>
 ///     Decides whether to surface the "add <c>.tokensaver/</c> to <c>.gitignore</c>?" question to

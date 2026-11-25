@@ -1,16 +1,16 @@
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.Common.Contracts;
-using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.Config;
-using TokenSaver.Database.Context;
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.Common.Contracts;
+using AiDevTools.TokenSaver.CodeHelper.Indexing;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.Config;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>
 ///     Temp-directory workspace wired to the production indexing services and a real SQLite index.

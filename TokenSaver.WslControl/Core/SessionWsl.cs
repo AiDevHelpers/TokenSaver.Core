@@ -1,12 +1,12 @@
-namespace TokenSaver.WslControl.Core;
+namespace AiDevTools.TokenSaver.WslControl.Core;
 
 using System.Text;
 using System.Text.RegularExpressions;
 
 using Community.Wsl.Sdk;
 
-using TokenSaver.WslControl.Contracts;
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Contracts;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Builds Windows command lines for <c>wsl.exe</c>. Each argument is quoted so spaces and

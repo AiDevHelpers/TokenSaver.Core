@@ -15,12 +15,12 @@
     <ProjectReference Include="..\TokenSaver.Config\TokenSaver.Config.csproj" />
     <!-- Needed by WorkspaceIndexService for ContextCleanerService (prompt-cleaning pipeline
          reused for on-demand file-content compression). -->
-    <ProjectReference Include="..\TokenSaver.ContextHelper\TokenSaver.ContextHelper.csproj" />
+    <PackageReference Include="AiDevTools.TokenSaver.ContextHelper" Version="1.0.5-alpha" />
     <ProjectReference Include="..\TokenSaver.OllamaIntegration\TokenSaver.OllamaIntegration.csproj" />
     <ProjectReference Include="..\TokenSaver.TokenEconomy\TokenSaver.TokenEconomy.csproj" />
     <ProjectReference Include="..\TokenSaver.Utilities\TokenSaver.Utilities.csproj" />
-    <ProjectReference Include="..\..\Common\TokenSaver.Common.Models\TokenSaver.Common.Models.csproj" />
-    <ProjectReference Include="..\..\Common\TokenSaver.Common.Contracts\TokenSaver.Common.Contracts.csproj" />
+    <PackageReference Include="AiDevTools.TokenSaver.Common.Models" Version="1.0.5-alpha" />
+    <PackageReference Include="AiDevTools.TokenSaver.Common.Contracts" Version="1.0.5-alpha" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\baseline-calibration.json" />
@@ -28,4 +28,10 @@
   <ItemGroup>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
+  <PropertyGroup>
+    <PackageId>AiDevTools.TokenSaver.CodeHelper</PackageId>
+    <AssemblyName>AiDevTools.TokenSaver.CodeHelper</AssemblyName>
+    <RootNamespace>AiDevTools.TokenSaver.CodeHelper</RootNamespace>
+  </PropertyGroup>
+
 </Project>

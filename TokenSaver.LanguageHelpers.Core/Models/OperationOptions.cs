@@ -1,4 +1,4 @@
-namespace TokenSaver.LanguageHelpers.Core.Models;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
 /// <summary>
 ///     Options for <c>RunLint</c>. <see cref="PreferExtensionTool" /> asks the helper to defer to an

@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Contracts;
+namespace AiDevTools.TokenSaver.TokenEconomy.Contracts;
 
 /// <summary>
 ///     LLM-judged relevance scoring for the embed-score "muddy middle" (see

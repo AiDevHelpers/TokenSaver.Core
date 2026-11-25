@@ -1,23 +1,23 @@
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.CodeHelper.Contracts;
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.ContextHelper.Calibration;
-using TokenSaver.ContextHelper.Models;
-using TokenSaver.ContextHelper.Models.Calibration;
-using TokenSaver.ContextHelper.Pipeline;
-using TokenSaver.Config;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.TokenEconomy.Models.Context;
-using TokenSaver.TokenEconomy.Services;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.CodeHelper.Contracts;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.ContextHelper.Calibration;
+using AiDevTools.TokenSaver.ContextHelper.Models;
+using AiDevTools.TokenSaver.ContextHelper.Models.Calibration;
+using AiDevTools.TokenSaver.ContextHelper.Pipeline;
+using AiDevTools.TokenSaver.Config;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.TokenEconomy.Models.Context;
+using AiDevTools.TokenSaver.TokenEconomy.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 using System.Collections.Concurrent;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Context-building pipeline (replaces LocalContextService): concise-context assembly,

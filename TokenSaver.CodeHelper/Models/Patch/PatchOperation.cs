@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Models.Patch;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Patch;
 
 /// <summary>Base record for all patch operations. All concrete operations are records.</summary>
 public abstract record PatchOperation

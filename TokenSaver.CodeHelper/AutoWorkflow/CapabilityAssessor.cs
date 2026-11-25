@@ -1,10 +1,10 @@
-using TokenSaver.CodeHelper.Calibration;
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.CodeHelper.Models.Calibration;
+using AiDevTools.TokenSaver.CodeHelper.Calibration;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.CodeHelper.Models.Calibration;
 
 using Microsoft.Extensions.Options;
 
-namespace TokenSaver.CodeHelper.AutoWorkflow;
+namespace AiDevTools.TokenSaver.CodeHelper.AutoWorkflow;
 
 /// <summary>
 ///     Answers "can CodeHelper handle this?" for a given task, language, and plan confidence.

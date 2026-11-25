@@ -1,6 +1,6 @@
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
-namespace TokenSaver.TokenEconomy.Contracts;
+namespace AiDevTools.TokenSaver.TokenEconomy.Contracts;
 
 /// <summary>
 ///     Walks a workspace, splits files into chunks (IChunkExtractor), summarizes + embeds each

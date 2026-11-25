@@ -1,12 +1,12 @@
-using TokenSaver.LanguageHelpers.Core.Models;
-using TokenSaver.LanguageHelpers.Core.Process;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Process;
 
 using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace TokenSaver.LanguageHelpers.Python;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Python;
 
 /// <summary>A single ruff diagnostic from <c>ruff check --output-format json</c>.</summary>
 public sealed record RuffDiagnostic

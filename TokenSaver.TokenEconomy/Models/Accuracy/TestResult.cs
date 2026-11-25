@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.Accuracy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.Accuracy;
 
 /// <summary>
 ///     The outcome of running a single <see cref="TestCase" /> against the model.

@@ -7,9 +7,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using TokenSaver.Client.Helpers.Logging;
+using AiDevTools.TokenSaver.Client.Helpers.Logging;
 
-namespace TokenSaver.Client.Helpers.Health;
+namespace AiDevTools.TokenSaver.Client.Helpers.Health;
 
 /// <summary>
 /// Utilities for checking server health and port availability.
@@ -169,7 +169,7 @@ public static class HealthCheckClient
     }
 
     /// <summary>
-    /// Gets the full health report from TokenSaver.MCP /health endpoint on localhost.
+    /// Gets the full health report from AiDevTools.TokenSaver.MCP /health endpoint on localhost.
     /// </summary>
     public static async Task<McpHealthReport?> GetFullHealthAsync(int port, TimeSpan timeout = default)
     {
@@ -177,7 +177,7 @@ public static class HealthCheckClient
     }
 
     /// <summary>
-    /// Gets the full health report from TokenSaver.MCP /health endpoint.
+    /// Gets the full health report from AiDevTools.TokenSaver.MCP /health endpoint.
     /// </summary>
     public static async Task<McpHealthReport?> GetFullHealthAsync(string host, int port, TimeSpan timeout = default)
     {
@@ -254,7 +254,7 @@ public static class HealthCheckClient
 }
 
 /// <summary>
-/// Represents a health check report from TokenSaver.MCP /health endpoint.
+/// Represents a health check report from AiDevTools.TokenSaver.MCP /health endpoint.
 /// </summary>
 public sealed class McpHealthReport
 {

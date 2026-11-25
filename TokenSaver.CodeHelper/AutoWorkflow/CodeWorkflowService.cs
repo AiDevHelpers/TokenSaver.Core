@@ -1,9 +1,9 @@
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.CodeHelper.Models.Patch;
-using TokenSaver.CodeHelper.Models.Planning;
-using TokenSaver.CodeHelper.Planning;
-using TokenSaver.CodeHelper.Research;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.CodeHelper.Indexing;
+using AiDevTools.TokenSaver.CodeHelper.Models.Patch;
+using AiDevTools.TokenSaver.CodeHelper.Models.Planning;
+using AiDevTools.TokenSaver.CodeHelper.Planning;
+using AiDevTools.TokenSaver.CodeHelper.Research;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 using System.Globalization;
 using System.Text;
 
-namespace TokenSaver.CodeHelper.AutoWorkflow;
+namespace AiDevTools.TokenSaver.CodeHelper.AutoWorkflow;
 
 /// <summary>
 ///     Orchestrates the collaborative skeleton workflow:

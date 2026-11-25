@@ -1,7 +1,7 @@
-using TokenSaver.LanguageHelpers.Core.Contracts;
-using TokenSaver.LanguageHelpers.Core.Models;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Contracts;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
-namespace TokenSaver.LanguageHelpers.Core.Registry;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Registry;
 
 /// <summary>
 ///     Default <see cref="ILanguageHelperRegistry" /> backed by whatever <see cref="ILanguageHelper" />

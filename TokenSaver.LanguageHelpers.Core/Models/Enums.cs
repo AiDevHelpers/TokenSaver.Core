@@ -1,7 +1,7 @@
-namespace TokenSaver.LanguageHelpers.Core.Models;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
 /// <summary>
-///     The languages for which a <c>TokenSaver.LanguageHelpers.*</c> implementation exists. Kept as a
+///     The languages for which a <c>AiDevTools.TokenSaver.LanguageHelpers.*</c> implementation exists. Kept as a
 ///     small closed enum (rather than an open string) so callers can switch exhaustively; add a value
 ///     here when a new language project is introduced.
 /// </summary>

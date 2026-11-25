@@ -1,8 +1,8 @@
-using TokenSaver.Config;
+using AiDevTools.TokenSaver.Config;
 
 using Xunit;
 
-namespace TokenSaver.Config.Tests;
+namespace AiDevTools.TokenSaver.Config.Tests;
 
 public sealed class TokenSaverBehaviorConfigTests
 {

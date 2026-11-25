@@ -3,9 +3,9 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
-using TokenSaver.Config.Contracts;
+using AiDevTools.TokenSaver.Config.Contracts;
 
-namespace TokenSaver.Config;
+namespace AiDevTools.TokenSaver.Config;
 
 /// <summary>
 ///     Loads, merges, watches, and persists <see cref="TokenSaverBehaviorConfig" /> from two

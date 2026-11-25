@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>
 ///     Parses one or more .gitignore files and answers whether a workspace-relative

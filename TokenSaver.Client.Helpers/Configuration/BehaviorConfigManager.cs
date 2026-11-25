@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using System.Text.Json;
-using TokenSaver.Config;
-using TokenSaver.Config.Contracts;
+using AiDevTools.TokenSaver.Config;
+using AiDevTools.TokenSaver.Config.Contracts;
 
-namespace TokenSaver.Client.Helpers.Configuration;
+namespace AiDevTools.TokenSaver.Client.Helpers.Configuration;
 
 /// <summary>
 /// Manages reading, merging, and writing behavior configuration from local and global files.

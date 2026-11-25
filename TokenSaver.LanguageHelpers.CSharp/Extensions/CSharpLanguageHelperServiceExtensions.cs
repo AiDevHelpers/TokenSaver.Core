@@ -1,10 +1,10 @@
-using TokenSaver.LanguageHelpers.Core.Contracts;
-using TokenSaver.LanguageHelpers.Core.Extensions;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Contracts;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace TokenSaver.LanguageHelpers.CSharp.Extensions;
+namespace AiDevTools.TokenSaver.LanguageHelpers.CSharp.Extensions;
 
 /// <summary>DI wiring for the C# language helper. Pulls in the Core layer, then registers the helper.</summary>
 public static class CSharpLanguageHelperServiceExtensions

@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 using static System.StringComparison;
 
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>
 ///     Extracts a short human-readable description of a file from its content without calling any

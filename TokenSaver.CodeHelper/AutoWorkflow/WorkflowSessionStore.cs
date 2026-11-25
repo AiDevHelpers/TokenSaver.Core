@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace TokenSaver.CodeHelper.AutoWorkflow;
+namespace AiDevTools.TokenSaver.CodeHelper.AutoWorkflow;
 
 /// <summary>In-memory store for active workflow sessions (same pattern as PlanStore).</summary>
 public sealed class WorkflowSessionStore

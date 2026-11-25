@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.TokenEconomy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 /// <summary>Result of a DistillationService.DistillAsync call.</summary>
 /// <param name="Summary">The compressed (or, if distillation is disabled/input is empty, raw-capped) text.</param>

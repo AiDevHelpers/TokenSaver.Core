@@ -1,9 +1,9 @@
-using TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace TokenSaver.OllamaIntegration.Services;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
 ///     Runtime health/usage snapshot for one configured Ollama endpoint.

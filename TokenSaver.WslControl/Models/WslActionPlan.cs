@@ -1,4 +1,4 @@
-namespace TokenSaver.WslControl.Models;
+namespace AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     The category of a planned WSL action. Drives confirmation and routing:

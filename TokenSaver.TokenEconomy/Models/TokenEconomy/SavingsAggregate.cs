@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.TokenEconomy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 /// <summary>
 ///     One aggregated row from the TokenSavings table, grouped by tool or role — the shape

@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Models.Planning;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Planning;
 
 public enum PlanTaskKind
 {

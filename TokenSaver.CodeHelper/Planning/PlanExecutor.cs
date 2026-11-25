@@ -1,12 +1,12 @@
-using TokenSaver.CodeHelper.Models.Patch;
-using TokenSaver.CodeHelper.Models.Planning;
-using TokenSaver.CodeHelper.Patching;
+using AiDevTools.TokenSaver.CodeHelper.Models.Patch;
+using AiDevTools.TokenSaver.CodeHelper.Models.Planning;
+using AiDevTools.TokenSaver.CodeHelper.Patching;
 
 using Microsoft.Extensions.Logging;
 
 using System.Runtime.CompilerServices;
 
-namespace TokenSaver.CodeHelper.Planning;
+namespace AiDevTools.TokenSaver.CodeHelper.Planning;
 
 /// <summary>
 ///     Executes steps of a <see cref="CodePlan" /> using the <see cref="PatchEngine" />.

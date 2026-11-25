@@ -1,12 +1,12 @@
 using System.Diagnostics;
 
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>A committed git rename must drop the old path from the index on the next pass.</summary>
 public sealed class GitRenameTests : IDisposable

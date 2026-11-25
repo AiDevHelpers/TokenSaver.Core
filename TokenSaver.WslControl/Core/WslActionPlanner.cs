@@ -1,12 +1,12 @@
-namespace TokenSaver.WslControl.Core;
+namespace AiDevTools.TokenSaver.WslControl.Core;
 
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using Microsoft.Extensions.Logging;
 
-using TokenSaver.WslControl.Contracts;
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Contracts;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Default <see cref="IWslActionPlanner" />. Sends the caller's natural-language request to

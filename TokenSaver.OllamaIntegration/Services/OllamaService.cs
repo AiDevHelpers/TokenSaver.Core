@@ -1,26 +1,26 @@
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.OllamaIntegration.Models.Ollama;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.OllamaIntegration.Models.Ollama;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using System.Diagnostics;
-using TokenSaver.Common.Core.Processes;
+using AiDevTools.TokenSaver.Common.Core.Processes;
 using System.Linq;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace TokenSaver.OllamaIntegration.Services;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
 ///     Key used on <see cref="HttpRequestMessage.Options" /> to request a specific Ollama endpoint
-///     by name for a single call. Read by <c>TokenSaver.MCP.Services.EndpointRoutingHandler</c>.
+///     by name for a single call. Read by <c>AiDevTools.TokenSaver.MCP.Services.EndpointRoutingHandler</c>.
 ///     Declared here (rather than in the MCP project) so library-level callers like
-///     <see cref="OllamaService" /> can set it without a back-reference to TokenSaver.MCP.
+///     <see cref="OllamaService" /> can set it without a back-reference to AiDevTools.TokenSaver.MCP.
 /// </summary>
 public static class OllamaRequestOptions
 {
-    public static readonly HttpRequestOptionsKey<string> EndpointName = new("TokenSaver.EndpointName");
+    public static readonly HttpRequestOptionsKey<string> EndpointName = new("AiDevTools.TokenSaver.EndpointName");
 }
 
 public partial class OllamaService

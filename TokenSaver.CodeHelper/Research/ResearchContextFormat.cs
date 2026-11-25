@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Research;
+namespace AiDevTools.TokenSaver.CodeHelper.Research;
 
 /// <summary>
 ///     Describes how the calling AI client prefers to receive research context.

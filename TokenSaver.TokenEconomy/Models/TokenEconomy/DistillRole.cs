@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.TokenEconomy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 /// <summary>
 ///     Which role-specific compression prompt DistillationService uses. Each role targets a

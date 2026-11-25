@@ -1,8 +1,8 @@
-using TokenSaver.Common.Contracts;
+using AiDevTools.TokenSaver.Common.Contracts;
 
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>Concurrent index passes over one root must not each summarize the same files.</summary>
 public sealed class IndexConcurrencyTests : IDisposable

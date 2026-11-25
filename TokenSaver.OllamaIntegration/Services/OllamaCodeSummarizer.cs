@@ -1,8 +1,8 @@
-using TokenSaver.Common.Contracts;
+using AiDevTools.TokenSaver.Common.Contracts;
 
 using Microsoft.Extensions.Logging;
 
-namespace TokenSaver.OllamaIntegration.Services;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
 ///     Implements <see cref="ICodeSummarizer" /> by calling the configured Ollama model

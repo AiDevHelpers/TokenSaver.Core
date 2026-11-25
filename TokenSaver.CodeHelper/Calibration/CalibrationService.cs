@@ -1,5 +1,5 @@
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.CodeHelper.Models.Calibration;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.CodeHelper.Models.Calibration;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 using System.Reflection;
 using System.Text.Json;
 
-namespace TokenSaver.CodeHelper.Calibration;
+namespace AiDevTools.TokenSaver.CodeHelper.Calibration;
 
 /// <summary>
 ///     Loads, merges, and updates calibration weights from three sources (priority order):

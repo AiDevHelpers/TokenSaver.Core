@@ -1,7 +1,7 @@
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.Common.Models;
-using TokenSaver.CodeHelper.Contracts;
-using TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.Common.Models;
+using AiDevTools.TokenSaver.CodeHelper.Contracts;
+using AiDevTools.TokenSaver.Database.Context;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Workspace root/path resolution and the plain-JSON preferences file

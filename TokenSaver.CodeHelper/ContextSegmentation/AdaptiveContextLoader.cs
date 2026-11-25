@@ -1,7 +1,7 @@
-using TokenSaver.CodeHelper.Planning;
+using AiDevTools.TokenSaver.CodeHelper.Planning;
 using Microsoft.Extensions.Logging;
 
-namespace TokenSaver.CodeHelper.ContextSegmentation;
+namespace AiDevTools.TokenSaver.CodeHelper.ContextSegmentation;
 
 /// <summary>
 /// Combines task type detection + access patterns to load only relevant segments.

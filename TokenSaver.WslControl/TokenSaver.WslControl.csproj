@@ -8,7 +8,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TokenSaver.Common.Core\TokenSaver.Common.Core.csproj" />
+    <PackageReference Include="AiDevTools.TokenSaver.Common.Core" Version="1.0.5-alpha" />
     <ProjectReference Include="..\TokenSaver.WindowsSession\TokenSaver.WindowsSession.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -21,4 +21,10 @@
   <ItemGroup>
     <InternalsVisibleTo Include="TokenSaver.WslControl.Tests" />
   </ItemGroup>
+  <PropertyGroup>
+    <PackageId>AiDevTools.TokenSaver.WslControl</PackageId>
+    <AssemblyName>AiDevTools.TokenSaver.WslControl</AssemblyName>
+    <RootNamespace>AiDevTools.TokenSaver.WslControl</RootNamespace>
+  </PropertyGroup>
+
 </Project>

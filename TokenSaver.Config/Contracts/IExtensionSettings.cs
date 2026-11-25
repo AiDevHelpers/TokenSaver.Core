@@ -1,8 +1,8 @@
-namespace TokenSaver.Config.Contracts;
+namespace AiDevTools.TokenSaver.Config.Contracts;
 
 /// <summary>
 ///     Settings surface shared by the TokenSaver client extensions (VS Code, Visual Studio) that
-///     manage the TokenSaver.MCP server and SimpleModelServer router. This is the union of the
+///     manage the AiDevTools.TokenSaver.MCP server and SimpleModelServer router. This is the union of the
 ///     VS Code extension's <c>tokenSaver.*</c> <c>package.json</c> settings and the settings the
 ///     Visual Studio extension needs — one contract so both extensions describe the same knobs,
 ///     even though each reads/writes them through its own host mechanism (VS Code's native
@@ -25,13 +25,13 @@ public interface IExtensionSettings
     /// </summary>
     bool? AutoInstallPrompt { get; }
 
-    /// <summary>Absolute path to TokenSaver.MCP.exe. Empty/null defaults to the bundled MSI install location.</summary>
+    /// <summary>Absolute path to AiDevTools.TokenSaver.MCP.exe. Empty/null defaults to the bundled MSI install location.</summary>
     string? McpExePath { get; }
 
     /// <summary>Server lifecycle settings — see <see cref="IExtensionServerSettings" />.</summary>
     IExtensionServerSettings? Server { get; }
 
-    /// <summary>How the extension launches TokenSaver.MCP from source — see <see cref="IExtensionDotnetSettings" />.</summary>
+    /// <summary>How the extension launches AiDevTools.TokenSaver.MCP from source — see <see cref="IExtensionDotnetSettings" />.</summary>
     IExtensionDotnetSettings? Dotnet { get; }
 
     /// <summary>Notification display settings — see <see cref="IExtensionNotificationsSettings" />.</summary>
@@ -41,7 +41,7 @@ public interface IExtensionSettings
     IExtensionSimpleModelServerSettings? SimpleModelServer { get; }
 }
 
-/// <summary>TokenSaver.MCP server lifecycle settings.</summary>
+/// <summary>AiDevTools.TokenSaver.MCP server lifecycle settings.</summary>
 public interface IExtensionServerSettings
 {
     /// <summary>Port the TokenSaver MCP server listens on.</summary>
@@ -54,13 +54,13 @@ public interface IExtensionServerSettings
     int? IdleTimeout { get; }
 }
 
-/// <summary>How the extension launches TokenSaver.MCP directly from source (dev-loop fallback).</summary>
+/// <summary>How the extension launches AiDevTools.TokenSaver.MCP directly from source (dev-loop fallback).</summary>
 public interface IExtensionDotnetSettings
 {
-    /// <summary>The dotnet executable used to launch the TokenSaver.MCP server.</summary>
+    /// <summary>The dotnet executable used to launch the AiDevTools.TokenSaver.MCP server.</summary>
     string? Command { get; }
 
-    /// <summary>Absolute path to the TokenSaver.MCP project directory.</summary>
+    /// <summary>Absolute path to the AiDevTools.TokenSaver.MCP project directory.</summary>
     string? ProjectPath { get; }
 }
 

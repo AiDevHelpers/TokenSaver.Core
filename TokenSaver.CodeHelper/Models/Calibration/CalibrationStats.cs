@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Models.Calibration;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Calibration;
 
 /// <summary>Snapshot of calibration state returned by <c>GetCalibrationStats</c>.</summary>
 public record CalibrationStats(

@@ -1,11 +1,11 @@
-using TokenSaver.TokenEconomy.Models.Accuracy;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.TokenEconomy.Models.Accuracy;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging;
 
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Scans workspace source files and generates <see cref="TestCase" /> objects

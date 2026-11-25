@@ -1,9 +1,9 @@
-using TokenSaver.LanguageHelpers.Core.Models;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
-namespace TokenSaver.LanguageHelpers.Core.Contracts;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Contracts;
 
 /// <summary>
-///     The per-language capability surface. Every <c>TokenSaver.LanguageHelpers.&lt;Language&gt;</c>
+///     The per-language capability surface. Every <c>AiDevTools.TokenSaver.LanguageHelpers.&lt;Language&gt;</c>
 ///     project provides exactly one implementation. Operations a given language cannot express (e.g.
 ///     namespace fixing in Python, import organizing in PowerShell) return a result with
 ///     <see cref="OperationStatus.NotApplicable" /> rather than throwing, so an orchestrator can call the

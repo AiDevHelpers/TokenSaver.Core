@@ -1,6 +1,6 @@
-namespace TokenSaver.WslControl.Tests;
+namespace AiDevTools.TokenSaver.WslControl.Tests;
 
-using TokenSaver.WslControl.Core;
+using AiDevTools.TokenSaver.WslControl.Core;
 
 using Xunit;
 

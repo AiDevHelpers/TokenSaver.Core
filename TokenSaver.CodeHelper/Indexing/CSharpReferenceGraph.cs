@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 
-using TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.Database.Context.Entities;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Builds symbol-to-symbol edges for C# files (rows for <see cref="SymbolReferenceEntity" />).

@@ -1,6 +1,6 @@
-using TokenSaver.LanguageHelpers.Core.Models;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
-namespace TokenSaver.LanguageHelpers.Core.Contracts;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Contracts;
 
 /// <summary>
 ///     Resolves the right <see cref="ILanguageHelper" /> for a file or a <see cref="LanguageId" />. The

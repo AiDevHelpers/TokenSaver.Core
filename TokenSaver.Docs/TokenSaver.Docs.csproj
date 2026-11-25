@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -21,4 +21,10 @@
   <ItemGroup>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
+  <PropertyGroup>
+    <PackageId>AiDevTools.TokenSaver.Docs</PackageId>
+    <AssemblyName>AiDevTools.TokenSaver.Docs</AssemblyName>
+    <RootNamespace>AiDevTools.TokenSaver.Docs</RootNamespace>
+  </PropertyGroup>
+
 </Project>

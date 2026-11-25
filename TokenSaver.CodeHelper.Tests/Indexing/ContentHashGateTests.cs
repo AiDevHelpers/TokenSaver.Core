@@ -1,10 +1,10 @@
-using TokenSaver.Common.Contracts;
-using TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Common.Contracts;
+using AiDevTools.TokenSaver.Database.Context;
 
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>Counts summary calls so tests can prove the hash gate skips the model.</summary>
 internal sealed class CountingSummarizer : ICodeSummarizer

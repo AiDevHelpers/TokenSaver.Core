@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace TokenSaver.Client.Helpers.WindowsService;
+namespace AiDevTools.TokenSaver.Client.Helpers.WindowsService;
 
 /// <summary>
 /// Utilities for querying and managing Windows services.

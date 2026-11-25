@@ -1,6 +1,6 @@
-using TokenSaver.CodeHelper.Models.Calibration;
+using AiDevTools.TokenSaver.CodeHelper.Models.Calibration;
 
-namespace TokenSaver.CodeHelper.Configuration;
+namespace AiDevTools.TokenSaver.CodeHelper.Configuration;
 
 public class CodeHelperConfig
 {

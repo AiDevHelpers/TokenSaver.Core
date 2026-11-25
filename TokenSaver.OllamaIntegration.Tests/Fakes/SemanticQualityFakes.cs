@@ -1,7 +1,7 @@
 #pragma warning disable CA1515 // Shared test fake referenced across test files; must stay public.
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.OllamaIntegration.Tests;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Tests;
 
 /// <summary>
 ///     Deterministic stand-ins for the summarize and embed models, for exercising the semantic

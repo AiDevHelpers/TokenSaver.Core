@@ -1,8 +1,8 @@
-using TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
 
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Regex-based C# symbol parser.  Handles types (class/interface/struct/enum/record/delegate)

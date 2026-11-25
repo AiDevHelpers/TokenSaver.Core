@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>
 ///     Pause control for the semantic index run, per workspace root. A paused run stops at the next

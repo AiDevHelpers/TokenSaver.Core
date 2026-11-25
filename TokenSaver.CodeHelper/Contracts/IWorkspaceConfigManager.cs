@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Contracts;
+namespace AiDevTools.TokenSaver.CodeHelper.Contracts;
 
 /// <summary>
 /// Service for managing workspace-specific configuration and root path resolution.

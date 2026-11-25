@@ -1,6 +1,6 @@
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
-namespace TokenSaver.TokenEconomy.Contracts;
+namespace AiDevTools.TokenSaver.TokenEconomy.Contracts;
 
 /// <summary>Cosine-similarity search over the Chunks table populated by IRepoIndexer — backs the SemanticGrep tool.</summary>
 public interface ISemanticSearchService

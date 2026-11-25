@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>One shared always-skip list: build output and virtualenvs are never indexed.</summary>
 public sealed class IgnoreSetTests : IDisposable

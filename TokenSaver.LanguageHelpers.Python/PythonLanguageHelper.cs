@@ -1,13 +1,13 @@
-using TokenSaver.LanguageHelpers.Core;
-using TokenSaver.LanguageHelpers.Core.Configuration;
-using TokenSaver.LanguageHelpers.Core.Models;
-using TokenSaver.LanguageHelpers.Core.Process;
+using AiDevTools.TokenSaver.LanguageHelpers.Core;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Configuration;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Process;
 
 using Microsoft.Extensions.Logging;
 
 using System.Globalization;
 
-namespace TokenSaver.LanguageHelpers.Python;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Python;
 
 /// <summary>
 ///     Python implementation of the language-helper operations, driven by the <c>ruff</c> CLI (lint,

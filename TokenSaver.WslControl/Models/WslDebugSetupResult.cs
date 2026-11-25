@@ -1,4 +1,4 @@
-namespace TokenSaver.WslControl.Models;
+namespace AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Language/runtime a WSL debug target is prepared for. Determines which debugger backend

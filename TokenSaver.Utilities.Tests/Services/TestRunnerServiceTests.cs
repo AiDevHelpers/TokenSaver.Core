@@ -1,11 +1,11 @@
-using TokenSaver.Common.Core.Contracts;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Common.Core.Contracts;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Xunit;
 
-namespace TokenSaver.Utilities.Tests.Services;
+namespace AiDevTools.TokenSaver.Utilities.Tests.Services;
 
 public class TestRunnerServiceTests
 {
@@ -55,7 +55,7 @@ public class TestRunnerServiceTests
     {
         // Arrange
         const string ideType = "VsCode";
-        const string projectPath = "src/Core/TokenSaver.Library.Tests";
+        const string projectPath = "src/Core/AiDevTools.TokenSaver.Library.Tests";
 
         // Act
         TestExecutionResult result = await _testRunner.RunTestsAsync(ideType, projectPath: projectPath);

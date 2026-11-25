@@ -1,11 +1,11 @@
-using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.CodeHelper.Indexing;
+using AiDevTools.TokenSaver.Database.Context;
 
 using Microsoft.Extensions.Logging;
 
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>
 ///     Covers the corrupt-index branch of <see cref="WorkspaceIndexDbAccessor.GetDbAsync" />: a

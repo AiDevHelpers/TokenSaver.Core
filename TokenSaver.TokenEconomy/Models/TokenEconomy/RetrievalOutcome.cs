@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.TokenEconomy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 /// <summary>
 ///     Result of <see cref="Contracts.IConditionalRetrievalService.RetrieveAsync" /> — either a

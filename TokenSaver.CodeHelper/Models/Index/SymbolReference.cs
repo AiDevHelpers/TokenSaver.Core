@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Models.Index;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Index;
 
 public enum ReferenceKind
 {

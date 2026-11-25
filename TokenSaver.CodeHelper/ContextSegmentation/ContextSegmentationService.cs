@@ -1,8 +1,8 @@
-using TokenSaver.Config;
+using AiDevTools.TokenSaver.Config;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace TokenSaver.CodeHelper.ContextSegmentation;
+namespace AiDevTools.TokenSaver.CodeHelper.ContextSegmentation;
 
 /// <summary>
 /// Partitions the codebase into logical context segments based on project structure,
@@ -81,10 +81,10 @@ public class ContextSegmentationService
                 Label = "Indexing & Search",
                 PathPatterns =
                 [
-                    "src/Core/TokenSaver.CodeHelper/Indexing/**",
-                    "src/Core/TokenSaver.CodeHelper/Models/Index/**",
-                    "src/Core/TokenSaver.Library/Services/ChunkExtractor.cs",
-                    "src/Core/TokenSaver.Library/Contracts/ISemanticSearchService.cs"
+                    "src/Core/AiDevTools.TokenSaver.CodeHelper/Indexing/**",
+                    "src/Core/AiDevTools.TokenSaver.CodeHelper/Models/Index/**",
+                    "src/Core/AiDevTools.TokenSaver.Library/Services/ChunkExtractor.cs",
+                    "src/Core/AiDevTools.TokenSaver.Library/Contracts/ISemanticSearchService.cs"
                 ],
                 Priority = SegmentPriority.Important,
                 PrimaryTaskTypes = ["Code", "Debug", "Test"],
@@ -96,8 +96,8 @@ public class ContextSegmentationService
                 Label = "Context Pipeline",
                 PathPatterns =
                 [
-                    "src/Core/TokenSaver.ContextHelper/Pipeline/**",
-                    "src/Core/TokenSaver.ContextHelper/Models/**"
+                    "src/Core/AiDevTools.TokenSaver.ContextHelper/Pipeline/**",
+                    "src/Core/AiDevTools.TokenSaver.ContextHelper/Models/**"
                 ],
                 Priority = SegmentPriority.Important,
                 PrimaryTaskTypes = ["Code", "Debug"],
@@ -109,9 +109,9 @@ public class ContextSegmentationService
                 Label = "Config & Ignore",
                 PathPatterns =
                 [
-                    "src/Core/TokenSaver.Config/**",
-                    "src/Core/TokenSaver.CodeHelper/Configuration/**",
-                    "src/Core/TokenSaver.ContextHelper/Configuration/**"
+                    "src/Core/AiDevTools.TokenSaver.Config/**",
+                    "src/Core/AiDevTools.TokenSaver.CodeHelper/Configuration/**",
+                    "src/Core/AiDevTools.TokenSaver.ContextHelper/Configuration/**"
                 ],
                 Priority = SegmentPriority.Important,
                 PrimaryTaskTypes = ["Code", "Planning"],
@@ -123,8 +123,8 @@ public class ContextSegmentationService
                 Label = "MCP Server",
                 PathPatterns =
                 [
-                    "src/Host/TokenSaver.MCP/**",
-                    "src/Host/TokenSaver.MCP.Tests/**"
+                    "src/Host/AiDevTools.TokenSaver.MCP/**",
+                    "src/Host/AiDevTools.TokenSaver.MCP.Tests/**"
                 ],
                 Priority = SegmentPriority.Important,
                 PrimaryTaskTypes = ["Code", "Debug", "Test"],
@@ -136,8 +136,8 @@ public class ContextSegmentationService
                 Label = "Auto Workflow",
                 PathPatterns =
                 [
-                    "src/Core/TokenSaver.CodeHelper/AutoWorkflow/**",
-                    "src/Core/TokenSaver.CodeHelper/Planning/**"
+                    "src/Core/AiDevTools.TokenSaver.CodeHelper/AutoWorkflow/**",
+                    "src/Core/AiDevTools.TokenSaver.CodeHelper/Planning/**"
                 ],
                 Priority = SegmentPriority.Optional,
                 PrimaryTaskTypes = ["Planning", "Code"],
@@ -150,8 +150,8 @@ public class ContextSegmentationService
                 PathPatterns =
                 [
                     "**/**.Tests/**",
-                    "src/Core/TokenSaver.CodeHelper/Calibration/**",
-                    "src/Core/TokenSaver.ContextHelper.Calibration/**"
+                    "src/Core/AiDevTools.TokenSaver.CodeHelper/Calibration/**",
+                    "src/Core/AiDevTools.TokenSaver.ContextHelper.Calibration/**"
                 ],
                 Priority = SegmentPriority.Optional,
                 PrimaryTaskTypes = ["Test", "Debug"],
@@ -177,7 +177,7 @@ public class ContextSegmentationService
                 [
                     "docs/**",
                     "**/README.md",
-                    "src/Core/TokenSaver.Docs/**"
+                    "src/Core/AiDevTools.TokenSaver.Docs/**"
                 ],
                 Priority = SegmentPriority.Optional,
                 PrimaryTaskTypes = ["Explain", "Planning"],

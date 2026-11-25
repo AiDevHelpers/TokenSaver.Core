@@ -1,8 +1,8 @@
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Xunit;
 
-namespace TokenSaver.Utilities.Tests;
+namespace AiDevTools.TokenSaver.Utilities.Tests;
 
 public sealed class WorkspacePathGuardTests : IDisposable
 {

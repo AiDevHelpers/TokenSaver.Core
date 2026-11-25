@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 
-using TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Pending workspace-relative paths per root, flushed through

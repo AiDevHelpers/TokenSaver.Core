@@ -1,4 +1,4 @@
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>Outcome of a <see cref="CommandAllowlist.Check" /> call.</summary>
 public sealed record CommandCheck(bool Ok, string Command, string Arguments, string? Error)

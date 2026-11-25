@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace TokenSaver.Config;
+namespace AiDevTools.TokenSaver.Config;
 
 /// <summary>
 ///     Creates the <c>.tokensaver/</c> folder and its default config files for a workspace —

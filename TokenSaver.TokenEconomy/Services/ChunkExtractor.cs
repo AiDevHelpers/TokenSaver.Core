@@ -1,9 +1,9 @@
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>Default <see cref="IChunkExtractor" /> — see that interface's doc comment for scope/rationale.</summary>
 public sealed partial class ChunkExtractor : IChunkExtractor

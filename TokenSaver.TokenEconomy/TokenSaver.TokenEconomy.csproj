@@ -6,10 +6,10 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TokenSaver.Common.Core\TokenSaver.Common.Core.csproj" />
+    <PackageReference Include="AiDevTools.TokenSaver.Common.Core" Version="1.0.5-alpha" />
     <ProjectReference Include="..\TokenSaver.OllamaIntegration\TokenSaver.OllamaIntegration.csproj" />
     <ProjectReference Include="..\TokenSaver.Utilities\TokenSaver.Utilities.csproj" />
-    <ProjectReference Include="..\..\Database\TokenSaver.Database.Context\TokenSaver.Database.Context.csproj" />
+    <PackageReference Include="AiDevTools.TokenSaver.Database.Context" Version="1.0.3-alpha" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
@@ -18,4 +18,10 @@
   <ItemGroup>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
+  <PropertyGroup>
+    <PackageId>AiDevTools.TokenSaver.TokenEconomy</PackageId>
+    <AssemblyName>AiDevTools.TokenSaver.TokenEconomy</AssemblyName>
+    <RootNamespace>AiDevTools.TokenSaver.TokenEconomy</RootNamespace>
+  </PropertyGroup>
+
 </Project>

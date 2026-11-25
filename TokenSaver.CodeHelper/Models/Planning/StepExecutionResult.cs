@@ -1,6 +1,6 @@
-using TokenSaver.CodeHelper.Models.Patch;
+using AiDevTools.TokenSaver.CodeHelper.Models.Patch;
 
-namespace TokenSaver.CodeHelper.Models.Planning;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Planning;
 
 public record StepExecutionResult
 {

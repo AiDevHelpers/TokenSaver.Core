@@ -1,12 +1,12 @@
-namespace TokenSaver.WslControl;
+namespace AiDevTools.TokenSaver.WslControl;
 
 using Community.Wsl.Sdk;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-using TokenSaver.WslControl.Contracts;
-using TokenSaver.WslControl.Core;
+using AiDevTools.TokenSaver.WslControl.Contracts;
+using AiDevTools.TokenSaver.WslControl.Core;
 
 /// <summary>
 ///     DI wiring for the WSL provider. The one collaborator this library deliberately does not

@@ -1,17 +1,17 @@
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
 using Microsoft.Extensions.Options;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>
 ///     EF Core/SQLite-backed <see cref="ISavingsTracker" />, storing rows in the shared
 ///     ".tokensaver/index.db" via <see cref="TokenEconomyDbAccessor" /> — see that type's
-///     doc comment for why this doesn't reuse TokenSaver.CodeHelper's WorkspaceIndexDbAccessor.
+///     doc comment for why this doesn't reuse AiDevTools.TokenSaver.CodeHelper's WorkspaceIndexDbAccessor.
 /// </summary>
 public sealed class SavingsTracker(TokenEconomyDbAccessor db, IOptions<TokenSaverConfig> config) : ISavingsTracker
 {

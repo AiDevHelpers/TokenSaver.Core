@@ -1,4 +1,4 @@
-namespace TokenSaver.WslControl.Models;
+namespace AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     A registered WSL distribution, projected from the SDK's <c>DistroInfo</c> so callers

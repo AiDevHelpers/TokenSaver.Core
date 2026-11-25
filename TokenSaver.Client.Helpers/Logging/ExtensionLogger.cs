@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace TokenSaver.Client.Helpers.Logging;
+namespace AiDevTools.TokenSaver.Client.Helpers.Logging;
 
 /// <summary>
 /// Abstraction for logging in client extensions (VS Code, Visual Studio, etc).

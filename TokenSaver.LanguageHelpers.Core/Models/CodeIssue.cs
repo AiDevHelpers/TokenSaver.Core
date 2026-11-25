@@ -1,4 +1,4 @@
-namespace TokenSaver.LanguageHelpers.Core.Models;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
 /// <summary>
 ///     A location inside a source file. All coordinates are 1-based to match how editors and the

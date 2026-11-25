@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.Accuracy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.Accuracy;
 
 /// <summary>
 ///     A single accuracy test: a prompt derived from real workspace code,

@@ -1,12 +1,12 @@
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.CodeHelper.Models.Planning;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.CodeHelper.Models.Planning;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using System.Net.Http.Json;
 
-namespace TokenSaver.CodeHelper.Planning;
+namespace AiDevTools.TokenSaver.CodeHelper.Planning;
 
 /// <summary>
 ///     Two-tier task classifier:

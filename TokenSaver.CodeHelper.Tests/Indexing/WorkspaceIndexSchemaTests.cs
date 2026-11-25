@@ -1,12 +1,12 @@
-using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.CodeHelper.Indexing;
+using AiDevTools.TokenSaver.Database.Context;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>
 ///     Index schema versioning: a database written under another schema version (including the unversioned ones

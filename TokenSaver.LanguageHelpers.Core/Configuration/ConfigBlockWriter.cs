@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace TokenSaver.LanguageHelpers.Core.Configuration;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Configuration;
 
 /// <summary>Outcome of a <see cref="ConfigBlockWriter" /> upsert.</summary>
 public sealed record ConfigBlockResult

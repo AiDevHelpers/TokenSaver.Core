@@ -1,10 +1,10 @@
-using TokenSaver.LanguageHelpers.Core.Process;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Process;
 
 using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
 
-namespace TokenSaver.LanguageHelpers.PowerShell;
+namespace AiDevTools.TokenSaver.LanguageHelpers.PowerShell;
 
 /// <summary>
 ///     Runs short PowerShell scripts out of process via <c>pwsh</c> and deserializes their JSON stdout.

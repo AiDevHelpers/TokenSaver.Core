@@ -1,10 +1,10 @@
 using System.Diagnostics;
 
-using TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
 
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests.Indexing;
 
 /// <summary>An index pass over an unchanged git repo does no file reads, no model calls, no reference work.</summary>
 public sealed class IdleReindexTests : IDisposable

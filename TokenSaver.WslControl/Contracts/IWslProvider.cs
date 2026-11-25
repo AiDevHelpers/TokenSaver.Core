@@ -1,6 +1,6 @@
-namespace TokenSaver.WslControl.Contracts;
+namespace AiDevTools.TokenSaver.WslControl.Contracts;
 
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     The WSL provider: detects WSL, enumerates distributions, reports health, and runs

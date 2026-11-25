@@ -1,11 +1,11 @@
-using TokenSaver.LanguageHelpers.Core.Contracts;
-using TokenSaver.LanguageHelpers.Core.Process;
-using TokenSaver.LanguageHelpers.Core.Registry;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Contracts;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Process;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Registry;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace TokenSaver.LanguageHelpers.Core.Extensions;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Extensions;
 
 /// <summary>
 ///     DI wiring for the language-helpers Core layer: the shared <see cref="IProcessRunner" /> and the

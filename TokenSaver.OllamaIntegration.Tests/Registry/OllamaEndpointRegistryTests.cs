@@ -1,5 +1,5 @@
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -8,7 +8,7 @@ using System.Collections.ObjectModel;
 
 using Xunit;
 
-namespace TokenSaver.OllamaIntegration.Tests;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Tests;
 
 file static class TestData
 {

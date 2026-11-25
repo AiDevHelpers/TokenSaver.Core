@@ -1,6 +1,6 @@
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
 
-namespace TokenSaver.TokenEconomy.Contracts;
+namespace AiDevTools.TokenSaver.TokenEconomy.Contracts;
 
 /// <summary>
 ///     Compresses bulk tool output (test runner output, logs, diffs, lint results, ...) into a

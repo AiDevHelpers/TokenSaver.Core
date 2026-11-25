@@ -1,4 +1,4 @@
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>How the path should be handled if the user agrees it is generated/cached.</summary>
 public enum SuspiciousDirRecommendation

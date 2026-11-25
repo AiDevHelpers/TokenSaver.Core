@@ -4,7 +4,7 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
-namespace TokenSaver.Config;
+namespace AiDevTools.TokenSaver.Config;
 
 /// <summary>
 ///     Patches an existing <c>config.json</c> (local or global) that predates a schema change —

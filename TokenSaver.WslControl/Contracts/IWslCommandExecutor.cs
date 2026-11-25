@@ -1,6 +1,6 @@
-namespace TokenSaver.WslControl.Contracts;
+namespace AiDevTools.TokenSaver.WslControl.Contracts;
 
-using TokenSaver.WslControl.Models;
+using AiDevTools.TokenSaver.WslControl.Models;
 
 /// <summary>
 ///     Low-level seam over "run one program in a WSL distro and capture its output". The default

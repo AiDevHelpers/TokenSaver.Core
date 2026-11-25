@@ -1,6 +1,6 @@
 using System.Linq;
 
-namespace TokenSaver.Config;
+namespace AiDevTools.TokenSaver.Config;
 
 /// <summary>
 ///     A single node in the <see cref="TokenSaverBehaviorConfig" /> schema tree — either a leaf

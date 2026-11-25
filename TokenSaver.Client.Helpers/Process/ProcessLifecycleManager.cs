@@ -2,13 +2,13 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using TokenSaver.Client.Helpers.Logging;
+using AiDevTools.TokenSaver.Client.Helpers.Logging;
 
-namespace TokenSaver.Client.Helpers.Process;
+namespace AiDevTools.TokenSaver.Client.Helpers.Process;
 
 /// <summary>
 /// Manages the lifecycle of a child process (start, monitor, stop).
-/// Used for managing TokenSaver.MCP and SimpleModelServer processes.
+/// Used for managing AiDevTools.TokenSaver.MCP and SimpleModelServer processes.
 /// </summary>
 public sealed class ProcessLifecycleManager : IAsyncDisposable
 {

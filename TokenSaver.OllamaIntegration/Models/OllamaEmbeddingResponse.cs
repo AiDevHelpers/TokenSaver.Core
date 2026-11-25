@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace TokenSaver.OllamaIntegration.Models.Ollama;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Models.Ollama;
 
 /// <summary>
 ///     Response shape for Ollama's <c>POST /api/embed</c> endpoint (the current API — not the

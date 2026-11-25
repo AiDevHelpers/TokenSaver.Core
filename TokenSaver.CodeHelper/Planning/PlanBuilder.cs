@@ -1,10 +1,10 @@
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.CodeHelper.Models.Index;
-using TokenSaver.CodeHelper.Models.Patch;
-using TokenSaver.CodeHelper.Models.Planning;
-using TokenSaver.CodeHelper.Research;
-using TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.CodeHelper.Indexing;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.CodeHelper.Models.Patch;
+using AiDevTools.TokenSaver.CodeHelper.Models.Planning;
+using AiDevTools.TokenSaver.CodeHelper.Research;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,7 +14,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.CodeHelper.Planning;
+namespace AiDevTools.TokenSaver.CodeHelper.Planning;
 
 /// <summary>
 ///     Generates a <see cref="CodePlan" /> from a natural-language task description.

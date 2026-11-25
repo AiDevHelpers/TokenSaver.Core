@@ -1,4 +1,4 @@
-namespace TokenSaver.TokenEconomy.Models.Accuracy;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.Accuracy;
 
 /// <summary>
 ///     Aggregated results from a batch accuracy test run.

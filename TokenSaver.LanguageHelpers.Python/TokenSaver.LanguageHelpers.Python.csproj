@@ -16,4 +16,10 @@
   <ItemGroup>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
+  <PropertyGroup>
+    <PackageId>AiDevTools.TokenSaver.LanguageHelpers.Python</PackageId>
+    <AssemblyName>AiDevTools.TokenSaver.LanguageHelpers.Python</AssemblyName>
+    <RootNamespace>AiDevTools.TokenSaver.LanguageHelpers.Python</RootNamespace>
+  </PropertyGroup>
+
 </Project>

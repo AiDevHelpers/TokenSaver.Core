@@ -1,8 +1,8 @@
-using TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
 
 using Microsoft.Extensions.Options;
 
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>
 ///     Escape hatch for distilling tools: writes raw output to

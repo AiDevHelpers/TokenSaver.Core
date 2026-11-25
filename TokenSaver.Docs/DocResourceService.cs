@@ -3,7 +3,7 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Reflection;
 
-namespace TokenSaver.Docs;
+namespace AiDevTools.TokenSaver.Docs;
 
 /// <summary>
 ///     Exposes the TokenSaver documentation files as MCP resources.
@@ -29,7 +29,7 @@ public sealed class DocResourceService
     private static string Load(string fileName)
     {
         Assembly asm = typeof(DocResourceService).Assembly;
-        string name = $"TokenSaver.Docs.Resources.{fileName}";
+        string name = $"AiDevTools.TokenSaver.Docs.Resources.{fileName}";
         using Stream stream = asm.GetManifestResourceStream(name)
                            ?? throw new InvalidOperationException(
                                $"Embedded resource '{name}' not found. " +

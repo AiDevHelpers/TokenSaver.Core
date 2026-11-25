@@ -1,8 +1,8 @@
-using TokenSaver.CodeHelper.Models.Planning;
+using AiDevTools.TokenSaver.CodeHelper.Models.Planning;
 
 using System.Collections.Concurrent;
 
-namespace TokenSaver.CodeHelper.Planning;
+namespace AiDevTools.TokenSaver.CodeHelper.Planning;
 
 /// <summary>
 ///     In-memory, session-scoped store for active code plans.

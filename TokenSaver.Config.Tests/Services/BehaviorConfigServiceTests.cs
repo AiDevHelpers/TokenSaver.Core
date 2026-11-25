@@ -1,11 +1,11 @@
-using TokenSaver.Config;
-using TokenSaver.Config.Contracts;
+using AiDevTools.TokenSaver.Config;
+using AiDevTools.TokenSaver.Config.Contracts;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Xunit;
 
-namespace TokenSaver.Config.Tests;
+namespace AiDevTools.TokenSaver.Config.Tests;
 
 public sealed class BehaviorConfigServiceTests : IDisposable
 {

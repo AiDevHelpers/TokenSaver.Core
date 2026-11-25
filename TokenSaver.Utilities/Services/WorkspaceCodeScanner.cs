@@ -1,3 +1,3 @@
-// WorkspaceCodeScanner has moved to TokenSaver.CodeHelper.Indexing.WorkspaceCodeScanner.
+// WorkspaceCodeScanner has moved to AiDevTools.TokenSaver.CodeHelper.Indexing.WorkspaceCodeScanner.
 
 

@@ -1,11 +1,11 @@
 using System;
 using System.IO;
 
-namespace TokenSaver.Client.Helpers.Configuration;
+namespace AiDevTools.TokenSaver.Client.Helpers.Configuration;
 
 /// <summary>
 /// Helper for reading .gitignore files and checking if .tokensaver/ is already covered.
-/// Mirrors GitignoreFilter.EntryIsCovered from TokenSaver.Library.
+/// Mirrors GitignoreFilter.EntryIsCovered from AiDevTools.TokenSaver.Library.
 /// </summary>
 public static class GitignoreHelper
 {

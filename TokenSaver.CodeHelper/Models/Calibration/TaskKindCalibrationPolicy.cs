@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.Models.Calibration;
+namespace AiDevTools.TokenSaver.CodeHelper.Models.Calibration;
 
 /// <summary>
 ///     Per-task-kind calibration tuning. Allows certain task kinds to learn faster or

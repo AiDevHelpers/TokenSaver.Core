@@ -1,4 +1,4 @@
-namespace TokenSaver.LanguageHelpers.Core.Models;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
 /// <summary>
 ///     The configurable coding standard applied by <c>EnableCodeAnalysis</c> and honored by the lint /

@@ -1,12 +1,12 @@
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.TokenEconomy.Models.Accuracy;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.TokenEconomy.Models.Accuracy;
 
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>
 ///     Runs <see cref="TestCase" /> objects against the local Ollama model and scores

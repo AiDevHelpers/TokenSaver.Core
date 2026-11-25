@@ -1,8 +1,8 @@
-using TokenSaver.Common.Core.Processes;
+using AiDevTools.TokenSaver.Common.Core.Processes;
 
 using Xunit;
 
-namespace TokenSaver.Utilities.Tests;
+namespace AiDevTools.TokenSaver.Utilities.Tests;
 
 public sealed class CommandLineTests
 {

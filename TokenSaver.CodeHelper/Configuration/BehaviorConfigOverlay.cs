@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Options;
 
-using TokenSaver.Config;
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.ContextHelper.Configuration;
+using AiDevTools.TokenSaver.Config;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.ContextHelper.Configuration;
 
-namespace TokenSaver.CodeHelper.Configuration;
+namespace AiDevTools.TokenSaver.CodeHelper.Configuration;
 
 /// <summary>
 ///     Overlays <c>.tokensaver/config.json</c> (local, merged over <c>%ProgramData%\TokenSaver\config.json</c>

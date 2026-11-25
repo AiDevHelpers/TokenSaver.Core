@@ -3,15 +3,15 @@ using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.CodeHelper.Models.Index;
-using TokenSaver.CodeHelper.Models.Patch;
-using TokenSaver.CodeHelper.Patching;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.CodeHelper.Indexing;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.CodeHelper.Models.Patch;
+using AiDevTools.TokenSaver.CodeHelper.Patching;
 
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests;
 
 public sealed class PatchEngineTests : IDisposable
 {

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 
-using TokenSaver.Common.Core.Processes;
+using AiDevTools.TokenSaver.Common.Core.Processes;
 
-namespace TokenSaver.LanguageHelpers.Core.Process;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Process;
 
 /// <summary>Captured result of running an external process to completion.</summary>
 public sealed record ProcessResult

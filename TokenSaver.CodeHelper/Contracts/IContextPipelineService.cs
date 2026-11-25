@@ -1,6 +1,6 @@
-using TokenSaver.TokenEconomy.Models.Context;
+using AiDevTools.TokenSaver.TokenEconomy.Models.Context;
 
-namespace TokenSaver.CodeHelper.Contracts;
+namespace AiDevTools.TokenSaver.CodeHelper.Contracts;
 
 /// <summary>
 /// Service for building concise context through a pipeline of processing stages.

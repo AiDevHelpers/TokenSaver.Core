@@ -1,12 +1,12 @@
-using TokenSaver.LanguageHelpers.Core.Contracts;
-using TokenSaver.LanguageHelpers.Core.Models;
-using TokenSaver.LanguageHelpers.Core.Process;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Contracts;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Process;
 
 using Microsoft.Extensions.Logging;
 
 using System.Diagnostics;
 
-namespace TokenSaver.LanguageHelpers.Core;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core;
 
 /// <summary>
 ///     Shared plumbing for language helpers: default <see cref="OperationStatus.NotApplicable" />

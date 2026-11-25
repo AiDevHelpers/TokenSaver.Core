@@ -1,11 +1,11 @@
-using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.TokenEconomy.Models.Context;
+using AiDevTools.TokenSaver.CodeHelper.Indexing;
+using AiDevTools.TokenSaver.TokenEconomy.Models.Context;
 
 using ModelContextProtocol.Server;
 
 using System.ComponentModel;
 
-namespace TokenSaver.Docs.Prompts;
+namespace AiDevTools.TokenSaver.Docs.Prompts;
 
 [McpServerPromptType]
 public class BuildConciseContextPrompt

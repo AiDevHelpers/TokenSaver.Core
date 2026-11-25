@@ -1,4 +1,4 @@
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>
 ///     Confines a caller-supplied path to a workspace root. The path is made absolute, symbolic links and

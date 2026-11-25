@@ -1,6 +1,6 @@
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.Utilities.Services;
 
-namespace TokenSaver.Config;
+namespace AiDevTools.TokenSaver.Config;
 
 /// <summary>
 ///     Unified "should this path be indexed/included in context?" decision, composing three

@@ -1,9 +1,9 @@
 using System;
 using System.IO;
-using TokenSaver.Client.Helpers.Configuration;
+using AiDevTools.TokenSaver.Client.Helpers.Configuration;
 using Xunit;
 
-namespace TokenSaver.Client.Helpers.Tests.Configuration;
+namespace AiDevTools.TokenSaver.Client.Helpers.Tests.Configuration;
 
 public sealed class GitignoreHelperTests
 {

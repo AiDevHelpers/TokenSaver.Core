@@ -1,4 +1,4 @@
-namespace TokenSaver.LanguageHelpers.Core.Models;
+namespace AiDevTools.TokenSaver.LanguageHelpers.Core.Models;
 
 /// <summary>
 ///     Common shape shared by every language-helper operation result. Carries the normalized

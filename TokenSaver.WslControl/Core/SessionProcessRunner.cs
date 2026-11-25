@@ -1,13 +1,13 @@
-namespace TokenSaver.WslControl.Core;
+namespace AiDevTools.TokenSaver.WslControl.Core;
 
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
 
-using static TokenSaver.WslControl.Core.NativeMethods;
+using static AiDevTools.TokenSaver.WslControl.Core.NativeMethods;
 
 using Microsoft.Win32.SafeHandles;
-using TokenSaver.WindowsSession;
+using AiDevTools.TokenSaver.WindowsSession;
 
 /// <summary>Result of one process run in the active user's session.</summary>
 public sealed record SessionProcessResult(int ExitCode, ReadOnlyMemory<byte> Stdout, ReadOnlyMemory<byte> Stderr, bool TimedOut);

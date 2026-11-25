@@ -1,11 +1,11 @@
-using TokenSaver.CodeHelper.Configuration;
-using TokenSaver.CodeHelper.Models.Index;
-using TokenSaver.CodeHelper.Contracts;
-using TokenSaver.Config;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.CodeHelper.Configuration;
+using AiDevTools.TokenSaver.CodeHelper.Models.Index;
+using AiDevTools.TokenSaver.CodeHelper.Contracts;
+using AiDevTools.TokenSaver.Config;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -16,7 +16,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace TokenSaver.CodeHelper.Indexing;
+namespace AiDevTools.TokenSaver.CodeHelper.Indexing;
 
 /// <summary>
 ///     Unified replacement for the old LocalContextService (context.db: files/sections/summaries/
@@ -24,7 +24,7 @@ namespace TokenSaver.CodeHelper.Indexing;
 ///     Every file not excluded by .gitignore/ExcludePatterns/.ignore-additional gets a File row
 ///     (type + description); files matching an <see cref="ISymbolParser" /> additionally get Symbol
 ///     rows. Staleness is git-aware (see <see cref="GitStalenessChecker" />) with a per-file
-///     last-write-time fallback for non-git folders. See plans/TokenSaver.UnifiedIndex.plan.md.
+///     last-write-time fallback for non-git folders. See plans/AiDevTools.TokenSaver.UnifiedIndex.plan.md.
 ///     Slimmed orchestrator: owns only the indexing pipeline itself (bootstrap/incremental index,
 ///     pruning, single-file re-index) and delegates everything else — DB access, staleness
 ///     resolution, folder tree maintenance, symbol queries, AI summarization, context building,
@@ -243,7 +243,7 @@ public sealed partial class WorkspaceIndexService : IWorkspaceIndexService, IFil
         // Low-priority maintenance pass: sweep the whole Files table for rows that no longer
         // belong (deleted from disk, or newly covered by .gitignore/.ignore-additional). Rate
         // limited (see PruneInterval) since IndexWorkspaceAsync can be called on every interactive
-        // request. See plans/TokenSaver.IndexPruning.plan.md.
+        // request. See plans/AiDevTools.TokenSaver.IndexPruning.plan.md.
         (int prunedFiles, int prunedSymbols) = (0, 0);
         long nowMsForPrune = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         if (nowMsForPrune - Interlocked.Read(ref _lastPruneAtMs) >= PruneInterval.TotalMilliseconds)

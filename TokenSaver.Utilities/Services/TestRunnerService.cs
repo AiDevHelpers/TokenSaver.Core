@@ -1,11 +1,11 @@
-using TokenSaver.Common.Core.Contracts;
+using AiDevTools.TokenSaver.Common.Core.Contracts;
 
 using Microsoft.Extensions.Logging;
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
-namespace TokenSaver.Utilities.Services;
+namespace AiDevTools.TokenSaver.Utilities.Services;
 
 /// <summary>
 ///     Runs tests in VS Code, Visual Studio, and via command-line test runners.

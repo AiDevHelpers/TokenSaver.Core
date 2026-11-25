@@ -1,4 +1,4 @@
-namespace TokenSaver.CodeHelper.ContextSegmentation;
+namespace AiDevTools.TokenSaver.CodeHelper.ContextSegmentation;
 
 /// <summary>
 /// Records a single task session: which segments were loaded, how they were used.

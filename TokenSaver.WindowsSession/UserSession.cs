@@ -1,6 +1,6 @@
-namespace TokenSaver.WindowsSession;
+namespace AiDevTools.TokenSaver.WindowsSession;
 
-using static TokenSaver.WindowsSession.NativeMethods;
+using static AiDevTools.TokenSaver.WindowsSession.NativeMethods;
 
 using System.ComponentModel;
 using System.Runtime.InteropServices;

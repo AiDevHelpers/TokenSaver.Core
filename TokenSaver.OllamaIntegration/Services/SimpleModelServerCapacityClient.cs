@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using System.Text.Json;
 
-namespace TokenSaver.OllamaIntegration.Services;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 /// <summary>
 ///     Resolved capacity for background inference calls. Deliberately a plain record parsed from

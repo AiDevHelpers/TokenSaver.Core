@@ -1,8 +1,8 @@
-using TokenSaver.ContextHelper.Models.Calibration;
-using TokenSaver.ContextHelper.Models.Diagnostics;
-using TokenSaver.TokenEconomy.Services;
+using AiDevTools.TokenSaver.ContextHelper.Models.Calibration;
+using AiDevTools.TokenSaver.ContextHelper.Models.Diagnostics;
+using AiDevTools.TokenSaver.TokenEconomy.Services;
 
-namespace TokenSaver.TokenEconomy.Models.Context;
+namespace AiDevTools.TokenSaver.TokenEconomy.Models.Context;
 
 public class BuildContextResult
 {
@@ -32,7 +32,7 @@ public class BuildContextResult
     ///     Set when this turn requested at least one file the previous turn's semantic relevance
     ///     filter never surfaced above its threshold — evidence the filter was too narrow. Null
     ///     means there was nothing to compare (no session, first turn, or nothing new requested).
-    ///     See <see cref="TokenSaver.ContextHelper.Calibration.RetrievalCalibrationService" />.
+    ///     See <see cref="AiDevTools.TokenSaver.ContextHelper.Calibration.RetrievalCalibrationService" />.
     /// </summary>
     public RetrievalCalibrationCheckResult? CalibrationCheck { get; set; }
 }

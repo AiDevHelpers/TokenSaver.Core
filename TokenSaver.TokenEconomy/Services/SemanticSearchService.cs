@@ -1,15 +1,15 @@
-using TokenSaver.OllamaIntegration.Services;
-using TokenSaver.TokenEconomy.Contracts;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
-using TokenSaver.TokenEconomy.Models.TokenEconomy;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.TokenEconomy.Contracts;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.TokenEconomy.Models.TokenEconomy;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.EntityFrameworkCore;
 
 using System.Text.Json;
 
-namespace TokenSaver.TokenEconomy.Services;
+namespace AiDevTools.TokenSaver.TokenEconomy.Services;
 
 /// <summary>Default <see cref="ISemanticSearchService" /> — see that interface's doc comment.</summary>
 public sealed class SemanticSearchService(OllamaService ollama, ModelRouteResolver modelRoutes, TokenEconomyDbAccessor db)

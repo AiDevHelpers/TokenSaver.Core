@@ -3,14 +3,14 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 
-using TokenSaver.Common.Core.Configuration;
-using TokenSaver.OllamaIntegration.Services;
+using AiDevTools.TokenSaver.Common.Core.Configuration;
+using AiDevTools.TokenSaver.OllamaIntegration.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace TokenSaver.OllamaIntegration.Tests;
+namespace AiDevTools.TokenSaver.OllamaIntegration.Tests;
 
 public sealed class OllamaGenerateReplyTests
 {

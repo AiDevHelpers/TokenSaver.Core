@@ -1,7 +1,7 @@
-using TokenSaver.CodeHelper.Indexing;
-using TokenSaver.Database.Context;
-using TokenSaver.Database.Context.Entities;
-using TokenSaver.Utilities.Services;
+using AiDevTools.TokenSaver.CodeHelper.Indexing;
+using AiDevTools.TokenSaver.Database.Context;
+using AiDevTools.TokenSaver.Database.Context.Entities;
+using AiDevTools.TokenSaver.Utilities.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,7 +10,7 @@ using System.Diagnostics;
 
 using Xunit;
 
-namespace TokenSaver.CodeHelper.Tests;
+namespace AiDevTools.TokenSaver.CodeHelper.Tests;
 
 public sealed class GitStalenessServiceTests : IDisposable
 {

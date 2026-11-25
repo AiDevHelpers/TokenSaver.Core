@@ -1,9 +1,9 @@
-using TokenSaver.LanguageHelpers.Core.Contracts;
-using TokenSaver.LanguageHelpers.Core.Extensions;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Contracts;
+using AiDevTools.TokenSaver.LanguageHelpers.Core.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
 
-namespace TokenSaver.LanguageHelpers.PowerShell.Extensions;
+namespace AiDevTools.TokenSaver.LanguageHelpers.PowerShell.Extensions;
 
 /// <summary>DI wiring for the PowerShell language helper.</summary>
 public static class PowerShellLanguageHelperServiceExtensions

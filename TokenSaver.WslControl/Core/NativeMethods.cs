@@ -2,11 +2,11 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace TokenSaver.WslControl.Core;
+namespace AiDevTools.TokenSaver.WslControl.Core;
 
 /// <summary>
 /// Win32 entry points for the pipe and process calls in <see cref="ConsoleUserProcessRunner"/>. Session and token
-/// calls live in TokenSaver.WindowsSession.
+/// calls live in AiDevTools.TokenSaver.WindowsSession.
 /// </summary>
 internal static class NativeMethods
 {
